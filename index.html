@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>麻生高校 校舎案内マップ</title>
+  <meta name="description" content="神奈川県立麻生高等学校の校舎配置図・案内図。3Dと2Dで校舎を見て、部屋をクリックすると紹介が表示されます。">
+  <link rel="stylesheet" href="css/style.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">🏫</span>
+      <div>
+        <h1>麻生高校 校舎案内マップ</h1>
+        <p class="sub">神奈川県立麻生高等学校・令和8年度 校舎配置図より</p>
+      </div>
+    </div>
+    <div class="search-box">
+      <input id="search" type="search" placeholder="部屋をさがす（例：職員室、2-4、トイレ）" autocomplete="off">
+      <ul id="results" hidden></ul>
+    </div>
+    <div class="top-actions">
+      <button id="map-btn" class="ghost" aria-label="地図・アクセス">📍<span class="txt"> 地図・アクセス</span></button>
+      <button id="help-btn" class="ghost" aria-label="使い方">？</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="viewer">
+      <div id="loading">校舎を読み込み中…</div>
+    </div>
+
+    <nav class="floor-bar" aria-label="表示する階">
+      <button class="floor-btn" data-floor="0">外観</button>
+      <button class="floor-btn" data-floor="3">3階</button>
+      <button class="floor-btn" data-floor="2">2階</button>
+      <button class="floor-btn" data-floor="1">1階</button>
+    </nav>
+
+    <div class="view-bar">
+      <div id="view-toggle" class="seg">
+        <button class="view-btn" data-view="3d">3D</button>
+        <button class="view-btn" data-view="2d">2D<span class="txt">（平面図）</span></button>
+      </div>
+      <label class="check"><input type="checkbox" id="labels-toggle" checked> 名前を表示</label>
+    </div>
+
+    <p id="floor-note" class="floor-note"></p>
+
+    <details class="legend" open>
+      <summary>色の見かた</summary>
+      <ul id="legend-list"></ul>
+    </details>
+
+    <aside id="panel" aria-live="polite">
+      <button id="panel-close" class="close" aria-label="閉じる">×</button>
+      <div id="panel-body"></div>
+    </aside>
+  </main>
+
+  <dialog id="map-dialog">
+    <div class="dlg-head">
+      <h2>地図・アクセス</h2>
+      <button data-close class="close" aria-label="閉じる">×</button>
+    </div>
+    <div id="school-info"></div>
+    <iframe id="gmap" title="麻生高校の地図（Googleマップ）" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+  </dialog>
+
+  <dialog id="help-dialog">
+    <div class="dlg-head">
+      <h2>使い方</h2>
+      <button data-close class="close" aria-label="閉じる">×</button>
+    </div>
+    <ul class="help">
+      <li><b>外観</b>：校舎全体を立体で見られます。建物や「1号館」などの名前を押すと、その建物の案内が出ます。</li>
+      <li><b>1階・2階・3階</b>：その階の部屋が色分けで表示されます。部屋を押すと紹介と、近くのトイレ・階段が出ます。</li>
+      <li><b>3D / 2D</b>：2Dにすると、上から見た平面図（案内図）になります。</li>
+      <li><b>動かし方</b>：ドラッグで回転、右ドラッグ（スマホは2本指）で移動、ホイール（スマホはピンチ）で拡大・縮小。</li>
+      <li><b>検索</b>：上の検索欄に「職員室」「2-4」などと入れると、その場所へ移動します。</li>
+      <li><b>リンク</b>：部屋の紹介にある「リンクをコピー」で、その部屋を開いた状態のURLを共有できます（QRコードにして掲示するのもおすすめです）。</li>
+    </ul>
+    <p class="muted">部屋の位置・大きさは学校の校舎配置図（Excel）から読み取っています。階段の位置と、外壁の窓・まわりの木は見やすさのためのイメージです。</p>
+  </dialog>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

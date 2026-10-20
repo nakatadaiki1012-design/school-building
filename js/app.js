@@ -5,7 +5,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ROOMS_RAW } from "./data.js";
 import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY, ROOM_EDITS, EXTRA_ROOMS, ROOM_SPLITS, ROOM_STYLE } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
-import { buildTrees, buildColumnTrees, hedgeBox, matHedge, bakeStatic } from "./nature.js";
+import { buildTrees, buildColumnTrees, hedgeBox, hedgeMass, matHedge, bakeStatic } from "./nature.js";
 import { buildSite, createAerial, flatPoly, polyBounds, inPoly, buildTerrain, setSlope } from "./site.js";
 
 // ---------- 寸法（メートル） ----------
@@ -623,9 +623,19 @@ for (const f of [1, 2, 3]) {
     for (const sg of list) (byStyle[sg.style] ||= []).push(sg);
     if (bid === "bridge") {
       // 渡り廊下：下半分だけの腰壁で、上半分は開いている（柱が屋根を支える）
-      const m = new THREE.Mesh(wallGeometry(list, base(f), 1.2), matRelief);
-      m.castShadow = true; m.receiveShadow = true;
-      holder.add(m);
+      // 床（下から見える厚い板）と、厚みのある腰壁
+      const rc = rectOf({ c0: 27, r0: 19, c1: 32, r1: 21 });
+      const fl = new THREE.Mesh(new THREE.BoxGeometry(rc.x1 - rc.x0, 0.4, rc.z1 - rc.z0), matRelief);
+      fl.position.set((rc.x0 + rc.x1) / 2, base(f) - 0.2, (rc.z0 + rc.z1) / 2);
+      fl.castShadow = fl.receiveShadow = true;
+      holder.add(fl);
+      for (const sg of list) {
+        const len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az), alongX = sg.n[1] !== 0;
+        const w = new THREE.Mesh(new THREE.BoxGeometry(alongX ? len : 0.2, 1.2, alongX ? 0.2 : len), matRelief);
+        w.position.set((sg.ax + sg.bx) / 2, base(f) + 0.6, (sg.az + sg.bz) / 2);
+        w.castShadow = w.receiveShadow = true;
+        holder.add(w);
+      }
       for (const sg of list) {
         const len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az), n = Math.max(1, Math.round(len / 3));
         for (let i = 0; i <= n; i++) {
@@ -1114,7 +1124,7 @@ scene.add(outdoor);
   }
   rounded(11.5, 20.6, 4.8, 7.6);    // 南西：2号館ぞいの生け垣
   // 2号館の南（保健室の前）と、3号館の北の壁ぞいの、丸く刈った低木の列（航空写真）
-  for (const [x0, x1, z, step] of [[12, 30, 28.6, 2.2], [-16, 3, 33.9, 1.9]]) {
+  for (const [x0, x1, z, step] of [[-16, 3, 33.9, 1.9]]) {
     for (let x = x0; x <= x1; x += step) {
       const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.85, 2), matHedge);
       b.scale.set(1, 0.75, 1); b.position.set(x, 0.45, z);
@@ -1122,7 +1132,13 @@ scene.add(outdoor);
       outdoor.add(b);
     }
   }
-  rounded(23, 29, 29.8, 31.6);       // 保健室の前の植え込み
+  // 保健室の前（2号館の南）の大きな植え込み：西は三角に広がり、東は建物ぞいに細くのびる（航空写真）
+  {
+    const poly = [[20.8, 29.2], [31.2, 28.8], [44, 27], [43.6, 27.8], [38.8, 30.8], [34.8, 32], [32.8, 35.2], [28.8, 36.8], [22.8, 39.2], [21.2, 37.6]];
+    const blobs = [];
+    for (let x = 21; x <= 44; x += 1.6) for (let z = 27.2; z <= 39.4; z += 1.6) if (inPoly(x, z, poly)) blobs.push([x, z, 1.25]);
+    outdoor.add(hedgeMass(blobs, 1.7));
+  }
 }
 
 // 職員玄関（2号館の東の正面玄関）：ガラスの扉、白いひさし、2段の段差、両わきの植え込み

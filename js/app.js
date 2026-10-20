@@ -546,6 +546,16 @@ function wallRelief(segs, f) {
       const cx = (sg.ax + sg.bx) / 2 + nx * dep / 2, cz = (sg.az + sg.bz) / 2 + nz * dep / 2;
       if (alongX) box(len + 0.4, 0.2, dep, cx, y0 + FH - 0.1, cz);
       else box(dep, 0.2, len + 0.4, cx, y0 + FH - 0.1, cz);
+    } else if (sg.style === "office") {
+      // 窓の上の小さな庇（写真の、窓ごとの茶色っぽい庇）
+      const dep = 0.45;
+      const cx = (sg.ax + sg.bx) / 2 + nx * dep / 2, cz = (sg.az + sg.bz) / 2 + nz * dep / 2;
+      if (f < 3) { if (alongX) box(len + 0.2, 0.12, dep, cx, y0 + FH - 0.55, cz); else box(dep, 0.12, len + 0.2, cx, y0 + FH - 0.55, cz); }
+    } else if (sg.style === "glassblock") {
+      // 床の位置の白い梁だけ（腰はガラスブロックなので出っ張らない）
+      const dep = 0.25, bh = 0.5;
+      const cx = (sg.ax + sg.bx) / 2 + nx * dep / 2, cz = (sg.az + sg.bz) / 2 + nz * dep / 2;
+      if (alongX) box(len + 0.3, bh, dep, cx, y0 + bh / 2 - 0.05, cz); else box(dep, bh, len + 0.3, cx, y0 + bh / 2 - 0.05, cz);
     } else {
       // 教室棟は、各階の下の白い腰壁の帯が外に出ている（写真の太い白い横帯）
       const dep = 0.3, bh = 1.25;
@@ -623,7 +633,59 @@ function cutMat(style) {
   return cutMats[style];
 }
 const matTower = new THREE.MeshStandardMaterial({ map: texTower, roughness: 0.8 });
+// 2号館の中庭側（写真）：小さな窓が2つ（上にガラリ）のベイと、横長の窓のベイが交互。窓の上に小さな庇
+// 模様1枚が2ベイ分（6m）
+const texOffice = canvasTex(W * 2, H, (g) => {
+  wallBase(g, PALETTE.white);
+  g.save(); g.translate(W, 0); wallBase(g, PALETTE.white); g.restore(); // 右半分（2ベイめ）も塗る
+  g.fillStyle = PALETTE.white.band; g.fillRect(0, yFromFloor(0.45), W * 2, 0.45 * PX);
+  g.fillStyle = PALETTE.white.line; g.fillRect(0, yFromFloor(0.45), W * 2, 3);
+  // ベイA：小さな窓2つ（トイレ・準備室など）と、その上のガラリ
+  for (const x of [0.45 * PX, 1.85 * PX]) {
+    const w = 0.7 * PX, y = yFromFloor(2.45), h = 1.0 * PX;
+    glass(g, x, y, w, h);
+    g.fillStyle = "#c3c8cc"; g.fillRect(x + w / 2 - 1.5, y, 3, h);
+    frame(g, x, y, w, h, 4);
+    g.fillStyle = "#b9bdc0"; g.fillRect(x, yFromFloor(2.85), w, 0.3 * PX);
+    g.fillStyle = "rgba(0,0,0,0.25)"; for (let k = 0; k < 5; k++) g.fillRect(x, yFromFloor(2.85) + k * 5, w, 1.5);
+  }
+  // ベイB：横長の窓（教室・事務室など）
+  {
+    const x = W + 0.25 * PX, w = 2.5 * PX, y = yFromFloor(2.75), h = 1.55 * PX;
+    glass(g, x, y, w, h);
+    for (const [cx0, cw] of [[x + 4, 0.3 * PX], [x + w - 4 - 0.25 * PX, 0.25 * PX]]) for (let i = 0; i < cw; i++) { const v = 205 + Math.sin(i / 2.2) * 20; g.fillStyle = `rgba(${v},${v - 6},${v - 28},0.85)`; g.fillRect(cx0 + i, y + 3, 1, h - 6); }
+    g.fillStyle = "#c3c8cc"; for (let k = 1; k < 4; k++) g.fillRect(x + (w * k) / 4 - 1.5, y, 3, h);
+    g.fillRect(x, yFromFloor(2.3), w, 4);
+    frame(g, x, y, w, h, 5);
+  }
+  // 雨どい
+  g.fillStyle = "rgba(200,200,195,0.9)"; g.fillRect(W - 6, 0, 5, H);
+});
+// 中庭に面した渡り廊下（写真）：腰の部分がうすい緑のガラスブロック、上は窓
+const texGlassBlock = canvasTex(W, H, (g) => {
+  wallBase(g, PALETTE.white);
+  const x = 0.15 * PX, w = 2.7 * PX;
+  // ガラスブロック（20cm 角くらい）
+  const y0 = yFromFloor(1.15), bh = 0.75 * PX;
+  g.fillStyle = "#cfd8cf"; g.fillRect(x, y0, w, bh);
+  const cell = 0.19 * PX;
+  for (let yy = y0 + 2; yy < y0 + bh - 2; yy += cell) for (let xx = x + 2; xx < x + w - 2; xx += cell) {
+    const v = Math.random() * 14;
+    g.fillStyle = `rgb(${170 + v},${196 + v},${186 + v})`; g.fillRect(xx + 1.5, yy + 1.5, cell - 3, cell - 3);
+    g.fillStyle = "rgba(255,255,255,0.35)"; g.fillRect(xx + 3, yy + 3, cell * 0.35, 2);
+  }
+  // 上の窓（廊下の向こうの掲示物がうっすら見える）
+  const wy = yFromFloor(2.75), wh = 1.45 * PX;
+  glass(g, x, wy, w, wh);
+  for (let i = 0; i < 4; i++) { g.fillStyle = `rgba(${200 + Math.random() * 50},${180 + Math.random() * 60},${150 + Math.random() * 80},0.45)`; g.fillRect(x + 20 + i * 52, wy + 30, 34, 50); }
+  g.fillStyle = "#c3c8cc"; for (let k = 1; k < 4; k++) g.fillRect(x + (w * k) / 4 - 1.5, wy, 3, wh);
+  frame(g, x, wy, w, wh, 5);
+  g.fillStyle = PALETTE.white.band; g.fillRect(0, yFromFloor(0.45), W, 0.45 * PX);
+});
+
 const MAT_WALL = {
+  office: wallMat(texOffice),
+  glassblock: wallMat(texGlassBlock),
   school: wallMat(texSchool),
   high: wallMat(texHigh),
   brick: wallMat(texBrick),
@@ -645,6 +707,10 @@ for (const f of [1, 2, 3]) {
     if (style === "gym") return "gym" + f + "|" + b;
     if (style === "high") return "high|" + b;
     if (OPEN_COURTS.some((rc) => inCells(c + d.dc, r + d.dr, rc))) return "school|" + b; // 光庭のまわりは白
+    // 写真に合わせた面ごとの壁（[c0, r0, c1, r1, 向き]）
+    for (const [st, list] of [["office", FACADE.office], ["glassblock", FACADE.glassblock]]) {
+      if ((list || []).some(([c0, r0, c1, r1, dir]) => side === dir && inCells(c, r, [c0, r0, c1, r1]) && (f >= 2 || st === "office"))) return st + "|" + b;
+    }
     if (FACADE.brick.some((rc) => inCells(c, r, rc))) return "brick|" + b;
     if (d.dc !== 0 && FACADE.endWallWings.some((rc) => inCells(c, r, rc))) return "brick|" + b; // 棟の東西の端
     return "school|" + b;
@@ -689,7 +755,7 @@ for (const f of [1, 2, 3]) {
       }
     } else {
       for (const [st, l2] of Object.entries(byStyle)) {
-        const m = new THREE.Mesh(wallGeometry(l2, base(f), FH), MAT_WALL[st] || MAT_WALL.school);
+        const m = new THREE.Mesh(wallGeometry(l2, base(f), FH, st === "office" ? 1 / (2 * BAY) : 1 / BAY), MAT_WALL[st] || MAT_WALL.school);
         m.castShadow = true; m.receiveShadow = true;
         holder.add(m);
       }

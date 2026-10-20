@@ -95,11 +95,12 @@ const texClock = canvasTex(128, 128, (g, w, h) => {
 
 // 引き戸（木の戸に、上の方にガラス）
 const texDoor = canvasTex(64, 128, (g, w, h) => {
-  g.fillStyle = "#a0764c"; g.fillRect(0, 0, w, h);
-  g.fillStyle = "rgba(0,0,0,0.12)"; for (let x = 0; x < w; x += 8) g.fillRect(x, 0, 1, h);
+  // ベージュの引き戸
+  g.fillStyle = "#dccbad"; g.fillRect(0, 0, w, h);
+  g.fillStyle = "rgba(120,100,70,0.08)"; for (let x = 0; x < w; x += 8) g.fillRect(x, 0, 1, h);
   g.fillStyle = "#9cc3da"; g.fillRect(10, 12, w - 20, 44);
-  g.strokeStyle = "#6b4c2e"; g.lineWidth = 3; g.strokeRect(10, 12, w - 20, 44);
-  g.fillStyle = "#5a3e24"; g.fillRect(w - 12, 70, 4, 16);
+  g.strokeStyle = "#a8957a"; g.lineWidth = 3; g.strokeRect(10, 12, w - 20, 44);
+  g.fillStyle = "#8a7a62"; g.fillRect(w - 12, 70, 4, 16);
 });
 
 // カーテン（クリーム色の布のひだ）
@@ -206,6 +207,7 @@ const MAT = {
   screenOn: new THREE.MeshStandardMaterial({ map: texEboard, roughness: 0.3, emissive: 0xffffff, emissiveMap: texEboard, emissiveIntensity: 0.55 }),
   gray: M(0x8e98a2),
   cardboard: M(0xb8935e, { roughness: 1 }),
+  doorFrame: M(0xc9b796, { roughness: 0.7 }), // ドアと窓の枠もベージュ
   tank: M(0x6d97b8, { roughness: 0.6 }),
 };
 
@@ -322,9 +324,9 @@ const SHAPES = {
   ],
   // 引き戸（壁の両側に見えるよう壁より厚め）と、まわりの枠、上の欄間のガラス
   // 廊下側の壁の上の細長い窓（欄間）と、下の小窓。壁より厚くして両側から見える
-  hallWindow: [[MAT.transom, merge([b(1.7, 0.42, 0.24, 0, 1.92), b(1.7, 0.32, 0.24, 0, 0.12)])], [MAT.darkWood, merge([b(1.78, 0.04, 0.26, 0, 2.34), b(1.78, 0.04, 0.26, 0, 1.88), b(0.04, 0.46, 0.26, 0, 1.88)])]],
+  hallWindow: [[MAT.transom, merge([b(1.7, 0.42, 0.24, 0, 1.92), b(1.7, 0.32, 0.24, 0, 0.12)])], [MAT.doorFrame, merge([b(1.78, 0.04, 0.26, 0, 2.34), b(1.78, 0.04, 0.26, 0, 1.88), b(0.04, 0.46, 0.26, 0, 1.88)])]],
   // 壁より厚くして、教室の中からも廊下からも見えるようにする
-  door: [[MAT.door, merge([b(0.9, 1.95, 0.3)])], [MAT.darkWood, merge([b(1.06, 0.07, 0.34, 0, 1.95), b(0.07, 2.02, 0.34, -0.5), b(0.07, 2.02, 0.34, 0.5)])], [MAT.transom, merge([b(0.9, 0.35, 0.26, 0, 2.03)])]],
+  door: [[MAT.door, merge([b(0.9, 1.95, 0.3)])], [MAT.doorFrame, merge([b(1.06, 0.07, 0.34, 0, 1.95), b(0.07, 2.02, 0.34, -0.5), b(0.07, 2.02, 0.34, 0.5)])], [MAT.transom, merge([b(0.9, 0.35, 0.26, 0, 2.03)])]],
   curtainPanel: [[MAT.curtain, merge([b(0.7, 2.05, 0.05, 0, 0.3)])]],
   cleanLocker: [[MAT.gray, merge([b(0.45, 1.8, 0.6)])]],
   bag: [[MAT.bag, merge([b(0.1, 0.3, 0.34, 0, 0.32)])]],
@@ -363,7 +365,8 @@ const alongX = (out, t, z, x0, x1, step, rot = Math.PI / 2) => {
 function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back = 0 } = {}) {
   const { x0, x1, z0, z1 } = R;
   out.push({ t: "blackboard", x: x0 + 0.12, z: (z0 + z1) / 2, rot: 0 });
-  out.push({ t: "podium", x: x0 + 0.65, z: (z0 + z1) / 2, rot: 0 });
+  // 教壇は窓側の壁からドア側の壁まで、部屋の幅いっぱい
+  out.push({ t: "podium", x: x0 + 0.65, z: (z0 + z1) / 2, rot: 0, len: (z1 - z0 + 0.3) / 4.4 });
   out.push({ t: "teacherDesk", x: x0 + 1.35, z: (z0 + z1) / 2, rot: 0, y: 0.18 });
   // 後ろのロッカー、廊下側（北）の角に掃除用具入れ
   along(out, "locker", x1 - 0.35, z0 + 0.9, z1 - 0.3, 0.95, Math.PI);
@@ -371,7 +374,7 @@ function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back
   // 黒板の上の時計、左前（窓側の前）の大型の電子黒板、後ろの掲示板、教卓のパソコン
   out.push({ t: "clock", x: x0 + 0.08, z: (z0 + z1) / 2, rot: 0 });
   // 電子黒板は教壇（段）の窓側のはしの外に置く
-  if (eboard) out.push({ t: "eboard", x: x0 + 0.5, z: Math.max((z0 + z1) / 2 + 2.2 + 0.9, z1 - 0.9), rot: 0 });
+  if (eboard) out.push({ t: "eboard", x: x0 + 0.5, z: Math.max((z0 + z1) / 2 + 2.2 + 0.9, z1 - 0.9), rot: 0, y: 0.18 }); // 教壇の上
   out.push({ t: "bulletin", x: x1 + 0.12, z: (z0 + z1) / 2, rot: 0 });
   out.push({ t: "laptop", x: x0 + 1.35, z: (z0 + z1) / 2 + 0.2, rot: 0, y: 0.18 });
   // 廊下側（北）の前と後ろの引き戸

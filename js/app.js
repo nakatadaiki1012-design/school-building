@@ -3,7 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ROOMS_RAW } from "./data.js";
-import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS } from "./info.js";
+import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
 import { buildSite, createAerial, flatPoly, polyBounds, inPoly } from "./site.js";
 
@@ -84,11 +84,14 @@ ROOMS.forEach((r) => {
   r.w = rc.x1 - rc.x0;
   r.d = rc.z1 - rc.z0;
   const ccx = (r.c0 + r.c1) / 2, ccr = (r.r0 + r.r1) / 2;
-  // 航空写真に合わせたあとの位置と大きさ
+  // 航空写真に合わせたあとの位置と大きさ。2つの棟にまたがる部屋は、角ごとにその棟の位置を使う
   r.block = blockAtCell(Math.floor(ccx), Math.floor(ccr));
-  [r.wx, r.wz] = toWorld(r.cx, r.cz, r.block);
-  r.ww = r.w * r.block.sx;
-  r.wd = r.d * r.block.sz;
+  const [wx0, wz0] = toWorld(rc.x0, rc.z0, blockAtCell(r.c0, r.r0));
+  const [wx1, wz1] = toWorld(rc.x1, rc.z1, blockAtCell(r.c1, r.r1));
+  r.wx = (wx0 + wx1) / 2; r.wz = (wz0 + wz1) / 2; r.ww = wx1 - wx0; r.wd = wz1 - wz0;
+  // 部屋の板・壁は r.block の中に置くので、その棟の図面の座標に戻しておく
+  r.cx = (r.wx - r.block.ox) / r.block.sx; r.cz = (r.wz - r.block.oz) / r.block.sz;
+  r.w = r.ww / r.block.sx; r.d = r.wd / r.block.sz;
   r.wing = WINGS.find((w) => ccx >= w.area[0] && ccx <= w.area[2] + 1 && ccr >= w.area[1] && ccr <= w.area[3] + 1);
 });
 const ROOM_BY_ID = Object.fromEntries(ROOMS.map((r) => [r.id, r]));
@@ -835,7 +838,9 @@ function rustTex() {
   deck(gxe, gxe + dw, zTop, gz1);          // 東
   rail(gx - dw, gx - dw, zTop, zBot);
   rail(gx - dw, gxe + dw, zBot, zBot);
-  const bz0 = Z(19), bz1 = Z(22);          // 中央棟からの渡り廊下がつながるところは手すりなし
+  // 中央棟からの渡り廊下がつながるところは手すりなし（渡り廊下の実際の位置を、体育館の図面の座標に直す）
+  const gb = blockById("gym"), brw = blockById("bridge").world;
+  const bz0 = (brw[1] - gb.oz) / gb.sz, bz1 = (brw[3] - gb.oz) / gb.sz;
   rail(gxe + dw, gxe + dw, zTop, bz0);
   rail(gxe + dw, gxe + dw, bz1, zBot);
   rail(gx - dw, gx, zTop, zTop); rail(gxe, gxe + dw, zTop, zTop);
@@ -979,14 +984,38 @@ scene.add(outdoor);
       box(low, 0.6, FH, 0.6, x, FH / 2 - 0.2, z);
       box(high, 0.6, FH, 0.6, x, FH * 1.5 - 0.2, z);
     }
-    // 渡り廊下を支える柱（中庭側）
+    // 渡り廊下を支える柱（中庭側と吹き抜け側）
     box(low, 0.5, FH, 0.5, bx1 - 0.3, FH / 2 - 0.2, z);
+    box(low, 0.5, FH, 0.5, bx0 + 0.3, FH / 2 - 0.2, z);
   }
   for (const [list, f] of [[low, 1], [high, 2]]) {
     const m = new THREE.Mesh(mergeGeometries(list), matRelief);
     m.castShadow = m.receiveShadow = true;
     inBlock(layers.exterior[f], b).add(m);
   }
+}
+
+// 下の階に部屋がない張り出し部分を、1階の柱で支える
+for (const [c0, r0, c1, r1] of COLUMN_AREAS) {
+  const rc = rectOf({ c0, r0, c1, r1 });
+  const b = blockAtCell(c0, r0);
+  const geos = [];
+  const xs = [], zs = [];
+  for (let x = rc.x0 + 0.3; x <= rc.x1 - 0.2; x += Math.max(3, (rc.x1 - rc.x0 - 0.6) / Math.max(1, Math.round((rc.x1 - rc.x0) / 5)))) xs.push(x);
+  if (rc.x1 - 0.3 - xs[xs.length - 1] > 1) xs.push(rc.x1 - 0.3);
+  zs.push(rc.z0 + 0.3); if (rc.z1 - rc.z0 > 2) zs.push(rc.z1 - 0.3);
+  for (const x of xs) for (const z of zs) {
+    // 1階に建物があるところには立てない
+    const c = Math.floor(x / CW + C_MID), r = Math.floor(z / RH + R_MID);
+    if (OCC[1].has(key(c, r))) continue;
+    const g = new THREE.BoxGeometry(0.5, FH, 0.5);
+    g.translate(x, FH / 2 - 0.2, z);
+    geos.push(g);
+  }
+  if (!geos.length) continue;
+  const m = new THREE.Mesh(mergeGeometries(geos), matRelief);
+  m.castShadow = m.receiveShadow = true;
+  inBlock(layers.exterior[1], b).add(m);
 }
 
 // 光庭の芝生
@@ -1111,7 +1140,7 @@ for (const f of [1, 2, 3]) {
       }
     } else if (!isCourt && r.kind !== "stairs" && r.kind !== "part" && !r.joinedTo) {
       const t = 0.14, h = isOpen ? 1.0 : 1.25;
-      const rc = rectOf(r);
+      const rc = { x0: r.cx - r.w / 2, x1: r.cx + r.w / 2, z0: r.cz - r.d / 2, z1: r.cz + r.d / 2 };
       for (const [w, d, x, z] of [
         [r.w, t, r.cx, rc.z0], [r.w, t, r.cx, rc.z1],
         [t, r.d, rc.x0, r.cz], [t, r.d, rc.x1, r.cz],

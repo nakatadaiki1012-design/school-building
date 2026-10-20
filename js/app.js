@@ -71,6 +71,11 @@ for (const p of ROOM_PARTS) {
   const part = { ...p, id: parent.id + "-P" + ((parent.parts ||= []).length), cat: parent.cat, kind: "part", parent };
   parent.parts.push(part);
   ROOMS.push(part);
+  // join：となりの部屋とのあいだに壁を立てない（つながっている）
+  if (p.join) {
+    const j = ROOMS.find((r) => r.name === p.join && r.floor === p.floor && r.kind === "room");
+    if (j) { (parent.joined ||= []).push(j); j.joinedTo = parent; }
+  }
 }
 ROOMS.forEach((r) => {
   const rc = rectOf(r);
@@ -877,26 +882,44 @@ scene.add(outdoor);
   // 1号館と2号館のあいだの中庭（アスファルト、十字の通路、植え込み）
   const court = new THREE.MeshStandardMaterial({ color: 0x77777a, roughness: 1 });
   flatRect(10.3, 49, -8.3, 8.1, court, -0.19);
+  // （真上からの航空写真で測った形）
+  // 白い通路：西の入口から植え込みまでの東西の通路、植え込みの両はしにつながる南北の通路、東の端の通路
   const walk = new THREE.MeshStandardMaterial({ color: 0xe9e6de, roughness: 1 });
-  flatRect(29, 30.8, -8.3, 8.1, walk, -0.185);
-  flatRect(10.3, 49, 1.0, 2.7, walk, -0.185);
+  flatRect(10.3, 24.5, 0.2, 2.3, walk, -0.185);
+  flatRect(23.9, 26, -4.7, -1.5, walk, -0.185);
+  flatRect(23.9, 26, 2.5, 6.4, walk, -0.185);
+  flatRect(37.5, 49, -2.7, -0.6, walk, -0.185);
+  // 生け垣（角の丸い植え込み）。高さ0.8m、上に低木をのせる
   const hedge = new THREE.MeshStandardMaterial({ color: 0x4f7d3a, roughness: 1 });
-  // 1号館ぞいと2号館ぞいの細い植え込み
-  for (const [x0, x1, z0, z1] of [[11.4, 45, -7.6, -6.2], [32, 45, 6.2, 7.4]]) {
-    const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.9, z1 - z0), hedge);
-    m.position.set((x0 + x1) / 2, 0.25, (z0 + z1) / 2);
-    m.castShadow = m.receiveShadow = true;
-    outdoor.add(m);
-  }
-}
-
-// 中庭の東西の通路のまんなかにある、だ円形の植え込み
-{
-  const m = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.9, 24), new THREE.MeshStandardMaterial({ color: 0x4a7a36, roughness: 1 }));
-  m.scale.set(7.5, 1, 2.2);
-  m.position.set(38, 0.25, 0.3);
-  m.castShadow = m.receiveShadow = true;
-  outdoor.add(m);
+  const curb = new THREE.MeshStandardMaterial({ color: 0xd9d5cb, roughness: 1 });
+  const rounded = (x0, x1, z0, z1, h = 0.8) => {
+    const w = x1 - x0, d = z1 - z0, r = Math.min(w, d) / 2;
+    const sh = new THREE.Shape();
+    sh.moveTo(x0 + r, -z0);
+    sh.lineTo(x1 - r, -z0); sh.absarc(x1 - r, -z0 - r, r, Math.PI / 2, -Math.PI / 2, true);
+    sh.lineTo(x0 + r, -z1); sh.absarc(x0 + r, -z0 - r, r, -Math.PI / 2, Math.PI / 2, true);
+    const geo = new THREE.ExtrudeGeometry(sh, { depth: h, bevelEnabled: false, curveSegments: 12 });
+    geo.rotateX(-Math.PI / 2);
+    const rim = new THREE.Mesh(geo, curb);
+    rim.position.y = -0.2; rim.scale.y = 0.4;
+    const top = new THREE.Mesh(geo, hedge);
+    top.position.y = -0.2;
+    rim.castShadow = rim.receiveShadow = top.castShadow = top.receiveShadow = true;
+    outdoor.add(rim, top);
+    // 低木のかたまり
+    const n = Math.max(2, Math.round(w / 2.2));
+    for (let i = 0; i < n; i++) {
+      const b = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshStandardMaterial({ color: 0x3f6e2e + (i % 3) * 0x020400, roughness: 1, flatShading: true }));
+      b.scale.set(Math.min(1.3, d / 2), 0.7, Math.min(1.3, d / 2) * 0.9);
+      b.position.set(x0 + r + ((w - 2 * r) * (i + 0.5)) / n, h - 0.1, (z0 + z1) / 2 + Math.sin(i * 2.3) * d * 0.12);
+      b.castShadow = true;
+      outdoor.add(b);
+    }
+  };
+  rounded(9.8, 23.4, -7.8, -4.7);   // 北西：1号館ぞいの太い生け垣
+  rounded(23.4, 39, -8.2, -6.4);    // 北東：1号館ぞいの細い生け垣
+  rounded(23.1, 38, -2.7, 3.1);     // まんなか：細長い植え込み（東西の通路の先）
+  rounded(11.5, 20.6, 4.8, 7.6);    // 南西：2号館ぞいの生け垣
 }
 
 // 2つの昇降口のあいだのレンガ敷きの屋外（上に2・3階がのっている）
@@ -1027,14 +1050,14 @@ for (const f of [1, 2, 3]) {
     if (r.parts) {
       // L字などの部屋は、つながった形のまわりにだけ壁を立てる
       const cells = new Map();
-      for (const q of [r, ...r.parts]) for (let c = q.c0; c <= q.c1; c++) for (let rr = q.r0; rr <= q.r1; rr++) cells.set(key(c, rr), "p");
+      for (const q of [r, ...r.parts, ...(r.joined || [])]) for (let c = q.c0; c <= q.c1; c++) for (let rr = q.r0; rr <= q.r1; rr++) cells.set(key(c, rr), "p");
       for (const sg of boundarySegments(cells)) {
         const len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az), t = 0.14, h = 1.25;
         const g = new THREE.BoxGeometry(sg.n[1] !== 0 ? len : t, h, sg.n[1] !== 0 ? t : len);
         g.translate((sg.ax + sg.bx) / 2, y + h / 2, (sg.az + sg.bz) / 2);
         (walls[r.block.id] ||= []).push(g);
       }
-    } else if (!isCourt && r.kind !== "stairs" && r.kind !== "part") {
+    } else if (!isCourt && r.kind !== "stairs" && r.kind !== "part" && !r.joinedTo) {
       const t = 0.14, h = isOpen ? 1.0 : 1.25;
       const rc = rectOf(r);
       for (const [w, d, x, z] of [

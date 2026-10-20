@@ -745,7 +745,7 @@ export function floorStyle(name) {
   if (/^体育館$/.test(name)) return "gym";
   if (/武道場/.test(name)) return "flooring";
   if (/作法室/.test(name)) return "tatami";
-  if (/トイレ|シャワー|調理室|実験室|昇降口|玄関|ホール/.test(name)) return "tile";
+  if (/トイレ|シャワー|調理室|実験室|昇降口|玄関|ホール|コンピューター/.test(name)) return "tile"; // コンピューター教室は青いタイルカーペット
   return "wood";
 }
 

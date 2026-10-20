@@ -793,7 +793,14 @@ const LAYOUTS = [
   [/保健室/, infirmary],
   [/売店/, shop],
   [/昇降口/, entrance],
-  [/準備室|印刷室|放送室|生徒指導室|生徒会室|技能員室|進路資料室|整理室|資料室/, prep],
+  // 技能員室：部屋の少し東寄りに、東西に向かい合った机が2つ
+  [/技能員室/, (o, R) => {
+    const cx = (R.x0 + R.x1) / 2 + (R.x1 - R.x0) * 0.15, cz = (R.z0 + R.z1) / 2;
+    o.push({ t: "officeDesk", x: cx - 0.36, z: cz, rot: 0 }, { t: "officeChair", x: cx - 1.1, z: cz, rot: Math.PI });
+    o.push({ t: "officeDesk", x: cx + 0.36, z: cz, rot: Math.PI }, { t: "officeChair", x: cx + 1.1, z: cz, rot: 0 });
+    along(o, "cabinet", R.x0 + 0.3, R.z0 + 0.6, R.z1 - 0.6, 0.95, 0);
+  }],
+  [/準備室|印刷室|放送室|生徒指導室|生徒会室|進路資料室|整理室|資料室/, prep],
   [/男子トイレ/, (o, R) => { toilet(o, R); urinals(o, R); }],
   [/トイレ/, toilet],
   [/ステージ/, stage],
@@ -847,8 +854,14 @@ export function buildFurniture(rooms, y) {
   for (const r of rooms) {
     // 自動販売機（壁ぎわ。正面は部屋の内側）
     if (r.vending) {
-      const pos = { e: [r.cx + r.w / 2 - 0.55, r.cz, 0], w: [r.cx - r.w / 2 + 0.55, r.cz, Math.PI], n: [r.cx, r.cz - r.d / 2 + 0.55, -Math.PI / 2], s: [r.cx, r.cz + r.d / 2 - 0.55, Math.PI / 2] }[r.vending];
-      items.push({ t: "vending", x: pos[0], z: pos[1] - 0.6, rot: pos[2] }, { t: "vending", x: pos[0], z: pos[1] + 0.6, rot: pos[2] });
+      // vendingShift：壁が部屋の外にあるときに、その分だけ外へずらす（図面の単位）。vendingN：台数
+      const sh = r.vendingShift || 0, n = r.vendingN || 2;
+      const pos = { e: [r.cx + r.w / 2 - 0.55 + sh, r.cz, 0], w: [r.cx - r.w / 2 + 0.55 - sh, r.cz, Math.PI], n: [r.cx, r.cz - r.d / 2 + 0.55 - sh, -Math.PI / 2], s: [r.cx, r.cz + r.d / 2 - 0.55 + sh, Math.PI / 2] }[r.vending];
+      const along = r.vending === "e" || r.vending === "w";
+      for (let i = 0; i < n; i++) {
+        const o = (i - (n - 1) / 2) * 1.05;
+        items.push({ t: "vending", x: pos[0] + (along ? 0 : o), z: pos[1] + (along ? o : 0), rot: pos[2] });
+      }
     }
     const fn = LAYOUTS.find(([re]) => re.test(r.name));
     if (!fn) continue;

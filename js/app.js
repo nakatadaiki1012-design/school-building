@@ -1398,8 +1398,8 @@ for (const f of [1, 2, 3]) {
     const mat = r.kind === "part" ? r.parent.mesh.material : new THREE.MeshStandardMaterial({
       color: tint, roughness: 0.85,
       map,
-      transparent: isOpen, opacity: isCourt ? 0.0 : isOpen ? 0.35 : 1,
-      depthWrite: !isOpen,
+      transparent: isOpen || !!styleOf(r)?.noFloor, opacity: isCourt || styleOf(r)?.noFloor ? 0.0 : isOpen ? 0.35 : 1,
+      depthWrite: !isOpen && !styleOf(r)?.noFloor,
     });
     if (r.kind === "stairs") { mat.transparent = true; mat.opacity = 0; mat.depthWrite = false; } // 階段は形で見せ、板はクリック用
     const th = /ステージ/.test(r.name) ? 1.0 : 0.14; // ステージは高くする
@@ -1492,7 +1492,7 @@ for (const f of [1, 2, 3]) {
   // 家具（伸び縮みさせず、航空写真に合わせたあとの部屋の大きさで置く）
   const furn = buildFurniture(
     ROOMS.filter((x) => x.floor === f && (x.kind === "room" || x.kind === "part"))
-      .map((x) => ({ name: x.kind === "part" ? (x.parent.name === "事務室" ? "受付カウンター" : x.parent.name + "（L字）") : x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd, vending: x.kind === "part" ? null : styleOf(x)?.vending })),
+      .map((x) => ({ name: x.kind === "part" ? (x.parent.name === "事務室" ? "受付カウンター" : x.parent.name + "（L字）") : x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd, vending: x.kind === "part" ? null : styleOf(x)?.vending, vendingN: styleOf(x)?.vendingN, vendingShift: styleOf(x)?.vendingShift })),
     y0OfFloor(f),
   );
   layers.furniture[f] = furn;

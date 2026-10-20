@@ -1050,9 +1050,9 @@ scene.add(outdoor);
   rounded(9.8, 23.4, -7.8, -4.7);   // 北西：1号館ぞいの太い生け垣
   rounded(23.4, 39, -8.2, -6.4);    // 北東：1号館ぞいの細い生け垣
   rounded(23.1, 38, -2.7, 3.1);     // まんなか：細長い植え込み（東西の通路の先）
-  // 中央の植え込みの正門側のはしに立つ、高い時計塔（白い柱の上に四面の時計）
+  // 中央の植え込みの正門側の、植え込みの中から立つ高い時計塔（白い柱の上に四面の時計）
   {
-    const tx = 38.6, tz = 0.2, H = 7.5;
+    const tx = 36.3, tz = 0.2, H = 7.5; // 植え込みの中から立っている
     const white = new THREE.MeshStandardMaterial({ color: 0xf1efea, roughness: 0.7 });
     const pole = new THREE.Mesh(new THREE.BoxGeometry(0.5, H, 0.5), white);
     pole.position.set(tx, H / 2 - 0.2, tz);

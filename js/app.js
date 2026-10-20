@@ -901,7 +901,7 @@ function rustTex() {
 // まわりの土地は斜面（北が高く南が低い）。敷地の形に穴をあけてある
 setSlope(SITE.slope);
 const grassFar = texGrass.clone(); grassFar.needsUpdate = true; grassFar.repeat.set(1, 1);
-const ground = buildTerrain(SITE.boundary, new THREE.MeshStandardMaterial({ map: grassFar, roughness: 1 }));
+const ground = buildTerrain(SITE.boundary, new THREE.MeshStandardMaterial({ map: grassFar, roughness: 1 }), SITE.roads);
 scene.add(ground);
 
 // 学校の敷地（アスファルト）

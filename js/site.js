@@ -19,7 +19,20 @@ const M = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughne
 let SLOPE = { zZero: -35, perMeter: 0.045 };
 export function setSlope(s) { if (s) SLOPE = s; }
 // 北が高く（-z）、西と南が低い。perMeterX は東へ行くほど高くなる割合
-export const terrainH = (x, z) => -(z - SLOPE.zZero) * SLOPE.perMeter + (x - (SLOPE.xZero ?? 0)) * (SLOPE.perMeterX ?? 0) + (SLOPE.base ?? 0);
+export function terrainH(x, z) {
+  // 写真から読み取った「まわりの道路の高さ（敷地との差）」の点から、なめらかにつなぐ（距離の2乗で重みづけ）
+  if (SLOPE.points) {
+    let sw = 0, sh = 0;
+    for (const [px, pz, h] of SLOPE.points) {
+      const d2 = (x - px) ** 2 + (z - pz) ** 2;
+      if (d2 < 0.01) return h;
+      const w = 1 / (d2 * d2 ** 0.25); // 距離の2.5乗
+      sw += w; sh += w * h;
+    }
+    return sh / sw;
+  }
+  return -(z - SLOPE.zZero) * SLOPE.perMeter + (x - (SLOPE.xZero ?? 0)) * (SLOPE.perMeterX ?? 0) + (SLOPE.base ?? 0);
+}
 
 // フェンス（緑色の網＋支柱＋上の手すり）
 const netMat = new THREE.MeshStandardMaterial({ color: 0x3f7a5c, transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide, roughness: 0.9 });
@@ -293,6 +306,33 @@ function buildPool(cfg) {
 }
 
 // ---------- 駐輪場（赤い屋根の細長い建物） ----------
+// 2階建ての駐輪場（1階と2階に自転車。外階段つき）
+function buildBikes2({ x0, x1, z0, z1, roof = 0x9ea3a6 }) {
+  const g = new THREE.Group();
+  const w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  const conc = M(0xd6d3cb), steel = M(0x8c949b, { metalness: 0.4 });
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(w, 0.3, d), conc); slab.position.set(cx, 2.7, cz);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(w + 0.5, 0.2, d + 0.5), M(roof, { roughness: 0.6 })); top.position.set(cx, 5.4, cz);
+  g.add(slab, top);
+  for (let x = x0 + 0.2; x <= x1; x += Math.max(3, (w - 0.4) / Math.round(w / 4))) for (const z of [z0 + 0.2, z1 - 0.2]) {
+    const p = new THREE.Mesh(new THREE.BoxGeometry(0.3, 5.4, 0.3), steel); p.position.set(x, 2.7, z); g.add(p);
+  }
+  // 2階の手すり
+  for (const z of [z0 + 0.1, z1 - 0.1]) { const r = new THREE.Mesh(new THREE.BoxGeometry(w, 1.0, 0.08), conc); r.position.set(cx, 3.35, z); g.add(r); }
+  // 自転車（各階2列）
+  const n = Math.floor((w - 1) / 0.6);
+  const wheels = new THREE.InstancedMesh(new THREE.TorusGeometry(0.33, 0.035, 6, 16), M(0x222222), n * 8);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI / 2, 0));
+  let k = 0;
+  for (const y of [0.15, 3.0]) for (const zc of [cz - d / 4, cz + d / 4]) for (let i = 0; i < n; i++) for (const dz of [-0.5, 0.5]) {
+    m4.compose(new THREE.Vector3(x0 + 0.8 + i * 0.6, y + 0.33, zc + dz), q, new THREE.Vector3(1, 1, 1)); wheels.setMatrixAt(k++, m4);
+  }
+  g.add(wheels);
+  g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  g.position.y = -0.2;
+  return g;
+}
+
 function buildBikes({ len = 30, depth = 4.6, roof: roofColor = 0x9ea3a6 }) {
   const g = new THREE.Group();
   const roof = new THREE.Mesh(new THREE.BoxGeometry(len, 0.15, depth + 0.6), M(roofColor, { roughness: 0.6 }));
@@ -393,7 +433,15 @@ function buildParking({ x0, x1, z0, z1 }) {
 }
 
 // ---------- 道路 ----------
-function buildRoad({ w, pts }) {
+function buildRoad({ w, pts: raw }) {
+  // 斜面にそうように、4mおきに点を足す
+  const pts = [];
+  for (let i = 0; i + 1 < raw.length; i++) {
+    const [ax, az] = raw[i], [bx, bz] = raw[i + 1];
+    const k = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 4));
+    for (let j = 0; j < k; j++) pts.push([ax + ((bx - ax) * j) / k, az + ((bz - az) * j) / k]);
+  }
+  pts.push(raw[raw.length - 1]);
   const pos = [], idx = [];
   for (let i = 0; i < pts.length; i++) {
     const [x, z] = pts[i];
@@ -534,17 +582,22 @@ export function offsetBoundary(boundary) {
   return out;
 }
 
-export function buildTerrain(boundary, material) {
-  const R = 420;
+export function buildTerrain(boundary, material, roads = []) {
+  // 斜面の高さが場所ごとに変わるので、細かい格子の面にする
+  const R = 300, step = 2.5, n = Math.round((2 * R) / step);
   const hole = offsetBoundary(boundary);
-  const shape = new THREE.Shape([[-R, -R], [R, -R], [R, R], [-R, R]].map(([x, z]) => new THREE.Vector2(x, -z)));
-  shape.holes.push(new THREE.Path(hole.map(([x, z]) => new THREE.Vector2(x, -z)).reverse()));
-  const geo = new THREE.ShapeGeometry(shape);
+  const geo = new THREE.PlaneGeometry(2 * R, 2 * R, n, n);
   geo.rotateX(-Math.PI / 2);
   const pos = geo.attributes.position, uv = geo.attributes.uv;
   for (let i = 0; i < pos.count; i++) {
-    pos.setY(i, terrainH(pos.getX(i), pos.getZ(i)) - 0.25);
-    uv.setXY(i, pos.getX(i) / 6, pos.getZ(i) / 6);
+    const x = pos.getX(i), z = pos.getZ(i);
+    let h = terrainH(x, z) - 0.25;
+    // 敷地とのり面の内側は、敷地の地面やのり面より下にかくす
+    if (inPoly(x, z, hole)) h = Math.min(h, 0) - 0.6;
+    // 道路の下も少し下げて、地面が道路の上に出ないようにする
+    else if (roads.some((r) => r.pts.some((p, k) => k + 1 < r.pts.length && distSeg(x, z, p[0], p[1], r.pts[k + 1][0], r.pts[k + 1][1]) < r.w / 2 + 1.5))) h -= 0.35;
+    pos.setY(i, h);
+    uv.setXY(i, x / 6, z / 6);
   }
   geo.computeVertexNormals();
   const m = new THREE.Mesh(geo, material);
@@ -750,6 +803,11 @@ export function buildSite(scene, SITE) {
     const len = b.x1 - b.x0, depth = b.z1 - b.z0;
     // 開いている側（open）がグラウンド側の北なら、うしろの壁は南
     placed(buildBikes({ len, depth: depth - 0.6, roof: b.roof }), (b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2, b.open === "north" ? 180 : 0);
+    rects.push([b.x0 - 3, b.x1 + 3, b.z0 - 3, b.z1 + 3]);
+  }
+  if (SITE.bikes2) {
+    const b = SITE.bikes2;
+    group.add(buildBikes2(b));
     rects.push([b.x0 - 3, b.x1 + 3, b.z0 - 3, b.z1 + 3]);
   }
   for (const s of SITE.sheds || []) {

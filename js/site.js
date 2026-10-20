@@ -103,7 +103,7 @@ function buildGround(cfg) {
   const S = 6; // 1m = 6px
   const P = (x, z) => [(x - bb.x0) * S, (z - bb.z0) * S];
   const tex = canvasTex(Math.ceil((bb.x1 - bb.x0) * S), Math.ceil((bb.z1 - bb.z0) * S), (c, W, H) => {
-    c.fillStyle = "#b8b4ab"; c.fillRect(0, 0, W, H); // 写真では白っぽい灰色の土
+    c.fillStyle = "#c2b7a1"; c.fillRect(0, 0, W, H); // 航空写真では白っぽいベージュの砂の土
     for (let i = 0; i < 30000; i++) {
       c.fillStyle = `rgba(${Math.random() > 0.5 ? "255,255,255" : "60,50,40"},${Math.random() * 0.07})`;
       c.fillRect(Math.random() * W, Math.random() * H, 2, 2);
@@ -120,7 +120,7 @@ function buildGround(cfg) {
     const [bx, bz] = P(b.x, b.z);
     // 写真では内野の土が大きくぼんやり茶色い（ふちをぼかす）
     const gr = c.createRadialGradient(bx, bz, b.r * S * 0.3, bx, bz, b.r * S * 1.25);
-    gr.addColorStop(0, "rgba(96,72,52,0.95)"); gr.addColorStop(0.7, "rgba(110,84,60,0.75)"); gr.addColorStop(1, "rgba(110,84,60,0)");
+    gr.addColorStop(0, "rgba(150,112,78,0.85)"); gr.addColorStop(0.7, "rgba(158,122,88,0.6)"); gr.addColorStop(1, "rgba(158,122,88,0)");
     c.fillStyle = gr;
     c.beginPath(); c.arc(bx, bz, b.r * S * 1.25, 0, Math.PI * 2); c.fill();
     // ダイヤモンドとファウルライン
@@ -168,6 +168,11 @@ function buildGround(cfg) {
     const bar = (bw, bh, bd, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), white); m.position.set(x, y, z); m.castShadow = true; goal.add(m); };
     bar(0.12, 2.4, 0.12, 0, 1.2, -3.66); bar(0.12, 2.4, 0.12, 0, 1.2, 3.66); bar(0.12, 0.12, 7.4, 0, 2.4, 0);
     bar(1.8, 0.08, 0.08, s * 0.9, 0.04, -3.66); bar(1.8, 0.08, 0.08, s * 0.9, 0.04, 3.66);
+    // ゴールのネット（うしろと横と上）
+    const net = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false });
+    const back = new THREE.Mesh(new THREE.PlaneGeometry(7.3, 2.6), net);
+    back.rotation.order = "YXZ"; back.rotation.set(s * 0.6, Math.PI / 2, 0); back.position.set(s * 1.0, 1.15, 0); goal.add(back);
+    for (const zz of [-3.66, 3.66]) { const sd = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 2.4), net); sd.position.set(s * 0.9, 1.2, zz); goal.add(sd); }
     goal.position.set(sc.x + Math.cos(a) * s * sc.w / 2, 0, sc.z - Math.sin(a) * s * sc.w / 2);
     goal.rotation.y = a;
     g.add(goal);

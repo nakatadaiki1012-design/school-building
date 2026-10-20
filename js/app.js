@@ -1112,6 +1112,40 @@ scene.add(outdoor);
     for (const m of [pole, head, capT]) { m.castShadow = true; outdoor.add(m); }
   }
   rounded(11.5, 20.6, 4.8, 7.6);    // 南西：2号館ぞいの生け垣
+  // 2号館の南（保健室の前）と、3号館の北の壁ぞいの、丸く刈った低木の列（航空写真）
+  for (const [x0, x1, z, step] of [[12, 30, 28.6, 2.2], [-16, 3, 33.9, 1.9]]) {
+    for (let x = x0; x <= x1; x += step) {
+      const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.85, 2), matHedge);
+      b.scale.set(1, 0.75, 1); b.position.set(x, 0.45, z);
+      b.castShadow = b.receiveShadow = true;
+      outdoor.add(b);
+    }
+  }
+  rounded(23, 29, 29.8, 31.6);       // 保健室の前の植え込み
+}
+
+// 職員玄関（2号館の東の正面玄関）：ガラスの扉、白いひさし、2段の段差、両わきの植え込み
+{
+  const wx = 49.8, cz = 12.2, w = 6;
+  const glassM = new THREE.MeshStandardMaterial({ color: 0x3e5a74, roughness: 0.15, metalness: 0.3 });
+  const parts = [];
+  const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; parts.push(m); };
+  add(new THREE.BoxGeometry(0.1, 2.4, w - 1.2), glassM, wx + 0.06, 1.0, cz);                 // ガラスの扉
+  for (const dz of [-(w - 1.2) / 2, 0, (w - 1.2) / 2]) add(new THREE.BoxGeometry(0.16, 2.5, 0.12), matRelief, wx + 0.08, 1.05, cz + dz); // 扉の枠
+  add(new THREE.BoxGeometry(3.2, 0.3, w + 1), matRelief, wx + 1.6, 2.85, cz);               // ひさし
+  for (const dz of [-1, 1]) add(new THREE.BoxGeometry(0.3, 3.0, 0.3), matRelief, wx + 3.0, 1.3, cz + dz * (w / 2 + 0.2)); // ひさしの柱
+  add(new THREE.BoxGeometry(3.2, 0.16, w + 1), new THREE.MeshStandardMaterial({ color: 0xc9c4b8, roughness: 1 }), wx + 1.6, -0.12, cz); // 段
+  add(new THREE.BoxGeometry(2.6, 0.16, w + 0.4), new THREE.MeshStandardMaterial({ color: 0xd6d1c6, roughness: 1 }), wx + 1.3, 0.04, cz);
+  const sign = (() => { const cv = document.createElement("canvas"); cv.width = 256; cv.height = 48; const c = cv.getContext("2d"); c.fillStyle = "#f4f1ea"; c.fillRect(0, 0, 256, 48); c.fillStyle = "#333"; c.font = "bold 28px sans-serif"; c.textAlign = "center"; c.fillText("職員・来客玄関", 128, 34); const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const sg = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.5), new THREE.MeshStandardMaterial({ map: sign }));
+  sg.position.set(wx + 3.22, 2.85, cz); sg.rotation.y = Math.PI / 2;
+  parts.push(sg);
+  for (const p of parts) outdoor.add(p);
+  for (const dz of [-1]) { // 北どなりは半円のバルコニーなので、南だけ
+    const h = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 1.6), matHedge);
+    h.position.set(wx + 0.7, 0.2, cz + dz * (w / 2 + 1.4));
+    h.castShadow = true; outdoor.add(h);
+  }
 }
 
 // 2つの昇降口のあいだのレンガ敷きの屋外（上に2・3階がのっている）

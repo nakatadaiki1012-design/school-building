@@ -986,11 +986,15 @@ function rustTex() {
   const rail = (x0, x1, z0, z1) => box(geos2, Math.max(0.18, x1 - x0), 1.6, Math.max(0.18, z1 - z0), (x0 + x1) / 2, ty + 0.65, (z0 + z1) / 2);
   // 西側は、北の端の踊り場だけ2階の高さ。そこから南に向かって1階へ下りる外階段がある（写真）
   const landL = 3, stairL = 9.4, sw = 2.4;
-  deck(gx - sw - 0.2, gx, zTop, zTop + landL);  // 北西の踊り場
+  // 外階段は外廊下のさらに外（西）。北の端で外廊下から西へ踊り場が張り出し、そこから南へ下りる
+  const so = gx - sw - 0.2;                      // 外廊下の外のふち
+  deck(so - sw - 0.2, so, zTop, zTop + landL);  // 北西の踊り場（外廊下の外）
   // 西側の2階の外廊下（体育館の長さいっぱい）
   // 写真：体育館の西の壁ぞいに、北の踊り場から南へ1階へ下りる外階段。その南から外廊下が続く
-  deck(gx - sw - 0.2, gx, zTop + landL + stairL, gz1 + 2.5);
-  rail(gx - sw - 0.2, gx - sw - 0.2, zTop, gz1 + 2.5);
+  deck(gx - sw - 0.2, gx, zTop, gz1 + 2.5);       // 外廊下は北から南までつながる
+  rail(so, so, zTop + landL + stairL, gz1 + 2.5);  // 階段の南から先の外廊下の手すり
+  rail(so - sw - 0.2, so - sw - 0.2, zTop, zTop + landL); // 踊り場の西の手すり
+  rail(so - sw - 0.2, so, zTop, zTop);
   rail(gx - sw - 0.2, gx, gz1 + 2.5, gz1 + 2.5); // 西の外廊下の南のはし（落ちないように手すり）
   deck(gx, gxe + dw, gz1, zBot);                // 南
   deck(gxe, gxe + dw, zTop, gz1);               // 東
@@ -1018,9 +1022,11 @@ function rustTex() {
   for (let z = zTop; z <= zBot; z += 4.5) box(geos2, 0.35, ty, 0.35, gxe + dw - 0.3, ty / 2 - 0.15, z);
   for (let x = gx; x <= gxe + dw; x += 4.5) box(geos2, 0.35, ty, 0.35, x, ty / 2 - 0.15, zBot - 0.3);
   box(geos2, 0.35, ty, 0.35, gx - sw, ty / 2 - 0.15, zTop + 0.3);
+  box(geos2, 0.35, ty, 0.35, so - sw, ty / 2 - 0.15, zTop + 0.3);
+  box(geos2, 0.35, ty, 0.35, so - sw, ty / 2 - 0.15, zTop + landL - 0.3);
   // 外階段：北西の踊り場から南へ1階に下りる階段と、南側の外から2階に上がる階段
   // 外廊下のさらに西に、北の踊り場へ上がる外階段（南から北へ上る）
-  stair(geos1, gx - sw / 2 - 0.1, zTop + landL + stairL, gx - sw / 2 - 0.1, zTop + landL, -0.2, ty, sw);
+  stair(geos1, so - sw / 2 - 0.1, zTop + landL + stairL, so - sw / 2 - 0.1, zTop + landL, -0.2, ty, sw);
   for (let z = zTop + 4.5; z <= gz1; z += 4.5) box(geos2, 0.35, ty, 0.35, gx - sw, ty / 2 - 0.15, z);
   // 南側の2階の入口の上は、3階の床がのびた ひさし
   box(geos2, gxe + dw - gx, 0.35, zBot + 2.5 - gz1, (gx + gxe + dw) / 2, 2 * FH - 0.2, (gz1 + zBot + 2.5) / 2);

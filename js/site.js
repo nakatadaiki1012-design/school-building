@@ -260,16 +260,37 @@ function buildTennisArea({ w, d }) {
   p.position.y = -0.16 + (tennisCount++) * 0.01; // となりのコートと高さを少しずらす（ちらつき防止）
   p.receiveShadow = true;
   g.add(p);
-  const netMat = M(0xf2f2f2);
+  // ネット：黒い網（すけて見える）、上に白い帯、両はしに支柱
   for (const k of [-1, 1]) {
-    const net = new THREE.Mesh(new THREE.BoxGeometry(12.8, 1.0, 0.04), netMat);
-    net.position.set((k * w) / 4, 0.5, 0);
-    net.castShadow = true;
+    const x = (k * w) / 4;
+    const net = new THREE.Mesh(new THREE.PlaneGeometry(12.8, 0.9), tennisNetMat);
+    net.position.set(x, 0.45 - 0.15, 0);
     g.add(net);
+    const tape = new THREE.Mesh(new THREE.BoxGeometry(12.8, 0.07, 0.03), tennisTapeMat);
+    tape.position.set(x, 0.9 - 0.15, 0);
+    g.add(tape);
+    for (const s of [-1, 1]) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.07, 8), tennisPostMat);
+      post.position.set(x + s * 6.4, 0.53 - 0.15, 0);
+      post.castShadow = true;
+      g.add(post);
+    }
   }
   fenceRect(g, -w / 2, -d / 2, w / 2, d / 2, 4);
   return g;
 }
+
+// テニスのネットの材質（網目の模様）
+const tennisNetMat = (() => {
+  const cv = document.createElement("canvas"); cv.width = cv.height = 64;
+  const c = cv.getContext("2d");
+  c.strokeStyle = "rgba(20,20,20,0.9)"; c.lineWidth = 1.5;
+  for (let i = 0; i <= 64; i += 8) { c.beginPath(); c.moveTo(i, 0); c.lineTo(i, 64); c.moveTo(0, i); c.lineTo(64, i); c.stroke(); }
+  const t = new THREE.CanvasTexture(cv); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(32, 2.3);
+  return new THREE.MeshStandardMaterial({ map: t, transparent: true, alphaTest: 0.3, side: THREE.DoubleSide, roughness: 1, color: 0x222222 });
+})();
+const tennisTapeMat = M(0xf4f4f0);
+const tennisPostMat = M(0x2f4a3a, { metalness: 0.4, roughness: 0.5 });
 
 // ---------- プール ----------
 function buildPool(cfg) {

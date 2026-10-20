@@ -625,6 +625,15 @@ for (const f of [1, 2, 3]) {
   }
   // 白い丸い階段塔（位置は実際のメートル）
   for (const t of FACADE.roundStairs) {
+    if (!t.tower) {
+      // 東の端の壁の、茶色いレンガの面のあいだの白い帯（中に階段。小さい窓が縦にならぶ）。壁から少しだけ出ている
+      const m = new THREE.Mesh(new THREE.BoxGeometry(0.5, FH, 3.2), matStack);
+      m.position.set(t.x - t.r + 0.2, base(f) + FH / 2, t.z);
+      m.castShadow = m.receiveShadow = true;
+      ext.add(m);
+      if (f === 3) { const cap = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.5, 3.4), matParapet); cap.position.set(t.x - t.r + 0.2, base(f) + FH + 0.25, t.z); ext.add(cap); }
+      continue;
+    }
     const m = new THREE.Mesh(new THREE.CylinderGeometry(t.r, t.r, FH, 28), t.tower ? matTower : matStack);
     m.position.set(t.x, base(f) + FH / 2, t.z);
     m.castShadow = m.receiveShadow = true;
@@ -909,6 +918,25 @@ function rustTex() {
   stair(geos1, gxe + dw + 1.2, zTop + 2.4 + sl, gxe + dw + 1.2, zTop + 2.4, -0.2, ty, 2.3);
   // 1階の南側の柱（柱が並ぶ吹きさらしの部分）
   for (let x = gx + 9; x < gxe; x += 4.2) box(geos2, 0.5, FH, 0.5, x, FH / 2 - 0.2, gz1 + 0.3);
+  // その奥の茶色い壁と、柱のあいだのアーチ（写真：大きなアーチが並び、奥が茶色）
+  {
+    const brown = new THREE.MeshStandardMaterial({ color: 0x7a4b38, roughness: 0.9 });
+    const back = new THREE.Mesh(new THREE.BoxGeometry(gxe - gx - 8.5, FH - 0.2, 0.3), brown);
+    back.position.set((gx + 8.5 + gxe) / 2, FH / 2 - 0.3, gz1 - 2.5);
+    back.receiveShadow = true;
+    gymExtras.add(back);
+    for (let x = gx + 9; x + 4.2 <= gxe + 0.1; x += 4.2) {
+      // 柱と柱のあいだの上を、半円にくりぬいた白い壁でふさぐ
+      const sh = new THREE.Shape();
+      sh.moveTo(0, -0.65); sh.lineTo(0, 1.6); sh.lineTo(4.2, 1.6); sh.lineTo(4.2, -0.65); sh.lineTo(3.95, -0.65);
+      sh.absarc(2.1, -0.65, 1.85, 0, Math.PI, false); sh.lineTo(0, -0.65);
+      const g = new THREE.ExtrudeGeometry(sh, { depth: 0.4, bevelEnabled: false, curveSegments: 16 });
+      const arch = new THREE.Mesh(g, white);
+      arch.position.set(x, FH - 1.8, gz1 + 0.1);
+      arch.castShadow = true;
+      gymExtras.add(arch);
+    }
+  }
   const gymHolder = inBlock(layers.exterior[1], blockById("gym"));
   for (const list of [geos1, geos2]) {
     const m = new THREE.Mesh(mergeGeometries(list), white);

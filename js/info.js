@@ -410,6 +410,12 @@ export const ROOM_EDITS = [
   { name: "男子トイレ", floor: 1, at: 13, set: { xBlock: "art" } },
   { name: "男子トイレ", floor: 2, at: 13, set: { xBlock: "art" } },
   { name: "男子トイレ", floor: 3, at: 13, set: { xBlock: "art" } },
+  // 2階の美術・図書館棟：図書室と選択第２教室を南北に広げ、選択第２教室は男子トイレにくっつける
+  { name: "図書室", floor: 2, set: { r1: 52 } },
+  { name: "選択第２教室", floor: 2, set: { r0: 53, r1: 58 } },
+  { name: "バルコニー", floor: 2, at: 9, set: { r0: 53, r1: 58 } },
+  { name: "整理室", floor: 2, set: { r0: 53, r1: 55 } },
+  { name: "資料室", floor: 2, set: { r0: 56, r1: 58 } },
   // STUDY HALL は、吹き抜け側（北）と階段側（南）にもう少し広い
   { name: "STUDY HALL", floor: 2, set: { r0: 50, r1: 56 } },
   // 体育館の2階の玄関は、階段から器具庫の手前まで広い

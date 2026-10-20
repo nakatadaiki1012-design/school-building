@@ -301,10 +301,12 @@ const SHAPES = {
   // 更衣室・部室のロッカー（背の高いもの）
   tallLocker: [[MAT.locker, merge([b(0.5, 1.8, 0.9)])], [MAT.metal, merge([b(0.02, 0.15, 0.04, -0.26, 1.0, 0.2), b(0.02, 0.15, 0.04, -0.26, 1.0, -0.2)])]],
   // 木のベンチ・丸いテーブル
-  // 応接室のだ円形の机（真ん中があいている）。南北（z）に長い。天板の高さ 0.7m
+  // 応接室の長い机（真ん中があいている）。南北（z）に長い。天板の高さ 0.7m
   ovalTable: (() => {
-    const sh = new THREE.Shape(); sh.absellipse(0, 0, 1.25, 2.6, 0, Math.PI * 2, false);
-    const hole = new THREE.Path(); hole.absellipse(0, 0, 0.55, 1.9, 0, Math.PI * 2, true); sh.holes.push(hole);
+    // 長い辺はまっすぐ、両はしは半円（陸上トラックの形）。真ん中はあいている
+    const track = (P, r, h) => { P.moveTo(r, -h); P.lineTo(r, h); P.absarc(0, h, r, 0, Math.PI, false); P.lineTo(-r, -h); P.absarc(0, -h, r, Math.PI, Math.PI * 2, false); };
+    const sh = new THREE.Shape(); track(sh, 1.2, 1.4);
+    const hole = new THREE.Path(); hole.moveTo(0.55, -1.4); hole.absarc(0, -1.4, 0.55, 0, -Math.PI, true); hole.lineTo(-0.55, 1.4); hole.absarc(0, 1.4, 0.55, Math.PI, 0, true); hole.lineTo(0.55, -1.4); sh.holes.push(hole);
     const top = new THREE.ExtrudeGeometry(sh, { depth: 0.05, bevelEnabled: false, curveSegments: 32 });
     top.rotateX(-Math.PI / 2); top.translate(0, 0.68, 0);
     const legs = [[0.9, 0], [-0.9, 0], [0, 2.25], [0, -2.25]].map(([x, z]) => b(0.08, 0.68, 0.08, x, 0, z));
@@ -782,14 +784,15 @@ const LAYOUTS = [
   [/職員室|事務室/, (o, R) => office(o, R)],
   [/会議室/, meeting],
   [/校長室/, principal],
-  // 応接室：南北に長いだ円形の机（真ん中があいている）と、まわりの椅子
+  // 応接室：南北に長い机（長い辺はまっすぐ、両はしは半円、真ん中があいている）と、まわりの椅子
   [/応接室/, (o, R) => {
     const cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2;
     o.push({ t: "ovalTable", x: cx, z: cz, rot: 0 });
-    for (let i = 0; i < 12; i++) {
-      const a = (i / 12) * Math.PI * 2;
-      const x = cx + Math.cos(a) * 1.75, z = cz + Math.sin(a) * 3.1;
-      o.push({ t: "officeChair", x, z, rot: -a }); // 机のほうを向く
+    // 長い辺（東と西）に5脚ずつ、両はしの半円に3脚ずつ。みんな机のほうを向く
+    for (const sx of [-1, 1]) for (let k = 0; k < 5; k++) { const z = cz - 1.4 + k * 0.7; o.push({ t: "officeChair", x: cx + sx * 1.6, z, rot: sx > 0 ? 0 : Math.PI }); }
+    for (const sz of [-1, 1]) for (const a0 of [-0.75, 0, 0.75]) {
+      const a = sz * (Math.PI / 2) + a0;
+      o.push({ t: "officeChair", x: cx + Math.cos(a) * 1.6, z: cz + sz * 1.4 + Math.sin(a) * 1.6, rot: -a });
     }
   }],
   [/保健室/, infirmary],

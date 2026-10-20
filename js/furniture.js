@@ -438,16 +438,22 @@ function theater(out, R) {
   }
 }
 
+// パソコン教室：横6列×縦7列。前に先生のパソコンと、その横の大きめの机
 function computers(out, R) {
   const { x0, x1, z0, z1 } = R;
-  out.push({ t: "screenBoard", x: x0 + 0.12, z: (z0 + z1) / 2, rot: 0 });
-  out.push({ t: "teacherDesk", x: x0 + 1.2, z: (z0 + z1) / 2, rot: 0 });
-  for (let x = x0 + 2.6; x < x1 - 0.8; x += 1.5) {
-    for (let z = z0 + 0.6; z < z1 - 0.5; z += 0.75) {
-      out.push({ t: "desk", x, z, rot: 0 });
-      out.push({ t: "pc", x: x - 0.1, z, rot: 0 });
-      out.push({ t: "officeChair", x: x + 0.55, z, rot: 0 });
-    }
+  const cz = (z0 + z1) / 2;
+  out.push({ t: "screenBoard", x: x0 + 0.12, z: cz, rot: 0 });
+  out.push({ t: "teacherDesk", x: x0 + 1.2, z: cz - 0.7, rot: 0 });
+  out.push({ t: "pc", x: x0 + 1.05, z: cz - 0.7, rot: 0, y: 0.05 });
+  out.push({ t: "officeChair", x: x0 + 1.9, z: cz - 0.7, rot: 0 });
+  out.push({ t: "bigTable", x: x0 + 1.2, z: cz + 1.4, rot: 0 });
+  const cols = 6, rows = 7;
+  const dx0 = x0 + 3.0, dx1 = x1 - 0.9, dz0 = z0 + 0.6, dz1 = z1 - 0.6;
+  for (let i = 0; i < rows; i++) for (let j = 0; j < cols; j++) {
+    const x = dx0 + ((dx1 - dx0) * i) / (rows - 1), z = dz0 + ((dz1 - dz0) * j) / (cols - 1);
+    out.push({ t: "desk", x, z, rot: 0 });
+    out.push({ t: "pc", x: x - 0.1, z, rot: 0 });
+    out.push({ t: "officeChair", x: x + 0.5, z, rot: 0 });
   }
 }
 
@@ -607,9 +613,11 @@ const LAYOUTS = [
 ];
 
 // 黒板・教卓を北側に置く特別教室（普通教室は図面の左＝西側が前）
-const NORTH_FRONT = /選択|オーラル|社会科教室|実験室|被服室|視聴覚|音楽室|美術教室|工芸教室|STUDY HALL/;
+const NORTH_FRONT = /選択|オーラル|社会科教室|実験室|視聴覚|音楽室|美術教室|工芸教室|STUDY HALL/;
 // 先生の机・黒板が南側にある特別教室
-const SOUTH_FRONT = /調理室|コンピューター/;
+const SOUTH_FRONT = /^$/;
+// 東側を向いて授業を受ける部屋（被服室は西向きなので、ふつうの教室と同じ）
+const EAST_FRONT = /調理室|コンピューター/;
 
 // 床の模様
 export function floorStyle(name) {
@@ -627,7 +635,15 @@ export function buildFurniture(rooms, y) {
     const fn = LAYOUTS.find(([re]) => re.test(r.name));
     if (!fn) continue;
     const list = [];
-    if (SOUTH_FRONT.test(r.name)) {
+    if (EAST_FRONT.test(r.name)) {
+      // 「正面が -x」の置き方を、部屋の中心のまわりで180度回す
+      fn[1](list, { x0: -r.w / 2 + 0.2, x1: r.w / 2 - 0.2, z0: -r.d / 2 + 0.2, z1: r.d / 2 - 0.2 });
+      for (const it of list) {
+        it.x = r.cx - it.x;
+        it.z = r.cz - it.z;
+        it.rot = (it.rot || 0) + Math.PI;
+      }
+    } else if (SOUTH_FRONT.test(r.name)) {
       // 南側（+z）が前。「正面が -x」の置き方を +90度回して使う
       fn[1](list, { x0: -r.d / 2 + 0.2, x1: r.d / 2 - 0.2, z0: -r.w / 2 + 0.2, z1: r.w / 2 - 0.2 });
       for (const it of list) {

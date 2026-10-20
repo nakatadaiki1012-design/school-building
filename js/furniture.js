@@ -805,6 +805,19 @@ const LAYOUTS = [
     o.push({ t: "officeDesk", x: cx + 0.36, z: cz, rot: Math.PI }, { t: "officeChair", x: cx + 1.1, z: cz, rot: 0 });
     along(o, "cabinet", R.x0 + 0.3, R.z0 + 0.6, R.z1 - 0.6, 0.95, 0);
   }],
+  // 放送室：ミキサー室は奥の壁ぎわにミキサーの机（録音室のほうを向く）、録音室はマイクを置いた机と椅子
+  [/ミキサー室/, (o, R) => {
+    const cx = (R.x0 + R.x1) / 2;
+    o.push({ t: "officeDesk", x: cx - 0.5, z: R.z1 - 0.45, rot: -Math.PI / 2 }, { t: "officeDesk", x: cx + 0.6, z: R.z1 - 0.45, rot: -Math.PI / 2 });
+    o.push({ t: "monitor", x: cx - 0.5, z: R.z1 - 0.3, rot: Math.PI / 2 }, { t: "pc", x: cx + 0.6, z: R.z1 - 0.35, rot: Math.PI / 2 });
+    o.push({ t: "officeChair", x: cx, z: R.z1 - 1.2, rot: Math.PI / 2 });
+    o.push({ t: "cabinet", x: R.x0 + 0.3, z: R.z0 + 0.6, rot: 0 });
+  }],
+  [/録音室/, (o, R) => {
+    const cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2;
+    o.push({ t: "table", x: cx, z: cz, rot: Math.PI / 2 });
+    o.push({ t: "officeChair", x: cx - 0.5, z: cz + 0.8, rot: -Math.PI / 2 }, { t: "officeChair", x: cx + 0.5, z: cz + 0.8, rot: -Math.PI / 2 });
+  }],
   [/準備室|印刷室|放送室|生徒指導室|生徒会室|進路資料室|整理室|資料室/, prep],
   [/男子トイレ/, (o, R) => { toilet(o, R); urinals(o, R); }],
   [/トイレ/, toilet],

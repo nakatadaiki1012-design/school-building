@@ -6,7 +6,7 @@ import { ROOMS_RAW } from "./data.js";
 import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY, ROOM_EDITS, EXTRA_ROOMS, ROOM_SPLITS, ROOM_STYLE, WALL_OPENINGS } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
 import { buildTrees, buildColumnTrees, hedgeBox, hedgeMass, matHedge, bakeStatic } from "./nature.js";
-import { buildSite, createAerial, flatPoly, polyBounds, inPoly, buildTerrain, setSlope } from "./site.js";
+import { buildSite, createAerial, flatPoly, polyBounds, inPoly, buildTerrain, setSlope, texAsphalt, texPavers, worldUV } from "./site.js";
 
 // ---------- 寸法（メートル） ----------
 const CW = 1.5;   // 図面の1列の幅
@@ -348,25 +348,24 @@ const texHigh = canvasTex(W, H, (g) => {
   frame(g, x, y, w, h, 5);
 });
 
-const texGrass = canvasTex(256, 256, (g, w, h) => {
-  g.fillStyle = "#7fa25a"; g.fillRect(0, 0, w, h);
-  for (let i = 0; i < 9000; i++) {
-    const l = 30 + Math.random() * 25;
-    g.fillStyle = `hsl(${85 + Math.random() * 20},${35 + Math.random() * 15}%,${l}%)`;
-    g.fillRect(Math.random() * w, Math.random() * h, 1.5, 1.5);
+// 芝生：細かい葉の粒と、刈り込みのむら（ところどころ明るい・暗いところ）
+const texGrass = canvasTex(512, 512, (g, w, h) => {
+  g.fillStyle = "#7a9e55"; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 18; i++) {
+    const x = Math.random() * w, y = Math.random() * h, r = 50 + Math.random() * 120;
+    const gr = g.createRadialGradient(x, y, 0, x, y, r);
+    gr.addColorStop(0, Math.random() < 0.5 ? "rgba(60,85,35,0.22)" : "rgba(170,180,100,0.18)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
+  }
+  for (let i = 0; i < 40000; i++) {
+    const l = 26 + Math.random() * 30;
+    g.fillStyle = `hsla(${78 + Math.random() * 28},${30 + Math.random() * 20}%,${l}%,0.85)`;
+    const x = Math.random() * w, y = Math.random() * h;
+    g.fillRect(x, y, 1.2, 1.5 + Math.random() * 2.5); // 細長い葉
   }
 });
 texGrass.repeat.set(60, 60);
 
-const texPaving = canvasTex(256, 256, (g, w, h) => {
-  g.fillStyle = "#c9c4ba"; g.fillRect(0, 0, w, h);
-  noise(g, w, h, 0.25, 4000);
-  g.strokeStyle = "rgba(0,0,0,0.12)"; g.lineWidth = 2;
-  for (let i = 0; i <= 4; i++) {
-    g.beginPath(); g.moveTo(i * 64, 0); g.lineTo(i * 64, h); g.stroke();
-    g.beginPath(); g.moveTo(0, i * 64); g.lineTo(w, i * 64); g.stroke();
-  }
-});
 
 // 外のレンガ敷き（昇降口のあいだ・体育館のまわりの広場で同じものを使う）
 function makeBrickFloorTex() {
@@ -1082,8 +1081,10 @@ siteGrassTex.repeat.set((siteBB.x1 - siteBB.x0) / 6, (siteBB.z1 - siteBB.z0) / 6
 const siteGround = flatPoly(SITE.boundary, new THREE.MeshStandardMaterial({ map: siteGrassTex, color: 0xd6e6c4, roughness: 1 }), -0.23, siteBB);
 scene.add(siteGround);
 const bb = polyBounds(SITE.paved);
-texPaving.repeat.set((bb.x1 - bb.x0) / 4, (bb.z1 - bb.z0) / 4);
-const paving = flatPoly(SITE.paved, new THREE.MeshStandardMaterial({ map: texPaving, color: 0xa9a7a1, roughness: 1 }), 0, bb);
+// 構内の舗装はアスファルト（道路より少し明るい）
+const pavingTex = texAsphalt.clone(); pavingTex.needsUpdate = true;
+pavingTex.repeat.set((bb.x1 - bb.x0) / 6, (bb.z1 - bb.z0) / 6);
+const paving = flatPoly(SITE.paved, new THREE.MeshStandardMaterial({ map: pavingTex, color: 0xd2d0cb, roughness: 0.95 }), 0, bb);
 paving.position.y = -0.2;
 paving.receiveShadow = true;
 scene.add(paving);
@@ -1097,6 +1098,7 @@ scene.add(outdoor);
     m.rotation.x = -Math.PI / 2;
     m.position.set((x0 + x1) / 2, y, (z0 + z1) / 2);
     m.receiveShadow = true;
+    if (mat.userData.uvScale) worldUV(m, mat.userData.uvScale); // 模様の大きさを実際の長さに合わせる
     outdoor.add(m);
   };
   // 体育館のまわりの広場は、昇降口のあいだと同じ茶色いレンガ敷き
@@ -1122,11 +1124,13 @@ scene.add(outdoor);
   flatRect(-16.3, -8.5, 13.3, 15.8, dark, -0.186);
   flatRect(-6.6, -4.95, 12.6, 18.6, dark, -0.186);
   // 1号館と2号館のあいだの中庭（アスファルト、十字の通路、植え込み）
-  const court = new THREE.MeshStandardMaterial({ color: 0x77777a, roughness: 1 });
+  const court = new THREE.MeshStandardMaterial({ map: texAsphalt, roughness: 0.95 });
+  court.userData.uvScale = 6;
   flatRect(10.3, 49, -8.3, 8.1, court, -0.19);
   // （真上からの航空写真で測った形）
   // 白い通路：西の入口から植え込みまでの東西の通路、植え込みの両はしにつながる南北の通路、東の端の通路
-  const walk = new THREE.MeshStandardMaterial({ color: 0xe9e6de, roughness: 1 });
+  const walk = new THREE.MeshStandardMaterial({ map: texPavers, roughness: 0.95 });
+  walk.userData.uvScale = 2.4;
   // 通路は舗装より1.5cm上に置く（同じ高さだと遠くから見たときにちらつく）
   flatRect(10.3, 24.5, 0.2, 2.3, walk, -0.175);
   flatRect(23.9, 26, -4.7, -1.5, walk, -0.175);

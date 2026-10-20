@@ -487,68 +487,90 @@ export function distSeg(x, z, ax, az, bx, bz) {
 }
 
 // ---------- 駐車場（白線と車） ----------
-// 車の形（長さ方向が x）。ミニバン（背の高い車）とふつうの車
-const carGlass = M(0x1d2733, { roughness: 0.15, metalness: 0.5 });
-const carTire = M(0x1a1a1a, { roughness: 0.9 });
-const carLight = M(0xf4f1e4, { roughness: 0.3 });
+// 車の形（長さ方向が x、前が +x）。横から見た形をそのまま押し出して、ふちを少し丸めた
+// ミニバン（背の高い車）とセダン。形は種類ごとに1つだけ作って使い回す
+const carGlass = M(0x1d2733, { roughness: 0.12, metalness: 0.6 });
+const carTire = M(0x1b1b1b, { roughness: 0.9 });
+const carRim = M(0xc9ccd0, { metalness: 0.8, roughness: 0.3 });
+const carLight = M(0xf4f1e4, { roughness: 0.2, emissive: 0x222222 });
+const carTail = M(0xb3202a, { roughness: 0.3 });
+const carDark = M(0x202224, { roughness: 0.6 });
 const carBodyMats = {};
+const CAR_SHAPES = {
+  // [車体の横の形, 窓の部分の横の形, 長さ, 屋根の長さ, 屋根の高さ, 屋根の中心]
+  sedan: [[[-2.2, 0.28], [2.2, 0.28], [2.22, 0.6], [2.05, 0.8], [1.05, 0.93], [-1.35, 0.93], [-2.08, 0.9], [-2.22, 0.66]],
+    [[1.05, 0.9], [0.32, 1.38], [-0.72, 1.4], [-1.38, 0.9]], 4.4, 1.0, 1.4, -0.2],
+  minivan: [[[-2.35, 0.3], [2.35, 0.3], [2.37, 0.62], [2.28, 0.86], [1.6, 1.02], [-2.36, 1.02], [-2.38, 0.66]],
+    [[1.6, 0.98], [0.85, 1.72], [-2.2, 1.78], [-2.36, 0.98]], 4.7, 2.9, 1.77, -0.7],
+};
+const carGeoCache = {};
+function carGeos(kind) {
+  if (carGeoCache[kind]) return carGeoCache[kind];
+  const [body, cabin, L, roofL, roofY, roofX] = CAR_SHAPES[kind], W = 1.72;
+  const ext = (pts, depth, bev) => {
+    const sh = new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y)));
+    const g = new THREE.ExtrudeGeometry(sh, { depth, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 2, curveSegments: 4 });
+    g.translate(0, 0, -depth / 2);
+    return g;
+  };
+  // 押し出した形は頂点の番号を持たないので、箱もそろえる（まとめるときに必要）
+  const b = (w, h, d, x, y, z) => { const g = new THREE.BoxGeometry(w, h, d).toNonIndexed(); g.translate(x, y, z); return g; };
+  const tire = new THREE.CylinderGeometry(0.33, 0.33, 0.24, 14); tire.rotateX(Math.PI / 2);
+  const rim = new THREE.CylinderGeometry(0.2, 0.2, 0.26, 10); rim.rotateX(Math.PI / 2);
+  const wheels = [], rims = [];
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    wheels.push(tire.clone().translate(sx * (L / 2 - 0.78), 0.33, sz * (W / 2 - 0.02)));
+    rims.push(rim.clone().translate(sx * (L / 2 - 0.78), 0.33, sz * (W / 2 - 0.01)));
+  }
+  const fx = body[2][0], rx = body[0][0];
+  carGeoCache[kind] = {
+    body: mergeGeometries([ext(body, W - 0.1, 0.05), b(roofL, 0.06, W - 0.2, roofX, roofY + 0.01, 0), b(0.1, roofY - 0.95, W - 0.14, roofX + 0.1, (roofY + 0.95) / 2, 0),
+      b(0.12, 0.08, 0.18, body[4][0] - 0.05, 1.0, W / 2 + 0.05), b(0.12, 0.08, 0.18, body[4][0] - 0.05, 1.0, -W / 2 - 0.05)]), // 屋根・柱・ミラー
+    glass: ext(cabin, W - 0.22, 0.04),
+    tire: mergeGeometries(wheels), rim: mergeGeometries(rims),
+    light: mergeGeometries([b(0.05, 0.12, 0.34, fx + 0.04, 0.72, 0.58), b(0.05, 0.12, 0.34, fx + 0.04, 0.72, -0.58)]),
+    tail: mergeGeometries([b(0.05, 0.14, 0.3, rx - 0.05, 0.8, 0.62), b(0.05, 0.14, 0.3, rx - 0.05, 0.8, -0.62)]),
+    dark: mergeGeometries([b(0.05, 0.16, 0.7, fx + 0.04, 0.5, 0), b(0.05, 0.14, 0.45, rx - 0.05, 0.55, 0)]), // グリル・ナンバー
+  };
+  return carGeoCache[kind];
+}
 function carModel(color, tall) {
   const g = new THREE.Group();
-  const mat = (carBodyMats[color] ||= M(color, { metalness: 0.45, roughness: 0.35 }));
-  const L = tall ? 4.6 : 4.3, W = 1.72;
-  const body = new THREE.Mesh(new THREE.BoxGeometry(L, 0.72, W), mat);
-  body.position.y = 0.62;
-  // 屋根（上が少しせまい台形）
-  const cabL = tall ? 3.2 : 2.3, cabH = tall ? 0.85 : 0.6;
-  const cg = new THREE.BoxGeometry(cabL, cabH, W - 0.12);
-  const pos = cg.attributes.position;
-  for (let i = 0; i < pos.count; i++) if (pos.getY(i) > 0) { pos.setX(i, pos.getX(i) * (tall ? 0.94 : 0.78)); pos.setZ(i, pos.getZ(i) * 0.92); }
-  cg.computeVertexNormals();
-  const cab = new THREE.Mesh(cg, mat);
-  cab.position.set(tall ? -0.25 : -0.15, 0.98 + cabH / 2, 0);
-  // 窓（屋根より少しだけ大きい黒いガラスの帯）
-  const wg = new THREE.BoxGeometry(cabL * 0.96, cabH * 0.62, W - 0.08);
-  const wp = wg.attributes.position;
-  for (let i = 0; i < wp.count; i++) if (wp.getY(i) > 0) { wp.setX(i, wp.getX(i) * (tall ? 0.95 : 0.84)); wp.setZ(i, wp.getZ(i) * 0.94); }
-  const win = new THREE.Mesh(wg, carGlass);
-  win.position.set(cab.position.x, 0.98 + cabH * 0.45, 0);
-  g.add(body, cab, win);
-  // タイヤ
-  const tg = new THREE.CylinderGeometry(0.32, 0.32, 0.24, 12);
-  tg.rotateX(Math.PI / 2);
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    const t = new THREE.Mesh(tg, carTire);
-    t.position.set(sx * (L / 2 - 0.8), 0.32, sz * (W / 2 - 0.08));
-    g.add(t);
+  const geo = carGeos(tall ? "minivan" : "sedan");
+  const mat = (carBodyMats[color] ||= M(color, { metalness: 0.5, roughness: 0.3 }));
+  for (const [k, m] of [["body", mat], ["glass", carGlass], ["tire", carTire], ["rim", carRim], ["light", carLight], ["tail", carTail], ["dark", carDark]]) {
+    const mesh = new THREE.Mesh(geo[k], m);
+    mesh.castShadow = k === "body";
+    g.add(mesh);
   }
-  // 前のライト
-  for (const sz of [-1, 1]) {
-    const l = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.32), carLight);
-    l.position.set(L / 2, 0.78, sz * 0.58);
-    g.add(l);
-  }
-  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
   return g;
 }
 
-function buildParking({ x0, x1, z0, z1 }) {
+// rot（度）を書くと、中心 (cx, cz)・長さ len・奥行き depth の、ななめの駐車場（車路のカーブにそって）
+function buildParking({ x0, x1, z0, z1, cx, cz, len, depth, rot }) {
+  if (rot !== undefined) {
+    const g = buildParking({ x0: -len / 2, x1: len / 2, z0: -depth / 2, z1: depth / 2 });
+    g.position.set(cx, 0, cz);
+    g.rotation.y = THREE.MathUtils.degToRad(rot);
+    return g;
+  }
   const g = new THREE.Group();
   const w = x1 - x0, d = z1 - z0;
   const along = w >= d; // 長い方向にならべる
-  const tex = canvasTex(Math.round(w * 10), Math.round(d * 10), (c, W, H) => {
-    c.fillStyle = "#6c6e70"; c.fillRect(0, 0, W, H);
-    c.fillStyle = "rgba(255,255,255,0.9)";
-    if (along) for (let x = 0; x <= W; x += 25) c.fillRect(x, 0, 2, H * 0.9);
-    else for (let y = 0; y <= H; y += 25) c.fillRect(0, y, W * 0.9, 2);
-  });
-  const p = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }));
+  // 下地はアスファルト（模様の大きさは道路と同じ）、白線は細い板
+  const p = new THREE.Mesh(new THREE.PlaneGeometry(w, d), matAsphalt);
   p.rotation.x = -Math.PI / 2;
   p.position.set((x0 + x1) / 2, -0.185, (z0 + z1) / 2);
-  g.add(p);
+  p.receiveShadow = true;
+  g.add(worldUV(p, 6));
+  const lines = [];
+  if (along) for (let x = x0; x <= x1 + 0.01; x += 2.5) lines.push(new THREE.BoxGeometry(0.12, 0.02, d * 0.9).translate(x, -0.17, z0 + d * 0.45));
+  else for (let z = z0; z <= z1 + 0.01; z += 2.5) lines.push(new THREE.BoxGeometry(w * 0.9, 0.02, 0.12).translate(x0 + w * 0.45, -0.17, z));
+  g.add(new THREE.Mesh(mergeGeometries(lines), M(0xf2f2ee, { roughness: 0.8 })));
   // 車（何台か）：車体・窓のついた屋根・タイヤ・ライト
   const colors = [0xf2f2f2, 0x222222, 0x8a8f96, 0x2b4d80, 0xb33a3a, 0xd9d4c8];
   const n = Math.floor((along ? w : d) / 2.5);
-  let seed = Math.round(x0 * 7 + z0 * 13);
+  let seed = Math.abs(Math.round(x0 * 7 + z0 * 13)) + 7;
   const rnd = () => ((seed = (seed * 16807 + 11) % 2147483647) / 2147483647);
   for (let i = 0; i < n; i++) {
     if (rnd() < 0.35) continue;
@@ -562,18 +584,58 @@ function buildParking({ x0, x1, z0, z1 }) {
 }
 
 // ---------- 道路 ----------
-// アスファルト：細かい粒と、ところどころの補修あと・ひび
-const matAsphalt = (() => {
-  const t = canvasTex(256, 256, (c, W, H) => {
-    c.fillStyle = "#5f6264"; c.fillRect(0, 0, W, H);
-    for (let i = 0; i < 9000; i++) { const v = Math.random(); c.fillStyle = v < 0.5 ? `rgba(30,30,32,${Math.random() * 0.25})` : `rgba(200,200,195,${Math.random() * 0.18})`; c.fillRect(Math.random() * W, Math.random() * H, 1.5, 1.5); }
-    for (let i = 0; i < 3; i++) { c.fillStyle = "rgba(40,42,45,0.09)"; c.fillRect(Math.random() * W, Math.random() * H, 30 + Math.random() * 50, 20 + Math.random() * 40); }
-    c.strokeStyle = "rgba(35,35,35,0.35)"; c.lineWidth = 1;
-    for (let i = 0; i < 4; i++) { let x = Math.random() * W, y = Math.random() * H; c.beginPath(); c.moveTo(x, y); for (let k = 0; k < 6; k++) { x += Math.random() * 16 - 8; y += Math.random() * 16 - 4; c.lineTo(x, y); } c.stroke(); }
+// アスファルト：細かい粒（骨材）、ゆるい色むら、ところどころの補修あと・ひび（1枚の模様が 6m 四方）
+export const texAsphalt = (() => {
+  const t = canvasTex(512, 512, (c, W, H) => {
+    c.fillStyle = "#64676a"; c.fillRect(0, 0, W, H);
+    // 大きな色むら（タイヤの通るところが少し濃い、雨のあと など）
+    for (let i = 0; i < 14; i++) {
+      const x = Math.random() * W, y = Math.random() * H, r = 60 + Math.random() * 140;
+      const g = c.createRadialGradient(x, y, 0, x, y, r);
+      const d = Math.random() < 0.5;
+      g.addColorStop(0, d ? "rgba(40,42,46,0.16)" : "rgba(150,150,145,0.12)"); g.addColorStop(1, "rgba(0,0,0,0)");
+      c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    // 骨材の粒
+    for (let i = 0; i < 26000; i++) {
+      const v = Math.random();
+      c.fillStyle = v < 0.45 ? `rgba(25,25,28,${0.15 + Math.random() * 0.3})` : v < 0.9 ? `rgba(175,175,170,${0.1 + Math.random() * 0.25})` : `rgba(210,200,185,${0.3 + Math.random() * 0.3})`;
+      const sz = 1 + Math.random() * 1.6;
+      c.fillRect(Math.random() * W, Math.random() * H, sz, sz);
+    }
+    // 補修あと（少し濃い四角）とひび
+    for (let i = 0; i < 2; i++) { c.fillStyle = "rgba(35,37,40,0.12)"; c.fillRect(Math.random() * W, Math.random() * H, 50 + Math.random() * 80, 30 + Math.random() * 60); }
+    c.strokeStyle = "rgba(30,30,30,0.3)"; c.lineWidth = 1;
+    for (let i = 0; i < 5; i++) { let x = Math.random() * W, y = Math.random() * H; c.beginPath(); c.moveTo(x, y); for (let k = 0; k < 8; k++) { x += Math.random() * 18 - 9; y += Math.random() * 18 - 5; c.lineTo(x, y); } c.stroke(); }
   });
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  return new THREE.MeshStandardMaterial({ map: t, roughness: 1, side: THREE.DoubleSide });
+  return t;
 })();
+const matAsphalt = new THREE.MeshStandardMaterial({ map: texAsphalt, roughness: 0.95, side: THREE.DoubleSide });
+// 歩道・通路のコンクリートブロック（約30cm×15cm の平板を半分ずつずらして敷く。1枚の模様が 2.4m 四方）
+export const texPavers = (() => {
+  const t = canvasTex(256, 256, (c, W, H) => {
+    c.fillStyle = "#a9a6a0"; c.fillRect(0, 0, W, H); // 目地
+    const bw = 32, bh = 16;
+    for (let row = 0, y = 0; y < H; row++, y += bh) for (let x = (row % 2) * bw / 2 - bw; x < W; x += bw) {
+      const v = Math.random() * 16 - 8;
+      c.fillStyle = `rgb(${222 + v},${218 + v},${208 + v})`;
+      c.fillRect(x + 1, y + 1, bw - 2, bh - 2);
+      for (let k = 0; k < 6; k++) { c.fillStyle = `rgba(0,0,0,${Math.random() * 0.06})`; c.fillRect(x + Math.random() * bw, y + Math.random() * bh, 2, 2); }
+    }
+  });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+})();
+// 平らな形の uv を、実際の位置（メートル）から決める（模様の大きさがどこでも同じになる）。scale: 模様1枚の大きさ(m)
+export function worldUV(mesh, scale) {
+  mesh.updateMatrix();
+  const g = mesh.geometry, p = g.attributes.position, v = new THREE.Vector3();
+  const uv = new Float32Array(p.count * 2);
+  for (let i = 0; i < p.count; i++) { v.fromBufferAttribute(p, i).applyMatrix4(mesh.matrix); uv[i * 2] = v.x / scale; uv[i * 2 + 1] = -v.z / scale; }
+  g.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+  return mesh;
+}
 function buildRoad({ w, pts: raw, dy = 0 }) {
   // 斜面にそうように、4mおきに点を足す
   const pts = [];
@@ -1170,7 +1232,8 @@ export function buildSite(scene, SITE) {
   }
   for (const p of SITE.parking || []) {
     group.add(buildParking(p));
-    rects.push([p.x0 - 2, p.x1 + 2, p.z0 - 2, p.z1 + 2]);
+    if (p.rot !== undefined) { const r = Math.hypot(p.len, p.depth) / 2 + 1; rects.push([p.cx - r, p.cx + r, p.cz - r, p.cz + r]); }
+    else rects.push([p.x0 - 2, p.x1 + 2, p.z0 - 2, p.z1 + 2]);
   }
   for (const r of SITE.roads || []) {
     group.add(buildRoad(r));
@@ -1182,32 +1245,32 @@ export function buildSite(scene, SITE) {
   if (SITE.showPoles && SITE.roads && SITE.boundary) group.add(buildPoles(SITE.roads, SITE.boundary));
   // 正門から中庭までの通路（中庭から東へ出て、少し南へ折れて正門へ）と、門の手前の半円の広場
   if (SITE.approach) {
-    const a = SITE.approach, pave = M(0xe6e2d8, { roughness: 1 });
+    const a = SITE.approach, pave = new THREE.MeshStandardMaterial({ map: texPavers, roughness: 0.95 });
     for (let i = 0; i + 1 < a.pts.length; i++) {
       const [ax, az] = a.pts[i], [bx, bz] = a.pts[i + 1];
       const L = Math.hypot(bx - ax, bz - az);
       const seg = new THREE.Mesh(new THREE.PlaneGeometry(a.w, L + a.w), pave);
       seg.rotation.order = "YXZ"; seg.rotation.set(-Math.PI / 2, Math.atan2(bx - ax, bz - az), 0);
       seg.position.set((ax + bx) / 2, -0.175 + i * 0.002, (az + bz) / 2);
-      group.add(seg);
+      group.add(worldUV(seg, 2.4));
       for (let t = 0; t <= L; t += 3) rects.push([ax + (bx - ax) * t / L - 3, ax + (bx - ax) * t / L + 3, az + (bz - az) * t / L - 3, az + (bz - az) * t / L + 3]);
     }
     if (a.plaza) {
       const pl = new THREE.Mesh(new THREE.CircleGeometry(a.plaza.r, 40, -Math.PI / 2, Math.PI), pave);
       pl.rotation.order = "YXZ"; pl.rotation.set(-Math.PI / 2, THREE.MathUtils.degToRad(a.plaza.rot || 0), 0);
       pl.position.set(a.plaza.x, -0.18, a.plaza.z);
-      group.add(pl);
+      group.add(worldUV(pl, 2.4));
       rects.push([a.plaza.x - a.plaza.r, a.plaza.x + a.plaza.r, a.plaza.z - a.plaza.r, a.plaza.z + a.plaza.r]);
     }
   }
   // 半円の広場から北への通路
   if (SITE.approachBranch) {
-    const b = SITE.approachBranch, pave = M(0xe6e2d8, { roughness: 1 });
+    const b = SITE.approachBranch, pave = new THREE.MeshStandardMaterial({ map: texPavers, roughness: 0.95 });
     const [[ax, az], [bx, bz]] = b.pts, L = Math.hypot(bx - ax, bz - az);
     const seg = new THREE.Mesh(new THREE.PlaneGeometry(b.w, L), pave);
     seg.rotation.order = "YXZ"; seg.rotation.set(-Math.PI / 2, Math.atan2(bx - ax, bz - az), 0);
     seg.position.set((ax + bx) / 2, -0.176, (az + bz) / 2);
-    group.add(seg);
+    group.add(worldUV(seg, 2.4));
     for (let t = 0; t <= L; t += 3) rects.push([ax + (bx - ax) * t / L - 2.5, ax + (bx - ax) * t / L + 2.5, az + (bz - az) * t / L - 2.5, az + (bz - az) * t / L + 2.5]);
   }
   // 土の広場（木は植えない）
@@ -1218,7 +1281,7 @@ export function buildSite(scene, SITE) {
   }
   // 構内の車路
   if (SITE.driveway) {
-    const dw = SITE.driveway, asph = M(0x6e7073, { roughness: 1 });
+    const dw = SITE.driveway, asph = matAsphalt;
     for (let i = 0; i + 1 < dw.pts.length; i++) {
       const [ax, az] = dw.pts[i], [bx, bz] = dw.pts[i + 1];
       const L = Math.hypot(bx - ax, bz - az);
@@ -1226,7 +1289,7 @@ export function buildSite(scene, SITE) {
       seg.rotation.order = "YXZ"; seg.rotation.set(-Math.PI / 2, Math.atan2(bx - ax, bz - az), 0);
       seg.position.set((ax + bx) / 2, -0.185 + i * 0.001, (az + bz) / 2);
       seg.receiveShadow = true;
-      group.add(seg);
+      group.add(worldUV(seg, 6));
       for (let t = 0; t <= L; t += 3) rects.push([ax + (bx - ax) * t / L - 3.5, ax + (bx - ax) * t / L + 3.5, az + (bz - az) * t / L - 3.5, az + (bz - az) * t / L + 3.5]);
     }
   }

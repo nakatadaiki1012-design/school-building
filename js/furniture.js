@@ -313,7 +313,8 @@ const alongX = (out, t, z, x0, x1, step, rot = Math.PI / 2) => {
 
 // 普通教室：前（-x側）に黒板と教卓、後ろにロッカー、机は 6列 × 7行
 // 普通教室は40人（6列×7行から、いちばん後ろの両はしの2席を除く）
-function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true } = {}) {
+// cols：横の列の数、rows：縦の列の数、back：後ろに空けるスペース（部屋の奥行きに対する割合）
+function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back = 0 } = {}) {
   const { x0, x1, z0, z1 } = R;
   out.push({ t: "blackboard", x: x0 + 0.12, z: (z0 + z1) / 2, rot: 0 });
   out.push({ t: "podium", x: x0 + 0.65, z: (z0 + z1) / 2, rot: 0 });
@@ -332,13 +333,13 @@ function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true } = {
   out.push({ t: "door", x: x1 - 1.0, z: z0 - 0.17, rot: 0 });
   // 窓側（南）のカーテン（柱のところにまとめてある）
   for (let x = x0 + 0.5; x < x1 - 0.3; x += 2.25) out.push({ t: "curtainPanel", x, z: z1 + 0.1, rot: 0 });
-  const dx0 = x0 + 2.2, dx1 = x1 - 1.3;
+  const dx0 = x0 + 2.2, dx1 = x1 - 1.3 - (x1 - x0) * back;
   const dz0 = z0 + 0.7, dz1 = z1 - 0.7;
   const rr = rows, cc = cols;
   const skip = rr * cc - seats; // いちばん後ろの列の両はしから空ける
   for (let i = 0; i < rr; i++) for (let j = 0; j < cc; j++) {
     if (i === rr - 1 && skip > 0 && (j < Math.ceil(skip / 2) || j >= cc - Math.floor(skip / 2))) continue;
-    const x = dx0 + (dx1 - dx0) * (i / (rr - 1));
+    const x = dx0 + Math.min(0.95, (dx1 - dx0) / Math.max(1, rr - 1)) * i;
     const z = dz0 + (dz1 - dz0) * (j / (cc - 1));
     // 椅子は少しずつずらして、使っている感じを出す
     const k = Math.sin(i * 12.9898 + j * 78.233) * 43758.5453, rnd = k - Math.floor(k);
@@ -571,14 +572,18 @@ function gym(out, R) {
 // 部屋の名前 → 置き方
 const LAYOUTS = [
   [/年\d+組/, classroom],
-  [/選択|オーラル|社会科教室/, (o, R) => classroom(o, R, { cols: 5, rows: 6, seats: 30, eboard: false })],
+  // 選択第1教室：横6列×縦5列、後ろに少しスペース。社会科教室：横6列×縦7列、後ろ3分の1が空いている
+  [/選択第１教室|選択第1教室/, (o, R) => classroom(o, R, { cols: 6, rows: 5, seats: 30, eboard: false, back: 0.12 })],
+  [/社会科教室/, (o, R) => classroom(o, R, { cols: 6, rows: 7, seats: 42, eboard: false, back: 0.33 })],
+  [/選択|オーラル/, (o, R) => classroom(o, R, { cols: 5, rows: 6, seats: 30, eboard: false })],
   [/STUDY HALL/, (o, R) => grid(o, "bigTable", R.x0 + 1.4, R.x1 - 1.4, R.z0 + 1.5, R.z1 - 1.5, 2, 2)],
   [/化学実験室|物理実験室|生物実験室/, (o, R) => lab(o, R)],
   [/調理室/, (o, R) => lab(o, R, "cookBench")],
   [/被服室/, sewing],
   [/コンピューター/, computers],
   [/視聴覚/, theater],
-  [/音楽室/, music],
+  // 音楽室：横8列×縦5列の机、黒板は北側、前のすみにピアノ
+  [/音楽室/, (o, R) => { classroom(o, R, { cols: 8, rows: 5, seats: 40, eboard: false }); o.push({ t: "piano", x: R.x0 + 1.6, z: R.z0 + 1.2, rot: 0 }); }],
   [/美術教室/, (o, R) => artroom(o, R)],
   [/工芸教室/, (o, R) => artroom(o, R)],
   [/^窯$/, (o, R) => o.push({ t: "kiln", x: (R.x0 + R.x1) / 2, z: (R.z0 + R.z1) / 2, rot: 0 })],

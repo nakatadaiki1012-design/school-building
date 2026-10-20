@@ -168,3 +168,21 @@ export const SCHOOL = {
   lng: 139.4983636,
   site: "https://www.pen-kanagawa.ed.jp/asao-h/",
 };
+
+// 校舎のまわりの施設。x, z はメートル（校舎の中心が 0、図面の上が -z）、rot は回転（度）
+// ※ 実際の位置がまだわからないので「仮の位置」です。航空写真と見比べて書きかえてください
+export const SITE = {
+  ground: { x: 92, z: 0, rot: 0, w: 70, d: 110 },
+  tennis: { x: 52, z: 72, rot: 0, courts: 2 },
+  bikes: { x: -8, z: 54, rot: 0, len: 28 },
+};
+
+export const SITE_INFO = [
+  { key: "ground", name: "グラウンド", desc: "体育の授業や運動部の活動に使うグラウンドです。" },
+  { key: "tennis", name: "テニスコート", desc: "テニス部の活動や体育の授業で使うテニスコートです。" },
+  { key: "bikes", name: "駐輪場", desc: "自転車で通学する生徒が自転車を止める場所です。" },
+];
+export const SITE_NOTE = "※ 場所は仮の位置です（実際の場所とは違うことがあります）。";
+
+// 航空写真の位置合わせ（画面の「位置合わせ」で調整した数字をここに書くと、全員の画面に反映されます）
+export const AERIAL_ALIGN = { rot: 0, x: 0, z: 0, scale: 1 };

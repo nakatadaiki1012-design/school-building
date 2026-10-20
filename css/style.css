@@ -126,6 +126,28 @@ main { position: fixed; inset: 0; }
 .legend ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
 .legend li { display: flex; align-items: center; gap: 6px; }
 
+/* ---------- 航空写真 ---------- */
+.aerial-box {
+  position: absolute; right: 16px; bottom: 18px; z-index: 12; max-width: 300px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+}
+.aerial-row { display: flex; gap: 6px; }
+.ghost.small { font-size: 13px; padding: 6px 10px; }
+.ghost.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.aerial-msg:empty, .credit[hidden] { display: none; }
+.aerial-msg, .credit { margin: 0; font-size: 12px; background: rgba(255,255,255,0.9); padding: 4px 10px; border-radius: 8px; }
+#align-panel[hidden] { display: none; }
+#align-panel {
+  background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); padding: 10px 14px; width: 300px;
+  display: grid; gap: 6px; font-size: 13px;
+}
+#align-panel label { display: grid; grid-template-columns: 48px 1fr 44px; align-items: center; gap: 6px; }
+#align-panel output { text-align: right; font-variant-numeric: tabular-nums; }
+#align-panel code { font-size: 12px; background: #eef1f4; padding: 2px 6px; border-radius: 4px; user-select: all; }
+#align-panel .muted { margin: 0; font-size: 12px; }
+body.aerial-on .wing-label.site { display: none !important; }
+.wing-label.site { background: rgba(47, 106, 70, 0.85); }
+
 /* ---------- 情報パネル ---------- */
 #panel {
   position: absolute; top: 76px; right: 16px; bottom: 16px; z-index: 15; width: 340px;
@@ -189,6 +211,8 @@ dialog::backdrop { background: rgba(20, 30, 40, 0.45); }
   .floor-bar { left: 10px; top: 112px; transform: none; }
   .floor-btn { width: 52px; height: 40px; font-size: 14px; }
   .legend { display: none; }
+  .aerial-box { bottom: 74px; right: 10px; }
+  #align-panel { width: min(300px, calc(100vw - 20px)); }
   .view-bar { bottom: 14px; gap: 8px; }
   .check { font-size: 12px; }
   #panel {

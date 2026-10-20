@@ -3,7 +3,9 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ROOMS_RAW } from "./data.js";
-import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL } from "./info.js";
+import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN } from "./info.js";
+import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
+import { buildSite, createAerial } from "./site.js";
 
 // ---------- 寸法（メートル） ----------
 const CW = 1.5;   // 図面の1列の幅
@@ -112,7 +114,7 @@ const sun = new THREE.DirectionalLight(0xfff4e0, 2.2);
 sun.position.set(70, 110, 55);
 sun.castShadow = true;
 sun.shadow.mapSize.set(4096, 4096);
-Object.assign(sun.shadow.camera, { left: -90, right: 90, top: 90, bottom: -90, near: 10, far: 320 });
+Object.assign(sun.shadow.camera, { left: -140, right: 140, top: 140, bottom: -140, near: 10, far: 400 });
 sun.shadow.bias = -0.0005;
 sun.shadow.normalBias = 0.04;
 scene.add(sun);
@@ -362,7 +364,8 @@ const MAT_WALL = {
   gym3: wallMat(texGymHigh),
 };
 
-const layers = { exterior: {}, roofs: {}, cut: {}, slab: {}, rooms: {}, labels: {} };
+const layers = { exterior: {}, roofs: {}, cut: {}, slab: {}, rooms: {}, labels: {}, furniture: {} };
+const y0OfFloor = (f) => base(f);
 const buildingGroup = new THREE.Group();
 scene.add(buildingGroup);
 
@@ -497,7 +500,13 @@ for (const [c0, r0, c1, r1] of OPEN_COURTS) {
   scene.add(m);
 }
 
+// グラウンド・テニスコート・駐輪場
+const site = buildSite(scene, SITE);
+const aerial = createAerial(scene, SCHOOL);
+
 // 木（建物のまわりに並べる。位置は雰囲気を出すための飾り）
+const trees = new THREE.Group();
+scene.add(trees);
 {
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
@@ -507,7 +516,7 @@ for (const [c0, r0, c1, r1] of OPEN_COURTS) {
     for (let dc = -3; dc <= 3; dc++) for (let dr = -3; dr <= 3; dr++) {
       for (const f of [1, 2]) if (OCC[f].has(key(c + dc, r + dr))) return false;
     }
-    return true;
+    return site.isFree(x, z);
   };
   for (let i = 0; i < 400 && spots.length < 90; i++) {
     const side = Math.floor(rnd() * 4);
@@ -530,7 +539,7 @@ for (const [c0, r0, c1, r1] of OPEN_COURTS) {
     crown.setMatrixAt(i, m4);
   });
   trunk.castShadow = crown.castShadow = true;
-  scene.add(trunk, crown);
+  trees.add(trunk, crown);
 }
 
 // ---------- 部屋（フロア表示） ----------
@@ -545,14 +554,27 @@ for (const f of [1, 2, 3]) {
     const isOpen = r.cat === "open";
     const isCourt = /光庭/.test(r.name);
     const color = new THREE.Color(CATEGORIES[r.cat].color);
+    // 床の模様（木の床・タイル・畳・体育館のコート）
+    let map = r.kind === "stairs" ? texStairs : null;
+    let tint = color;
+    if (!isOpen && r.kind !== "stairs") {
+      const st = floorStyle(r.name);
+      map = FLOOR_TEX[st].clone();
+      map.needsUpdate = true;
+      if (st === "gym") { map.center.set(0.5, 0.5); map.rotation = Math.PI / 2; tint = new THREE.Color(0xffffff); }
+      else if (st === "tatami") { map.repeat.set(r.w / 3.6, r.d / 3.6); tint = new THREE.Color(0xffffff); }
+      else if (st === "tile") map.repeat.set(r.w / 1.2, r.d / 1.2);
+      else map.repeat.set(r.w / 4, r.d / 4);
+    }
     const mat = new THREE.MeshStandardMaterial({
-      color, roughness: 0.85,
-      map: r.kind === "stairs" ? texStairs : null,
+      color: tint, roughness: 0.85,
+      map,
       transparent: isOpen, opacity: isCourt ? 0.0 : isOpen ? 0.35 : 1,
       depthWrite: !isOpen,
     });
-    const tile = new THREE.Mesh(new THREE.BoxGeometry(r.w - 0.14, 0.14, r.d - 0.14), mat);
-    tile.position.set(r.cx, y + 0.08, r.cz);
+    const th = /ステージ/.test(r.name) ? 1.0 : 0.14; // ステージは高くする
+    const tile = new THREE.Mesh(new THREE.BoxGeometry(r.w - 0.14, th, r.d - 0.14), mat);
+    tile.position.set(r.cx, y + 0.01 + th / 2, r.cz);
     tile.receiveShadow = true;
     tile.userData.room = r;
     r.mesh = tile;
@@ -591,6 +613,10 @@ for (const f of [1, 2, 3]) {
     pm.castShadow = true; pm.receiveShadow = true;
     grp.add(pm);
   }
+  // 家具
+  const furn = buildFurniture(ROOMS.filter((x) => x.floor === f && x.kind === "room"), y0OfFloor(f));
+  layers.furniture[f] = furn;
+  grp.add(furn);
   layers.rooms[f] = grp;
   layers.labels[f] = lbl;
   scene.add(grp, lbl);
@@ -608,6 +634,19 @@ for (const w of WINGS) {
   const [c0, r0, c1, r1] = w.area;
   const top = w.id === "wg" ? 3 * FH + 4 : 3 * FH + 2.5;
   obj.position.set((X(c0) + X(c1 + 1)) / 2, top, (Z(r0) + Z(r1 + 1)) / 2);
+  wingLabels.add(obj);
+}
+// まわりの施設のラベル
+for (const it of SITE_INFO) {
+  const cfg = SITE[it.key];
+  if (!cfg) continue;
+  const div = document.createElement("div");
+  div.className = "wing-label site";
+  div.textContent = it.name;
+  div.addEventListener("pointerdown", (e) => e.stopPropagation());
+  div.addEventListener("click", (e) => { e.stopPropagation(); showSite(it); });
+  const obj = new CSS2DObject(div);
+  obj.position.set(cfg.x, 5, cfg.z);
   wingLabels.add(obj);
 }
 scene.add(wingLabels);
@@ -655,7 +694,7 @@ function setFloor(f, { keepCamera = false } = {}) {
   applyMode();
   useCamera();
   if (!keepCamera) {
-    if (f === 0) flyTo(new THREE.Vector3(55, 75, 95), new THREE.Vector3(0, 4, 0));
+    if (f === 0) flyTo(new THREE.Vector3(80, 95, 135), new THREE.Vector3(18, 0, 8));
     else if (state.view === "3d") flyTo(new THREE.Vector3(10, base(f) + 85, 70), new THREE.Vector3(0, base(f), 4));
     else fit2d();
   }
@@ -770,6 +809,18 @@ function showWing(w) {
   flyTo(new THREE.Vector3(cx + 30, 45, cz + 45), new THREE.Vector3(cx, 5, cz));
 }
 
+function showSite(it) {
+  const cfg = SITE[it.key];
+  panelBody.innerHTML = `
+    <div class="chip" style="--c:#cfe3c4">屋外の施設</div>
+    <h2>${it.name}</h2>
+    <p class="desc">${it.desc}</p>
+    <p class="muted">${SITE_NOTE}</p>
+  `;
+  openPanel();
+  flyTo(new THREE.Vector3(cfg.x + 25, 40, cfg.z + 45), new THREE.Vector3(cfg.x, 0, cfg.z));
+}
+
 function openPanel() { panel.classList.add("open"); }
 function closePanel() {
   panel.classList.remove("open");
@@ -851,6 +902,52 @@ document.querySelectorAll(".floor-btn").forEach((b) => b.addEventListener("click
 document.querySelectorAll(".view-btn").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
 let labelsOn = true;
 document.getElementById("labels-toggle").addEventListener("change", (e) => { labelsOn = e.target.checked; applyMode(); });
+document.getElementById("furniture-toggle").addEventListener("change", (e) => {
+  for (const f of [1, 2, 3]) layers.furniture[f].visible = e.target.checked;
+});
+
+// ---------- 航空写真 ----------
+const ALIGN_KEY = "asao-aerial-align";
+let align = { ...AERIAL_ALIGN };
+try { Object.assign(align, JSON.parse(localStorage.getItem(ALIGN_KEY) || "{}")); } catch { /* 保存なし */ }
+aerial.setAlign(align);
+const aerialBtn = document.getElementById("aerial-btn");
+const alignPanel = document.getElementById("align-panel");
+const aerialMsg = document.getElementById("aerial-msg");
+function setAerial(on) {
+  aerial.holder.visible = on;
+  ground.visible = paving.visible = trees.visible = site.group.visible = !on;
+  aerialBtn.classList.toggle("active", on);
+  document.body.classList.toggle("aerial-on", on);
+  document.getElementById("aerial-credit").hidden = !on;
+  if (!on) { alignPanel.hidden = true; return; }
+  aerialMsg.textContent = "航空写真を読み込み中…";
+  aerial.load().then(() => { aerialMsg.textContent = ""; })
+    .catch(() => { aerialMsg.textContent = "航空写真を読み込めませんでした（インターネット接続を確認してください）"; });
+}
+aerialBtn.addEventListener("click", () => setAerial(!aerial.holder.visible));
+document.getElementById("align-open").addEventListener("click", () => { alignPanel.hidden = !alignPanel.hidden; });
+const alignInputs = alignPanel.querySelectorAll("input[type=range]");
+function showAlign() {
+  alignInputs.forEach((inp) => {
+    inp.value = align[inp.name];
+    inp.nextElementSibling.textContent = Number(align[inp.name]).toFixed(inp.name === "scale" ? 2 : 1);
+  });
+  document.getElementById("align-code").textContent = `rot: ${align.rot}, x: ${align.x}, z: ${align.z}, scale: ${align.scale}`;
+}
+alignInputs.forEach((inp) => inp.addEventListener("input", () => {
+  align[inp.name] = Number(inp.value);
+  aerial.setAlign(align);
+  showAlign();
+  try { localStorage.setItem(ALIGN_KEY, JSON.stringify(align)); } catch { /* 保存できない環境 */ }
+}));
+document.getElementById("align-reset").addEventListener("click", () => {
+  align = { ...AERIAL_ALIGN };
+  aerial.setAlign(align);
+  showAlign();
+  try { localStorage.removeItem(ALIGN_KEY); } catch { /* 保存できない環境 */ }
+});
+showAlign();
 
 // 凡例
 document.getElementById("legend-list").innerHTML = Object.values(CATEGORIES)

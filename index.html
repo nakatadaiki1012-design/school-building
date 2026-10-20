@@ -51,7 +51,8 @@
         <button class="view-btn" data-view="3d">3D</button>
         <button class="view-btn" data-view="2d">2D<span class="txt">（平面図）</span></button>
       </div>
-      <label class="check"><input type="checkbox" id="labels-toggle" checked> 名前を表示</label>
+      <label class="check"><input type="checkbox" id="labels-toggle" checked> 名前</label>
+      <label class="check"><input type="checkbox" id="furniture-toggle" checked> 家具</label>
     </div>
 
     <p id="floor-note" class="floor-note"></p>
@@ -60,6 +61,24 @@
       <summary>色の見かた</summary>
       <ul id="legend-list"></ul>
     </details>
+
+    <div class="aerial-box">
+      <div class="aerial-row">
+        <button id="aerial-btn" class="ghost">🛰️ 航空写真</button>
+        <button id="align-open" class="ghost small">位置合わせ</button>
+      </div>
+      <p id="aerial-msg" class="aerial-msg"></p>
+      <p id="aerial-credit" class="credit" hidden>航空写真：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a></p>
+      <div id="align-panel" hidden>
+        <p class="muted">校舎と航空写真の建物が重なるように調整してください（1階を「2D」で見ると合わせやすいです）。</p>
+        <label>回転<input type="range" name="rot" min="-180" max="180" step="0.5"><output></output></label>
+        <label>左右<input type="range" name="x" min="-200" max="200" step="0.5"><output></output></label>
+        <label>上下<input type="range" name="z" min="-200" max="200" step="0.5"><output></output></label>
+        <label>大きさ<input type="range" name="scale" min="0.6" max="1.6" step="0.01"><output></output></label>
+        <p class="muted">合わせたら、この数字を教えてください：<br><code id="align-code"></code></p>
+        <button id="align-reset" class="ghost small">元に戻す</button>
+      </div>
+    </div>
 
     <aside id="panel" aria-live="polite">
       <button id="panel-close" class="close" aria-label="閉じる">×</button>
@@ -87,9 +106,11 @@
       <li><b>3D / 2D</b>：2Dにすると、上から見た平面図（案内図）になります。</li>
       <li><b>動かし方</b>：ドラッグで回転、右ドラッグ（スマホは2本指）で移動、ホイール（スマホはピンチ）で拡大・縮小。</li>
       <li><b>検索</b>：上の検索欄に「職員室」「2-4」などと入れると、その場所へ移動します。</li>
+      <li><b>航空写真</b>：右下の「航空写真」で、本物の航空写真（国土地理院）を地面に表示できます。「位置合わせ」で校舎と写真の位置を合わせられます。</li>
+      <li><b>家具</b>：各階の表示では、教室の机・椅子・黒板、実験台、本棚なども表示されます。下の「家具」のチェックで消せます。</li>
       <li><b>リンク</b>：部屋の紹介にある「リンクをコピー」で、その部屋を開いた状態のURLを共有できます（QRコードにして掲示するのもおすすめです）。</li>
     </ul>
-    <p class="muted">部屋の位置・大きさは学校の校舎配置図（Excel）から読み取っています。階段の位置と、外壁の窓・まわりの木は見やすさのためのイメージです。</p>
+    <p class="muted">部屋の位置・大きさは学校の校舎配置図（Excel）から読み取っています。階段の位置、家具の並び、外壁の窓・まわりの木は見やすさのためのイメージです。グラウンド・テニスコート・駐輪場は仮の位置です。</p>
   </dialog>
 
   <script type="module" src="js/app.js"></script>

@@ -848,7 +848,15 @@ function buildHouses(SITE) {
 export function buildNeighborJHS({ ground, building }) {
   const g = new THREE.Group();
   const [gx, gz, gw, gd, rot] = ground;
-  const gm = new THREE.Mesh(new THREE.PlaneGeometry(gw, gd), M(0xc4b59a, { roughness: 1 }));
+  // 土の模様と、トラックの白線（かんたんに）
+  const gtex = canvasTex(256, 128, (c, W, H) => {
+    c.fillStyle = "#c4b59a"; c.fillRect(0, 0, W, H);
+    for (let i = 0; i < 5000; i++) { c.fillStyle = `rgba(${Math.random() < 0.5 ? "255,255,255" : "70,60,45"},${Math.random() * 0.08})`; c.fillRect(Math.random() * W, Math.random() * H, 2, 2); }
+    c.strokeStyle = "rgba(255,255,255,0.55)"; c.lineWidth = 1.5;
+    const r = H * 0.32;
+    c.beginPath(); c.moveTo(W * 0.3, H / 2 - r); c.lineTo(W * 0.7, H / 2 - r); c.arc(W * 0.7, H / 2, r, -Math.PI / 2, Math.PI / 2); c.lineTo(W * 0.3, H / 2 + r); c.arc(W * 0.3, H / 2, r, Math.PI / 2, Math.PI * 1.5); c.stroke();
+  });
+  const gm = new THREE.Mesh(new THREE.PlaneGeometry(gw, gd), new THREE.MeshStandardMaterial({ map: gtex, roughness: 1 }));
   gm.rotation.order = "YXZ"; gm.rotation.set(-Math.PI / 2, THREE.MathUtils.degToRad(rot), 0);
   // 斜面でも地面に埋もれないよう、四すみでいちばん高い所に合わせて平らな箱にする
   const a = THREE.MathUtils.degToRad(rot);

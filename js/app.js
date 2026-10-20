@@ -1241,19 +1241,24 @@ scene.add(outdoor);
   // 2階は吹き抜け。3階の床の裏（天井）と、それを支える2階分の高さの柱
   const low = [], high = [];
   const box = (list, bw2, bh2, bd, x, y, z) => { const g = new THREE.BoxGeometry(bw2, bh2, bd); g.translate(x, y, z); list.push(g); };
+  // 柱は茶色（写真）。床の裏は白
+  const cols = [];
   // 2階の渡り廊下の床の裏と、吹き抜けの上の3階の床の裏
   const bx0 = X(PILOTIS.bridge[0]), bx1 = X(PILOTIS.bridge[1] + 1);
   box(low, bx1 - bx0, 0.4, d, (bx0 + bx1) / 2, FH - 0.2, (rc.z0 + rc.z1) / 2);
   box(high, bx0 - rc.x0, 0.4, d, (rc.x0 + bx0) / 2, 2 * FH - 0.2, (rc.z0 + rc.z1) / 2);
   for (let z = rc.z0 + 3; z < rc.z1 - 1; z += 4.5) {
     for (const x of [rc.x0 + 0.4, (rc.x0 + bx0) / 2]) {
-      box(low, 0.6, FH, 0.6, x, FH / 2 - 0.2, z);
+      box(cols, 0.6, FH, 0.6, x, FH / 2 - 0.2, z);
       box(high, 0.6, FH, 0.6, x, FH * 1.5 - 0.2, z);
     }
     // 渡り廊下を支える柱（中庭側と吹き抜け側）
-    box(low, 0.5, FH, 0.5, bx1 - 0.3, FH / 2 - 0.2, z);
-    box(low, 0.5, FH, 0.5, bx0 + 0.3, FH / 2 - 0.2, z);
+    box(cols, 0.5, FH, 0.5, bx1 - 0.3, FH / 2 - 0.2, z);
+    box(cols, 0.5, FH, 0.5, bx0 + 0.3, FH / 2 - 0.2, z);
   }
+  const cm = new THREE.Mesh(mergeGeometries(cols), new THREE.MeshStandardMaterial({ color: 0x7a4b38, roughness: 0.85 }));
+  cm.castShadow = cm.receiveShadow = true;
+  inBlock(layers.exterior[1], b).add(cm);
   for (const [list, f] of [[low, 1], [high, 2]]) {
     const m = new THREE.Mesh(mergeGeometries(list), matRelief);
     m.castShadow = m.receiveShadow = true;

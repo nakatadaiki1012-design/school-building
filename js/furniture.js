@@ -416,16 +416,20 @@ function meeting(out, R) {
   }
 }
 
+// 図書室：本棚は東側に南北の向きでならび、閲覧の机は西側
 function library(out, R) {
   const { x0, x1, z0, z1 } = R;
-  alongX(out, "shelf", z0 + 0.25, x0 + 0.5, x1 - 0.5, 0.92, Math.PI / 2);
-  along(out, "shelf", x0 + 0.25, z0 + 1.0, z1 - 0.5, 0.92, 0);
-  // 低い本棚の列
-  for (let i = 0; i < 3; i++) alongX(out, "lowShelf", z0 + 2.3 + i * 1.6, x0 + 1.5, x0 + (x1 - x0) * 0.45, 0.92, Math.PI / 2);
-  // 閲覧テーブル
-  grid(out, "bigTable", x0 + (x1 - x0) * 0.58, x1 - 2.0, z0 + 2.6, z1 - 1.6, 3, 2, Math.PI / 2);
+  const xm = x0 + (x1 - x0) * 0.45;
+  // 東の壁ぞいの本棚と、東半分に南北にのびる本棚の列
+  along(out, "shelf", x1 - 0.25, z0 + 0.5, z1 - 0.5, 0.92, Math.PI);
+  for (let x = xm + 1.2; x < x1 - 1.4; x += 1.7) {
+    along(out, "shelf", x - 0.2, z0 + 1.5, z1 - 1.5, 0.92, 0);
+    along(out, "shelf", x + 0.2, z0 + 1.5, z1 - 1.5, 0.92, Math.PI);
+  }
+  // 西側の閲覧テーブル
+  grid(out, "bigTable", x0 + 1.8, xm - 1.2, z0 + 2.2, z1 - 2.2, 2, 3, 0);
   for (const o of out.filter((p) => p.t === "bigTable" && p.x >= x0 && p.x <= x1 && p.z >= z0 && p.z <= z1)) {
-    for (const s of [-1, 1]) for (const k of [-0.7, 0, 0.7]) out.push({ t: "chair", x: o.x + k, z: o.z + s * 0.9, rot: s > 0 ? -Math.PI / 2 : Math.PI / 2 });
+    for (const s of [-1, 1]) for (const k of [-0.7, 0, 0.7]) out.push({ t: "chair", x: o.x + s * 0.9, z: o.z + k, rot: s > 0 ? 0 : Math.PI });
   }
 }
 

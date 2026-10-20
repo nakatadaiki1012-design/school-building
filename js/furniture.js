@@ -796,7 +796,14 @@ const LAYOUTS = [
     }
   }],
   [/作法室/, (o, R) => { o.push({ t: "zataku", x: (R.x0 + R.x1) / 2, z: (R.z0 + R.z1) / 2, rot: 0 }); o.push({ t: "tokonoma", x: R.x0 + 0.3, z: (R.z0 + R.z1) / 2, rot: 0 }); }],
-  [/正面玄関/, (o, R) => { o.push({ t: "umbrella", x: R.x1 - 0.5, z: R.z0 + 0.8, rot: Math.PI }); along(o, "shoeRack", R.x0 + 0.3, R.z1 - 2.6, R.z1 - 0.9, 1.8, 0); }],
+  // 正面玄関：西の壁ぞいいっぱいに下駄箱、東（入口）側に丸テーブルと椅子4つ、北東のすみに傘立て
+  [/正面玄関/, (o, R) => {
+    o.push({ t: "umbrella", x: R.x1 - 0.5, z: R.z0 + 0.8, rot: Math.PI });
+    along(o, "shoeRack", R.x0 + 0.3, R.z0 + 0.9, R.z1 - 0.9, 1.8, 0);
+    const tx = R.x1 - 2.4, tz = (R.z0 + R.z1) / 2 + 0.8;
+    o.push({ t: "roundTable", x: tx, z: tz, rot: 0 });
+    for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) o.push({ t: "chair", x: tx + Math.cos(a) * 0.75, z: tz + Math.sin(a) * 0.75, rot: a });
+  }],
 ];
 
 // 黒板・教卓を北側に置く特別教室（普通教室は図面の左＝西側が前）

@@ -1056,12 +1056,14 @@ scene.add(outdoor);
     flatRect(px0, px1, pz0, pz1, pink, -0.188);
   }
   const planter = matHedge;
-  for (const [x, z] of [[-8.6, 20.5], [-7.8, 27]]) {
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.8, 0.6, 20), planter);
-    m.position.set(x, 0.1, z);
-    m.receiveShadow = true;
-    outdoor.add(m);
-  }
+  // 図書室の棟と中央のあいだのレンガの広場の植え込み（航空写真をなぞった形）
+  // 北：こんもりした丸い木のかたまり、南：だ円形の植え込み
+  outdoor.add(hedgeMass([[-12.7, 20.7, 1.7], [-10, 21.3, 1.6], [-9.1, 18.6, 1.5], [-12.4, 18.2, 1.6], [-10.8, 19.8, 1.6]], 2.6));
+  outdoor.add(hedgeMass([[-10.8, 27.1, 1.3], [-8.6, 26.6, 1.5], [-6.6, 27.2, 1.3], [-9.6, 28.0, 1.3], [-7.6, 28.0, 1.2]], 1.5));
+  // 広場の色ちがいの舗装（こげ茶の四角）
+  const dark = new THREE.MeshStandardMaterial({ color: 0x6e4a3e, roughness: 1 });
+  flatRect(-16.3, -8.5, 13.3, 15.8, dark, -0.186);
+  flatRect(-6.6, -4.95, 12.6, 18.6, dark, -0.186);
   // 1号館と2号館のあいだの中庭（アスファルト、十字の通路、植え込み）
   const court = new THREE.MeshStandardMaterial({ color: 0x77777a, roughness: 1 });
   flatRect(10.3, 49, -8.3, 8.1, court, -0.19);
@@ -1131,7 +1133,7 @@ scene.add(outdoor);
   }
   rounded(11.5, 20.6, 4.8, 7.6);    // 南西：2号館ぞいの生け垣
   // 3号館の北の壁の外ぞいの、丸く刈った低木の列（廊下に入らないよう壁の外へ）
-  for (const [x0, x1, z, step] of [[-16, 3, 31.9, 1.9]]) {
+  for (const [x0, x1, z, step] of [[-14.6, -5.6, 32.2, 1.8]]) {
     for (let x = x0; x <= x1; x += step) {
       const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.85, 2), matHedge);
       b.scale.set(1, 0.75, 1); b.position.set(x, 0.45, z);
@@ -1274,7 +1276,6 @@ scene.add(trees);
     for (const off of offsets) for (let t = 0; t < L; t += step) if (site.isFree(ax + ux * t + nx * off, az + uz * t + nz * off)) columnar.push([ax + ux * t + nx * off, az + uz * t + nz * off, 0.9 + ((t * 7) % 3) * 0.08]);
   }
   // 体育館と校舎のあいだの広場の丸い植え込みの木
-  spots.push([-8.6, 20.5, 0.75], [-7.8, 27, 0.75]);
   // 庭園の木
   for (const [x, z] of SITE.garden?.trees || []) spots.push([x, z, 0.7]);
   // 木（葉のかたまりを重ねた形）と、並木の細長い木

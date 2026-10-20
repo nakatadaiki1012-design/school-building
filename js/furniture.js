@@ -442,10 +442,10 @@ function office(out, R, perIsland = 6) {
   }
 }
 
-// 事務室：南側に6人がけの島が1つ（南北に長い）。島の西に、東を向いた事務長席
+// 事務室：北東に6人がけの島が1つ（南北に長い）。島の南のはし（お誕生日席）に、北を向いた事務長席
 function jimu(out, R) {
   const { x0, x1, z0, z1 } = R;
-  const cx = (x0 + x1) / 2 + 0.6, cz = z1 - 2.3;
+  const cx = x1 - 1.9, cz = z0 + 2.2;
   for (let k = 0; k < 3; k++) {
     const z = cz - 1.1 + k * 1.1;
     for (const s of [-1, 1]) {
@@ -454,10 +454,9 @@ function jimu(out, R) {
       out.push({ t: "officeChair", x: cx + s * 1.15, z, rot: s > 0 ? 0 : Math.PI });
     }
   }
-  // 事務長席：島の西で、島のほう（東）を向く
-  const xc = cx - 3.2;
-  out.push({ t: "officeDesk", x: xc, z: cz, rot: Math.PI }, { t: "monitor", x: xc + 0.15, z: cz, rot: 0 });
-  out.push({ t: "officeChair", x: xc - 0.8, z: cz, rot: Math.PI });
+  const zc = cz + 1.1 + 0.95, R90 = Math.PI * 1.5;
+  out.push({ t: "officeDesk", x: cx, z: zc, rot: R90 }, { t: "monitor", x: cx, z: zc - 0.15, rot: Math.PI / 2 });
+  out.push({ t: "officeChair", x: cx, z: zc + 0.8, rot: R90 });
 }
 
 // 職員室：西側は、北から「通路・ロッカー・机・椅子・通路・椅子・机・机・椅子・通路」の列が東西にのびる（4つずつ3まとまり）
@@ -800,7 +799,7 @@ const LAYOUTS = [
   [/正面玄関/, (o, R) => {
     o.push({ t: "umbrella", x: R.x1 - 0.5, z: R.z0 + 0.8, rot: Math.PI });
     along(o, "shoeRack", R.x0 + 0.3, R.z0 + 0.9, R.z1 - 0.9, 1.8, 0);
-    const tx = R.x1 - 2.4, tz = (R.z0 + R.z1) / 2 + 0.8;
+    const tx = R.x1 - 2.4, tz = R.z0 + 1.1; // 北の壁ぎわまで寄せる
     o.push({ t: "roundTable", x: tx, z: tz, rot: 0 });
     for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) o.push({ t: "chair", x: tx + Math.cos(a) * 0.75, z: tz + Math.sin(a) * 0.75, rot: a });
   }],

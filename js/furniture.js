@@ -868,6 +868,11 @@ export function buildFurniture(rooms, y) {
         items.push({ t: "vending", x: pos[0] + (along ? 0 : o), z: pos[1] + (along ? o : 0), rot: pos[2] });
       }
     }
+    // 外への出入口の両引き戸（doors: 向きのリスト）。壁のまんなかに置く
+    for (const d of r.doors || []) {
+      const p = { n: [r.cx, r.cz - r.d / 2, 0], s: [r.cx, r.cz + r.d / 2, 0], e: [r.cx + r.w / 2, r.cz, Math.PI / 2], w: [r.cx - r.w / 2, r.cz, Math.PI / 2] }[d];
+      items.push({ t: "door", x: p[0], z: p[1], rot: p[2] });
+    }
     const fn = LAYOUTS.find(([re]) => re.test(r.name));
     if (!fn) continue;
     const list = [];

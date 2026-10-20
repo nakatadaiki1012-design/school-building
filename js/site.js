@@ -1232,6 +1232,13 @@ export function buildSite(scene, SITE) {
   }
   // でこぼこの植え込み（写真の形をなぞったもの）
   for (const hm of SITE.hedgeMasses || []) {
+    // poly で形を書いたときは、その中を丸い葉のかたまりでうめる
+    if (hm.poly && !hm.blobs) {
+      hm.blobs = [];
+      const bb = polyBounds(hm.poly);
+      for (let x = bb.x0 + 0.6; x <= bb.x1; x += 1.6) for (let z = bb.z0 + 0.6; z <= bb.z1; z += 1.6) if (inPoly(x, z, hm.poly)) hm.blobs.push([x, z, 1.25]);
+    }
+    if (hm.trees) group.add(buildTrees(hm.trees.map(([x, z, sc]) => [x, -0.2, z, sc])));
     const m = hedgeMass(hm.blobs, hm.h);
     m.position.y = -0.2;
     group.add(m);

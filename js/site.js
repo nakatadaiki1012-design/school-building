@@ -907,7 +907,7 @@ export function offsetBoundary(boundary) {
     if (inPoly(x + nx * 0.5, z + nz * 0.5, boundary)) { nx = -nx; nz = -nz; }
     // 外が高い（北）ところは、ほぼ垂直な石積みの壁。外が低い（南・西）ところは斜めの石積み
     const H = terrainH(x, z);
-    const w = H > 0 ? Math.max(2.8, H * 0.5) : Math.max(0.4, -H * SLOPE_RUN);
+    const w = H > 0 ? Math.max(0.6, H * 0.3) : Math.max(0.4, -H * SLOPE_RUN); // 外が高いところは、ほぼ垂直な石積み
     out.push([x + nx * w, z + nz * w]);
   }
   return out;

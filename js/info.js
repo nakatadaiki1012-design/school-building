@@ -437,7 +437,7 @@ export const ROOM_STYLE = [
   { name: "ラウンジ", floor: 3, open: ["s"] }, // 3階にも同じラウンジがある
   // STUDY HALL：階段側（南）以外はガラス張り
   { name: "STUDY HALL", floor: 2, glass: ["n", "e", "w"] },
-  { name: "ホール", floor: 1, open: ["n", "s", "e", "w"], vending: "w" }, // 南の昇降口のとなりのホール：壁なし、西の壁ぎわに自販機
+  { name: "ホール", floor: 1, open: ["n", "s", "e", "w"], vending: "w", noLabel: true }, // 南の昇降口のとなりのホール：壁なし、西の壁ぎわに自販機、名前は出さない
 ];
 
 // 外壁を作らない場所（通り抜けの出入口）[階, c0, r0, c1, r1]

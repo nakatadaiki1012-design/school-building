@@ -678,8 +678,10 @@ function principal(out, R) {
 
 function entrance(out, R) {
   const { x0, x1, z0, z1 } = R;
-  // 下駄箱をならべる
-  for (let x = x0 + 1.0; x < x1 - 0.8; x += 1.4) {
+  // 下駄箱は4列（列のあいだを広くあける）
+  const n = 4, step = (x1 - x0) / n;
+  for (let i = 0; i < n; i++) {
+    const x = x0 + step * (i + 0.5);
     for (let z = z0 + 1.2; z < z1 - 1.0; z += 1.9) out.push({ t: "shoeRack", x, z, rot: 0 });
   }
 }

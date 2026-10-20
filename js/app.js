@@ -1470,6 +1470,7 @@ for (const f of [1, 2, 3]) {
     }
 
     if (r.kind === "part") continue; // ラベルは元の部屋だけ
+    if (styleOf(r)?.noLabel) continue; // 名前を出さない場所（昇降口のとなりのホール）
     // ラベル
     const div = document.createElement("div");
     const small = r.w < 4.2 || r.d < 3;

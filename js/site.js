@@ -301,7 +301,7 @@ function buildPool(cfg) {
   deck.receiveShadow = true; deck.castShadow = true;
   g.add(deck);
   const [wx0, wx1, wz0, wz1] = cfg.water;
-  const lanes = 7;
+  const lanes = cfg.lanes || 6;
   const tex = canvasTex(256, 512, (c, W, H) => {
     const gr = c.createLinearGradient(0, 0, W, H);
     gr.addColorStop(0, "#5fb2ea"); gr.addColorStop(1, "#4a9fdc");

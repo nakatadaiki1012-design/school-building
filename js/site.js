@@ -236,20 +236,19 @@ function buildTennisArea({ w, d }) {
     c.fillStyle = "#d8c39a"; c.fillRect(0, 0, W, H);
     for (let i = 0; i < 9000; i++) { c.fillStyle = `rgba(${Math.random() > 0.5 ? "255,255,255" : "120,90,50"},${Math.random() * 0.1})`; c.fillRect(Math.random() * W, Math.random() * H, 2, 2); }
     c.strokeStyle = "rgba(255,255,255,0.95)"; c.lineWidth = 2;
+    // 写真：ネットは区画を分けるフェンスと平行（東西むき）。コートの長い向きは南北で、2面が東西にならぶ
     for (let k = 0; k < 2; k++) {
-      const cy = (H / 2) * (k + 0.5), cx = W / 2;
-      const L = 23.77 * S, Wd = 10.97 * S, si = 1.37 * S, sv = 6.4 * S;
-      c.strokeRect(cx - L / 2, cy - Wd / 2, L, Wd);
+      const cx = (W / 2) * (k + 0.5), cy = H / 2;
+      const L = Math.min(23.77 * S, H - 8), Wd = 10.97 * S, si = 1.37 * S, sv = 6.4 * S * (L / (23.77 * S));
+      c.strokeRect(cx - Wd / 2, cy - L / 2, Wd, L);
       c.beginPath();
-      c.moveTo(cx - L / 2, cy - Wd / 2 + si); c.lineTo(cx + L / 2, cy - Wd / 2 + si);
-      c.moveTo(cx - L / 2, cy + Wd / 2 - si); c.lineTo(cx + L / 2, cy + Wd / 2 - si);
-      c.moveTo(cx - sv, cy - Wd / 2 + si); c.lineTo(cx - sv, cy + Wd / 2 - si);
-      c.moveTo(cx + sv, cy - Wd / 2 + si); c.lineTo(cx + sv, cy + Wd / 2 - si);
-      c.moveTo(cx - sv, cy); c.lineTo(cx + sv, cy);
+      c.moveTo(cx - Wd / 2 + si, cy - L / 2); c.lineTo(cx - Wd / 2 + si, cy + L / 2);
+      c.moveTo(cx + Wd / 2 - si, cy - L / 2); c.lineTo(cx + Wd / 2 - si, cy + L / 2);
+      c.moveTo(cx - Wd / 2 + si, cy - sv); c.lineTo(cx + Wd / 2 - si, cy - sv);
+      c.moveTo(cx - Wd / 2 + si, cy + sv); c.lineTo(cx + Wd / 2 - si, cy + sv);
+      c.moveTo(cx, cy - sv); c.lineTo(cx, cy + sv);
       c.stroke();
     }
-    c.strokeStyle = "rgba(255,255,255,0.6)";
-    c.beginPath(); c.moveTo(0, H / 2); c.lineTo(W, H / 2); c.stroke();
   });
   const p = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }));
   p.rotation.x = -Math.PI / 2;
@@ -258,8 +257,8 @@ function buildTennisArea({ w, d }) {
   g.add(p);
   const netMat = M(0xf2f2f2);
   for (const k of [-1, 1]) {
-    const net = new THREE.Mesh(new THREE.BoxGeometry(0.04, 1.0, 12.8), netMat);
-    net.position.set(0, 0.5, (k * d) / 4);
+    const net = new THREE.Mesh(new THREE.BoxGeometry(12.8, 1.0, 0.04), netMat);
+    net.position.set((k * w) / 4, 0.5, 0);
     net.castShadow = true;
     g.add(net);
   }
@@ -576,16 +575,29 @@ export function buildNeighborJHS({ ground, building }) {
   const [gx, gz, gw, gd, rot] = ground;
   const gm = new THREE.Mesh(new THREE.PlaneGeometry(gw, gd), M(0xc4b59a, { roughness: 1 }));
   gm.rotation.order = "YXZ"; gm.rotation.set(-Math.PI / 2, THREE.MathUtils.degToRad(rot), 0);
-  gm.position.set(gx, terrainH(gx, gz) - 0.15, gz);
+  // 斜面でも地面に埋もれないよう、四すみでいちばん高い所に合わせて平らな箱にする
+  const a = THREE.MathUtils.degToRad(rot);
+  const hs = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([i, j]) => terrainH(gx + (i * gw / 2) * Math.cos(a) + (j * gd / 2) * Math.sin(a), gz - (i * gw / 2) * Math.sin(a) + (j * gd / 2) * Math.cos(a)));
+  const top = Math.max(...hs) - 0.15, bot = Math.min(...hs) - 1;
+  gm.position.set(gx, top, gz);
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(gw, top - bot, gd), M(0x9a9a8e, { roughness: 1 }));
+  pad.position.set(gx, (top + bot) / 2 - 0.02, gz); pad.rotation.y = a;
+  g.add(pad);
   g.add(gm);
   const [bx, bz, bw, bd, h, brot] = building;
   const body = new THREE.Mesh(new THREE.BoxGeometry(bw, h, bd), M(0xeeebe4));
   body.position.set(bx, terrainH(bx, bz) - 0.25 + h / 2, bz);
   body.rotation.y = THREE.MathUtils.degToRad(brot);
-  const top = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.4, 0.6, bd + 0.4), M(0x9aa0a4));
-  top.position.set(bx, terrainH(bx, bz) - 0.25 + h, bz);
-  top.rotation.y = body.rotation.y;
-  for (const m of [body, top]) { m.castShadow = m.receiveShadow = true; g.add(m); }
+  const cap = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.4, 0.6, bd + 0.4), M(0x9aa0a4));
+  cap.position.set(bx, terrainH(bx, bz) - 0.25 + h, bz);
+  cap.rotation.y = body.rotation.y;
+  for (const m of [body, cap]) { m.castShadow = m.receiveShadow = true; g.add(m); }
+  // 窓の帯（4階分）
+  for (let k = 0; k < 4; k++) {
+    const w = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.06, 1.2, bd + 0.06), M(0x5d7184, { roughness: 0.4 }));
+    w.position.set(bx, terrainH(bx, bz) - 0.25 + 1.6 + k * 3.1, bz); w.rotation.y = body.rotation.y; w.scale.x = 0.96;
+    g.add(w);
+  }
   return g;
 }
 
@@ -903,6 +915,22 @@ export function buildSite(scene, SITE) {
       group.add(seg);
       for (let t = 0; t <= L; t += 3) rects.push([ax + (bx - ax) * t / L - 3.5, ax + (bx - ax) * t / L + 3.5, az + (bz - az) * t / L - 3.5, az + (bz - az) * t / L + 3.5]);
     }
+  }
+  // 植え込み
+  for (const [x0, x1, z0, z1, h] of SITE.hedges || []) {
+    const hb = hedgeBox(x1 - x0, h, z1 - z0); hb.position.set((x0 + x1) / 2, -0.2, (z0 + z1) / 2); group.add(hb);
+    rects.push([x0 - 1, x1 + 1, z0 - 1, z1 + 1]);
+  }
+  // 庭園（レンガ敷き）
+  if (SITE.garden) {
+    const bbG = polyBounds(SITE.garden.poly);
+    const t = canvasTex(256, 256, (c, W, H) => {
+      c.fillStyle = "#9a5a44"; c.fillRect(0, 0, W, H);
+      for (let y = 0, r = 0; y < H; y += 12, r++) for (let x = (r % 2) * 12; x < W; x += 24) { const v = Math.random() * 24 - 12; c.fillStyle = `rgb(${160 + v},${95 + v * 0.6},${75 + v * 0.5})`; c.fillRect(x + 1, y + 1, 22, 10); }
+    });
+    t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 3);
+    group.add(flatPoly(SITE.garden.poly, new THREE.MeshStandardMaterial({ map: t, roughness: 1 }), -0.18, bbG));
+    rects.push([bbG.x0, bbG.x1, bbG.z0, bbG.z1]);
   }
   // ごみ捨て場（コンクリートの床、緑の網のかこい、屋根）
   if (SITE.garbage) {

@@ -1145,6 +1145,8 @@ scene.add(trees);
   }
   // 体育館と校舎のあいだの広場の丸い植え込みの木
   spots.push([-8.6, 20.5, 0.75], [-7.8, 27, 0.75]);
+  // 庭園の木
+  for (const [x, z] of SITE.garden?.trees || []) spots.push([x, z, 0.7]);
   // 木（葉のかたまりを重ねた形）と、並木の細長い木
   trees.add(buildTrees(spots.map(([x, z, sc]) => [x, 0, z, sc * 0.85])));
   trees.add(buildColumnTrees(columnar.map(([x, z, sc]) => [x, 0, z, sc])));

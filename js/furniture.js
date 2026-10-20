@@ -365,17 +365,23 @@ function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back
 }
 const BAG_COLORS = [0x1f2a44, 0x2b2b2b, 0x3a5a8c, 0x6b2e2e, 0x2f4f3f, 0x444c56];
 
-function lab(out, R, bench = "labBench") {
+// lengthwise：台を縦長（前後にのびる向き）に置き、長い辺の両側に椅子を2つずつ（調理室・被服室）
+function lab(out, R, bench = "labBench", lengthwise = false) {
   const { x0, x1, z0, z1 } = R;
   out.push({ t: "blackboard", x: x0 + 0.12, z: (z0 + z1) / 2, rot: 0 });
   out.push({ t: "teacherDesk", x: x0 + 1.1, z: (z0 + z1) / 2, rot: 0 });
-  const nx = Math.max(1, Math.floor((x1 - x0 - 2.5) / 2.4));
-  const nz = Math.max(1, Math.floor((z1 - z0 - 1.0) / 2.9));
+  const nx = Math.max(1, Math.floor((x1 - x0 - 2.5) / (lengthwise ? 3.2 : 2.4)));
+  const nz = Math.max(1, Math.floor((z1 - z0 - 1.0) / (lengthwise ? 3.0 : 2.9)));
   for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
     const x = x0 + 2.8 + (i + 0.5) * ((x1 - x0 - 3.2) / nx);
     const z = z0 + 0.5 + (j + 0.5) * ((z1 - z0 - 1.0) / nz);
-    out.push({ t: bench, x, z, rot: 0 });
-    for (const s of [-1, 1]) for (const k of [-0.6, 0.6]) out.push({ t: "stool", x: x + s * 0.9, z: z + k, rot: 0 });
+    if (lengthwise) {
+      out.push({ t: bench, x, z, rot: Math.PI / 2 });
+      for (const s of [-1, 1]) for (const k of [-0.55, 0.55]) out.push({ t: "stool", x: x + k, z: z + s * 0.95, rot: 0 });
+    } else {
+      out.push({ t: bench, x, z, rot: 0 });
+      for (const s of [-1, 1]) for (const k of [-0.6, 0.6]) out.push({ t: "stool", x: x + s * 0.9, z: z + k, rot: 0 });
+    }
   }
 }
 
@@ -468,7 +474,8 @@ function computers(out, R) {
   out.push({ t: "officeChair", x: x0 + 1.9, z: cz - 0.7, rot: 0 });
   out.push({ t: "bigTable", x: x0 + 1.2, z: cz + 1.4, rot: 0 });
   const cols = 6, rows = 7;
-  const dx0 = x0 + 3.0, dx1 = x1 - 0.9, dz0 = z0 + 0.6, dz1 = z1 - 0.6;
+  // うしろ4分の1くらいは空けておく
+  const dx0 = x0 + 3.0, dx1 = x1 - 0.9 - (x1 - x0) * 0.25, dz0 = z0 + 0.6, dz1 = z1 - 0.6;
   for (let i = 0; i < rows; i++) for (let j = 0; j < cols; j++) {
     const x = dx0 + ((dx1 - dx0) * i) / (rows - 1), z = dz0 + ((dz1 - dz0) * j) / (cols - 1);
     out.push({ t: "desk", x, z, rot: 0 });
@@ -582,9 +589,9 @@ function shop(out, R) {
 }
 
 function sewing(out, R) {
-  lab(out, R, "bigTable");
+  lab(out, R, "bigTable", true);
   for (const o of out.filter((p) => p.t === "bigTable" && p.x >= R.x0 && p.x <= R.x1 && p.z >= R.z0 && p.z <= R.z1)) {
-    for (const k of [-0.7, 0.7]) out.push({ t: "sewing", x: o.x, z: o.z + k, rot: 0 });
+    for (const k of [-0.6, 0.6]) for (const s of [-1, 1]) out.push({ t: "sewing", x: o.x + k, z: o.z + s * 0.35, rot: s > 0 ? Math.PI : 0 });
   }
 }
 
@@ -604,7 +611,7 @@ const LAYOUTS = [
   [/選択|オーラル/, (o, R) => classroom(o, R, { cols: 5, rows: 6, seats: 30, eboard: false })],
   [/STUDY HALL/, (o, R) => grid(o, "bigTable", R.x0 + 1.4, R.x1 - 1.4, R.z0 + 1.5, R.z1 - 1.5, 2, 2)],
   [/化学実験室|物理実験室|生物実験室/, (o, R) => lab(o, R)],
-  [/調理室/, (o, R) => lab(o, R, "cookBench")],
+  [/調理室/, (o, R) => lab(o, R, "cookBench", true)],
   [/被服室/, sewing],
   [/コンピューター/, computers],
   [/視聴覚/, theater],

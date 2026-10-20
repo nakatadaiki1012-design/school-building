@@ -3,7 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ROOMS_RAW } from "./data.js";
-import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE } from "./info.js";
+import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
 import { buildSite, createAerial, flatPoly, polyBounds, inPoly } from "./site.js";
 
@@ -19,6 +19,36 @@ const base = (f) => (f - 1) * FH;
 const rectOf = (o) => ({ x0: X(o.c0), x1: X(o.c1 + 1), z0: Z(o.r0), z1: Z(o.r1 + 1) });
 const key = (c, r) => c + "," + r;
 const inCells = (c, r, [c0, r0, c1, r1]) => c >= c0 && c <= c1 && r >= r0 && r <= r1;
+
+// ---------- 航空写真のトレース（棟ごとの位置合わせ） ----------
+// 建物は図面の座標で作り、棟ごとのグループに「拡大縮小＋移動」をかけて、航空写真で測った位置に置く
+const BLOCK_LIST = BLOCKS.map((b) => {
+  const [c0, r0, c1, r1] = b.cells, [wx0, wz0, wx1, wz1] = b.world;
+  const sx = (wx1 - wx0) / (X(c1 + 1) - X(c0)), sz = (wz1 - wz0) / (Z(r1 + 1) - Z(r0));
+  return { ...b, sx, sz, ox: wx0 - X(c0) * sx, oz: wz0 - Z(r0) * sz };
+});
+const IDENT = { id: "_", cells: [0, 0, -1, -1], sx: 1, sz: 1, ox: 0, oz: 0 };
+const blockAtCell = (c, r) => BLOCK_LIST.find((b) => inCells(c, r, b.cells)) || IDENT;
+const blockAtPoint = (x, z) => blockAtCell(Math.floor(x / CW + C_MID), Math.floor(z / RH + R_MID));
+const blockById = (id) => BLOCK_LIST.find((b) => b.id === id) || IDENT;
+const toWorld = (x, z, b = blockAtPoint(x, z)) => [b.ox + x * b.sx, b.oz + z * b.sz];
+// 実際の位置（メートル）から図面の座標へ
+function toDrawing(x, z) {
+  const b = BLOCK_LIST.find((k) => x >= k.world[0] - 0.5 && x <= k.world[2] + 0.5 && z >= k.world[1] - 0.5 && z <= k.world[3] + 0.5);
+  return b ? [(x - b.ox) / b.sx, (z - b.oz) / b.sz] : [x, z];
+}
+// parent の中に、その棟の変換をかけたグループを作る（同じ棟なら使い回す）
+function inBlock(parent, b) {
+  const map = (parent.userData.blocks ||= {});
+  if (!map[b.id]) {
+    const g = new THREE.Group();
+    g.position.set(b.ox, 0, b.oz);
+    g.scale.set(b.sx, 1, b.sz);
+    parent.add(g);
+    map[b.id] = g;
+  }
+  return map[b.id];
+}
 
 // ---------- 部屋データ ----------
 const ROOMS = ROOMS_RAW.map((r) => {
@@ -41,6 +71,11 @@ ROOMS.forEach((r) => {
   r.w = rc.x1 - rc.x0;
   r.d = rc.z1 - rc.z0;
   const ccx = (r.c0 + r.c1) / 2, ccr = (r.r0 + r.r1) / 2;
+  // 航空写真に合わせたあとの位置と大きさ
+  r.block = blockAtCell(Math.floor(ccx), Math.floor(ccr));
+  [r.wx, r.wz] = toWorld(r.cx, r.cz, r.block);
+  r.ww = r.w * r.block.sx;
+  r.wd = r.d * r.block.sz;
   r.wing = WINGS.find((w) => ccx >= w.area[0] && ccx <= w.area[2] + 1 && ccr >= w.area[1] && ccr <= w.area[3] + 1);
 });
 const ROOM_BY_ID = Object.fromEntries(ROOMS.map((r) => [r.id, r]));
@@ -471,6 +506,17 @@ function solarPanels(rects, y) {
 const matSlab = new THREE.MeshStandardMaterial({ color: 0xeeebe4, roughness: 0.95 });
 const wallMat = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.82, metalness: 0.0 });
 const matStack = new THREE.MeshStandardMaterial({ map: texStack, roughness: 0.8 });
+const cutMats = {};
+function cutMat(style) {
+  if (!cutMats[style]) {
+    const src = (MAT_WALL[style] || MAT_WALL.school).map;
+    const t = src.clone();
+    t.needsUpdate = true;
+    t.repeat.set(1, 1.3 / FH);
+    cutMats[style] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, side: THREE.DoubleSide });
+  }
+  return cutMats[style];
+}
 const matTower = new THREE.MeshStandardMaterial({ map: texTower, roughness: 0.8 });
 const MAT_WALL = {
   school: wallMat(texSchool),
@@ -486,22 +532,46 @@ const buildingGroup = new THREE.Group();
 scene.add(buildingGroup);
 
 for (const f of [1, 2, 3]) {
-  // 外壁の色分け（info.js の FACADE で設定）
+  // 外壁の色分け（info.js の FACADE で設定）。棟の境目で壁を分けるため、棟の名前もつけておく
   const facade = (c, r, d, style) => {
-    if (style === "gym") return "gym" + f;
-    if (style === "high") return "high";
-    if (OPEN_COURTS.some((rc) => inCells(c + d.dc, r + d.dr, rc))) return "school"; // 光庭のまわりは白
-    if (FACADE.brick.some((rc) => inCells(c, r, rc))) return "brick";
-    if (d.dc !== 0 && FACADE.endWallWings.some((rc) => inCells(c, r, rc))) return "brick"; // 棟の東西の端
-    return "school";
+    const b = blockAtCell(c, r).id;
+    if (style === "gym") return "gym" + f + "|" + b;
+    if (style === "high") return "high|" + b;
+    if (OPEN_COURTS.some((rc) => inCells(c + d.dc, r + d.dr, rc))) return "school|" + b; // 光庭のまわりは白
+    if (FACADE.brick.some((rc) => inCells(c, r, rc))) return "brick|" + b;
+    if (d.dc !== 0 && FACADE.endWallWings.some((rc) => inCells(c, r, rc))) return "brick|" + b; // 棟の東西の端
+    return "school|" + b;
   };
   const segs = boundarySegments(OCC[f], facade);
+  const segsByBlock = {};
+  for (const sg of segs) {
+    const [st, b] = sg.style.split("|");
+    sg.style = st;
+    (segsByBlock[b] ||= []).push(sg);
+  }
   const ext = new THREE.Group();
-  const byStyle = {};
-  for (const s of segs) (byStyle[s.style] ||= []).push(s);
-  // 白い壁の立体感：窓のあいだの柱と、各階の床の位置の庇（ひさし）
-  ext.add(wallRelief(segs, f));
-  // 白い丸い階段塔
+  const cut = new THREE.Group();
+  for (const [bid, list] of Object.entries(segsByBlock)) {
+    const b = blockById(bid);
+    const holder = inBlock(ext, b);
+    const byStyle = {};
+    for (const sg of list) (byStyle[sg.style] ||= []).push(sg);
+    for (const [st, l2] of Object.entries(byStyle)) {
+      const m = new THREE.Mesh(wallGeometry(l2, base(f), FH), MAT_WALL[st] || MAT_WALL.school);
+      m.castShadow = true; m.receiveShadow = true;
+      holder.add(m);
+    }
+    // 白い壁の立体感：窓のあいだの柱と、各階の床の位置の庇（ひさし）
+    holder.add(wallRelief(list, f));
+    // 切断した壁（フロア表示用）
+    // 外の壁は窓の下の部分まで見えるように、外壁の模様の下の方を使う
+    for (const [st, l2] of Object.entries(byStyle)) {
+      const cm = new THREE.Mesh(wallGeometry(l2, base(f), 1.3), cutMat(st));
+      cm.castShadow = true; cm.receiveShadow = true;
+      inBlock(cut, b).add(cm);
+    }
+  }
+  // 白い丸い階段塔（位置は実際のメートル）
   for (const t of FACADE.roundStairs) {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(t.r, t.r, FH, 28), t.tower ? matTower : matStack);
     m.position.set(t.x, base(f) + FH / 2, t.z);
@@ -514,17 +584,8 @@ for (const f of [1, 2, 3]) {
       ext.add(cap);
     }
   }
-  for (const [st, list] of Object.entries(byStyle)) {
-    const m = new THREE.Mesh(wallGeometry(list, base(f), FH), MAT_WALL[st] || MAT_WALL.school);
-    m.castShadow = true; m.receiveShadow = true;
-    ext.add(m);
-  }
   layers.exterior[f] = ext;
   buildingGroup.add(ext);
-
-  // 切断した壁（フロア表示用）
-  const cut = new THREE.Mesh(wallGeometry(segs, base(f), 1.3), matPlain);
-  cut.castShadow = true; cut.receiveShadow = true;
   layers.cut[f] = cut;
   buildingGroup.add(cut);
 
@@ -532,20 +593,22 @@ for (const f of [1, 2, 3]) {
   const roofCells = new Set();
   for (const [k, st] of OCC[f]) {
     if (st === "gym" && f === 3) continue;
+    if (f === 3 && st === "high") continue; // 図書室の棟は寄棟の屋根（別に作る）
     if (f === 3 || !OCC[f + 1].has(k)) roofCells.add(k);
   }
   const roof = new THREE.Group();
-  // 屋根の種類：中央棟は黒っぽい屋根、図書室の棟は寄棟の屋根（別に作る）、ほかは明るい灰色
-  const byKind = { dark: new Set(), light: new Set() };
-  for (const k of [...roofCells]) {
+  // 屋根の種類：中央棟の北半分は黒っぽい屋根（古い太陽光パネル）、ほかは明るい灰色。棟ごとに分ける
+  const groups = {};
+  for (const k of roofCells) {
     const [c, r] = k.split(",").map(Number);
-    if (f === 3 && OCC[f].get(k) === "high") { roofCells.delete(k); continue; }
-    // 航空写真では中央棟の北半分だけが黒っぽい屋根
-    byKind[c >= 33 && c <= 41 && r <= 26 ? "dark" : "light"].add(k);
+    const kind = c >= 33 && c <= 41 && r <= 26 ? "dark" : "light";
+    const gk = kind + "|" + blockAtCell(c, r).id;
+    (groups[gk] ||= new Set()).add(k);
   }
-  for (const [kind, set] of Object.entries(byKind)) {
+  for (const [gk, set] of Object.entries(groups)) {
+    const [kind, bid] = gk.split("|");
+    const holder = inBlock(roof, blockById(bid));
     const rects = cellsToRects(set);
-    if (!rects.length) continue;
     const geos = rects.map((r) => {
       const rc = rectOf(r);
       const g = new THREE.BoxGeometry(rc.x1 - rc.x0, 0.3, rc.z1 - rc.z0);
@@ -554,37 +617,48 @@ for (const f of [1, 2, 3]) {
     });
     const rm = new THREE.Mesh(mergeGeometries(geos), kind === "dark" ? matRoofDark : matRoof);
     rm.receiveShadow = true; rm.castShadow = true;
-    roof.add(rm);
+    holder.add(rm);
     // 1号館・2号館・3号館の屋上には太陽光パネルがある
-    if (f === 3 && kind === "light") roof.add(solarPanels(rects.map(rectOf), base(f) + FH + 0.3));
+    if (f === 3 && kind === "light" && ["w1", "w2", "w3"].includes(bid)) holder.add(solarPanels(rects.map(rectOf), base(f) + FH + 0.3));
   }
   if (roofCells.size) {
-    // パラペット（屋上のふち）
+    // パラペット（屋上のふち）。となりに同じ階の建物があるところには作らない
     const roofMap = new Map([...roofCells].map((k) => [k, "p"]));
-    const psegs = boundarySegments(roofMap).filter((s) => {
-      // となりに同じ階の建物があるところには作らない
-      const mx = (s.ax + s.bx) / 2 + s.n[0] * 0.3, mz = (s.az + s.bz) / 2 + s.n[1] * 0.3;
+    const psegs = boundarySegments(roofMap, (c, r) => blockAtCell(c, r).id).filter((sg) => {
+      const mx = (sg.ax + sg.bx) / 2 + sg.n[0] * 0.3, mz = (sg.az + sg.bz) / 2 + sg.n[1] * 0.3;
       const c = Math.floor(mx / CW + C_MID), r = Math.floor(mz / RH + R_MID);
       return !OCC[f].has(key(c, r));
     });
-    const pm = new THREE.Mesh(wallGeometry(psegs, base(f) + FH, 0.75), matParapet);
-    pm.castShadow = true;
-    roof.add(pm);
+    const byB = {};
+    for (const sg of psegs) (byB[sg.style] ||= []).push(sg);
+    for (const [bid, list] of Object.entries(byB)) {
+      const pm = new THREE.Mesh(wallGeometry(list, base(f) + FH, 0.75), matParapet);
+      pm.castShadow = true;
+      inBlock(roof, blockById(bid)).add(pm);
+    }
   }
   layers.roofs[f] = roof;
   buildingGroup.add(roof);
 
   // 床（フロア表示用）
-  const slabCells = new Set();
-  for (const [k, st] of OCC[f]) if (!(f === 3 && (st === "gym" || st === "high"))) slabCells.add(k);
-  const slabGeos = cellsToRects(slabCells).map((r) => {
-    const rc = rectOf(r);
-    const g = new THREE.BoxGeometry(rc.x1 - rc.x0, 0.25, rc.z1 - rc.z0);
-    g.translate((rc.x0 + rc.x1) / 2, base(f) - 0.1, (rc.z0 + rc.z1) / 2);
-    return g;
-  });
-  const slab = new THREE.Mesh(mergeGeometries(slabGeos), matSlab);
-  slab.receiveShadow = true;
+  const slab = new THREE.Group();
+  const slabSets = {};
+  for (const [k, st] of OCC[f]) {
+    if (f === 3 && (st === "gym" || st === "high")) continue;
+    const [c, r] = k.split(",").map(Number);
+    (slabSets[blockAtCell(c, r).id] ||= new Set()).add(k);
+  }
+  for (const [bid, set] of Object.entries(slabSets)) {
+    const geos = cellsToRects(set).map((r) => {
+      const rc = rectOf(r);
+      const g = new THREE.BoxGeometry(rc.x1 - rc.x0, 0.25, rc.z1 - rc.z0);
+      g.translate((rc.x0 + rc.x1) / 2, base(f) - 0.1, (rc.z0 + rc.z1) / 2);
+      return g;
+    });
+    const m = new THREE.Mesh(mergeGeometries(geos), matSlab);
+    m.receiveShadow = true;
+    inBlock(slab, blockById(bid)).add(m);
+  }
   layers.slab[f] = slab;
   buildingGroup.add(slab);
 }
@@ -607,7 +681,7 @@ for (const f of [1, 2, 3]) {
   geo.computeVertexNormals();
   const hip = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xd4917e, roughness: 0.75, side: THREE.DoubleSide }));
   hip.castShadow = hip.receiveShadow = true;
-  layers.roofs[3].add(hip);
+  inBlock(layers.roofs[3], blockById("art")).add(hip);
 }
 
 // 中央棟の屋上の設備（白い箱）
@@ -615,7 +689,7 @@ for (const [c, r] of [[36, 15], [36, 30]]) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(3, 1.6, 3), new THREE.MeshStandardMaterial({ color: 0xf2f2ee }));
   m.position.set(X(c), 3 * FH + 1.1, Z(r));
   m.castShadow = true;
-  layers.roofs[3].add(m);
+  inBlock(layers.roofs[3], blockById("spine")).add(m);
 }
 
 // 体育館の屋根：真ん中は茶色い金属の切妻屋根、北の端（ステージ側）と南の端（卓球場の上）は平らな屋根
@@ -668,7 +742,7 @@ const gymRoof = (() => {
   g.add(solarPanels([flat(32, 38, 0x8c8f92)], y0 + 0.3));
   return g;
 })();
-buildingGroup.add(gymRoof);
+inBlock(buildingGroup, blockById("gym")).add(gymRoof);
 
 // 体育館の外まわり：西側の通路（手すり壁つき）と北の端の外階段、南側の2階のテラスと外階段、1階の柱
 {
@@ -713,12 +787,13 @@ buildingGroup.add(gymRoof);
   stair(geos2, gx - 1, gz1 + tw / 2, gx + 8, gz1 + tw / 2, -0.2, ty, tw - 0.2);
   // 1階の南側の柱（柱が並ぶ吹きさらしの部分）
   for (let x = gx + 9; x < gxe; x += 4.2) box(geos2, 0.5, FH, 0.5, x, FH / 2 - 0.2, gz1 + 0.3);
-  for (const [list, layer] of [[geos1, 1], [geos2, 1]]) {
+  const gymHolder = inBlock(layers.exterior[1], blockById("gym"));
+  for (const list of [geos1, geos2]) {
     const m = new THREE.Mesh(mergeGeometries(list), white);
     m.castShadow = m.receiveShadow = true;
-    layers.exterior[layer].add(m);
+    gymHolder.add(m);
   }
-  layers.exterior[1].add(gymExtras);
+  gymHolder.add(gymExtras);
 }
 
 // ---------- 地面・植栽 ----------
@@ -756,11 +831,12 @@ scene.add(outdoor);
   const pinkTex = texPaving.clone(); pinkTex.needsUpdate = true; pinkTex.repeat.set(8, 8);
   const pink = new THREE.MeshStandardMaterial({ map: pinkTex, color: 0xe2a993, roughness: 1 });
   // 体育館と中央棟のあいだ、体育館の南、図書室の棟と中央棟のあいだ
-  flatRect(-13.5, -4.5, -19, 10, pink, -0.19);
-  flatRect(-38.9, -4.5, 5, 10, pink, -0.19);
-  flatRect(-15, -4.5, 10, 27.5, pink, -0.19);
+  // （位置は航空写真で測った実際のメートル）
+  flatRect(-13.4, -4.95, -14.9, 10.1, pink, -0.19);
+  flatRect(-43.5, -4.95, 2.7, 10.1, pink, -0.19);
+  flatRect(-16, -4.95, 10.1, 30.1, pink, -0.19);
   const planter = new THREE.MeshStandardMaterial({ color: 0x4f7d3a, roughness: 1 });
-  for (const [x, z] of [[-10, 17], [-9, 23.5]]) {
+  for (const [x, z] of [[-8.6, 20.5], [-7.8, 27]]) {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.8, 0.6, 20), planter);
     m.position.set(x, 0.1, z);
     m.receiveShadow = true;
@@ -768,13 +844,13 @@ scene.add(outdoor);
   }
   // 1号館と2号館のあいだの中庭（アスファルト、十字の通路、植え込み）
   const court = new THREE.MeshStandardMaterial({ color: 0x77777a, roughness: 1 });
-  flatRect(X(42), X(66), Z(32), Z(47), court, -0.19);
+  flatRect(10.3, 49, -8.3, 8.1, court, -0.19);
   const walk = new THREE.MeshStandardMaterial({ color: 0xe9e6de, roughness: 1 });
-  flatRect(24.5, 26.5, Z(32), Z(47), walk, -0.185);
-  flatRect(X(42), X(66), 2.5, 4.5, walk, -0.185);
+  flatRect(29, 30.8, -8.3, 8.1, walk, -0.185);
+  flatRect(10.3, 49, 1.0, 2.7, walk, -0.185);
   const hedge = new THREE.MeshStandardMaterial({ color: 0x4f7d3a, roughness: 1 });
   // 1号館ぞいと2号館ぞいの細い植え込み
-  for (const [x0, x1, z0, z1] of [[10, 44, -3.4, -2.4], [30, 44, 13.6, 14.6]]) {
+  for (const [x0, x1, z0, z1] of [[11.4, 45, -7.6, -6.2], [32, 45, 6.2, 7.4]]) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.9, z1 - z0), hedge);
     m.position.set((x0 + x1) / 2, 0.25, (z0 + z1) / 2);
     m.castShadow = m.receiveShadow = true;
@@ -785,8 +861,8 @@ scene.add(outdoor);
 // 中庭の東西の通路のまんなかにある、だ円形の植え込み
 {
   const m = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 0.9, 24), new THREE.MeshStandardMaterial({ color: 0x4a7a36, roughness: 1 }));
-  m.scale.set(5, 1, 1.4);
-  m.position.set(35, 0.25, 3.5);
+  m.scale.set(7.5, 1, 2.2);
+  m.position.set(38, 0.25, 0.3);
   m.castShadow = m.receiveShadow = true;
   outdoor.add(m);
 }
@@ -797,7 +873,7 @@ for (const [c0, r0, c1, r1] of OPEN_COURTS) {
   const m = new THREE.Mesh(new THREE.BoxGeometry(rc.x1 - rc.x0, 0.1, rc.z1 - rc.z0), new THREE.MeshStandardMaterial({ map: texGrass, color: 0xbfe0a0 }));
   m.position.set((rc.x0 + rc.x1) / 2, -0.12, (rc.z0 + rc.z1) / 2);
   m.receiveShadow = true;
-  scene.add(m);
+  inBlock(scene, blockAtCell(c0, r0)).add(m);
 }
 
 // グラウンド・テニスコート・駐輪場
@@ -812,10 +888,8 @@ scene.add(trees);
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   const spots = [];
   const ok = (x, z) => {
-    const c = Math.floor(x / CW + C_MID), r = Math.floor(z / RH + R_MID);
-    for (let dc = -3; dc <= 3; dc++) for (let dr = -3; dr <= 3; dr++) {
-      for (const f of [1, 2]) if (OCC[f].has(key(c + dc, r + dr))) return false;
-    }
+    // 建物（航空写真で測った各棟の範囲）のそばには植えない
+    if (BLOCK_LIST.some((b) => x > b.world[0] - 3 && x < b.world[2] + 3 && z > b.world[1] - 3 && z < b.world[3] + 3)) return false;
     return site.isFree(x, z);
   };
   // 敷地の中の、舗装していない場所（のり面・植え込み）に木を植える
@@ -826,7 +900,7 @@ scene.add(trees);
     if (ok(x, z)) { spots.push([x, z, 0.8 + rnd() * 0.6]); added++; }
   }
   // 中庭の木
-  spots.push([X(53.5), Z(23.5), 0.6]);
+  spots.push([...toWorld(X(53.5), Z(23.5)), 0.6]);
   // グラウンド北東の道路ぞいの並木（2列）
   {
     const { from: [ax, az], to: [bx2, bz2], offsets, step } = SITE.treeRow;
@@ -835,7 +909,7 @@ scene.add(trees);
     for (const off of offsets) for (let t = 0; t < L; t += step) spots.push([ax + ux * t + nx * off, az + uz * t + nz * off, 0.7]);
   }
   // 体育館と校舎のあいだの広場の丸い植え込みの木
-  spots.push([-10, 17, 0.75], [-9, 23.5, 0.75]);
+  spots.push([-8.6, 20.5, 0.75], [-7.8, 27, 0.75]);
   const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.18, 0.25, 2.4, 6), new THREE.MeshStandardMaterial({ color: 0x6b4f35 }), spots.length);
   const crown = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(2.2, 1), new THREE.MeshStandardMaterial({ color: 0x4f7d3a, roughness: 1, flatShading: true }), spots.length);
   const m4 = new THREE.Matrix4();
@@ -855,7 +929,7 @@ const matPartition = new THREE.MeshStandardMaterial({ color: 0xfaf8f3, roughness
 for (const f of [1, 2, 3]) {
   const grp = new THREE.Group();
   const lbl = new THREE.Group();
-  const walls = [];
+  const walls = {}; // 棟ごと
   for (const r of ROOMS.filter((x) => x.floor === f)) {
     const y = base(f);
     const isOpen = r.cat === "open";
@@ -886,7 +960,7 @@ for (const f of [1, 2, 3]) {
     tile.userData.room = r;
     r.mesh = tile;
     r.baseColor = color.clone();
-    grp.add(tile);
+    inBlock(grp, r.block).add(tile);
     pickables.push(tile);
 
     if (!isCourt && r.kind !== "stairs") {
@@ -898,7 +972,7 @@ for (const f of [1, 2, 3]) {
       ]) {
         const g = new THREE.BoxGeometry(w, h, d);
         g.translate(x, y + h / 2, z);
-        walls.push(g);
+        (walls[r.block.id] ||= []).push(g);
       }
     }
 
@@ -913,15 +987,18 @@ for (const f of [1, 2, 3]) {
     const obj = new CSS2DObject(div);
     obj.position.set(r.cx, y + 1.6, r.cz);
     r.label = div;
-    lbl.add(obj);
+    inBlock(lbl, r.block).add(obj);
   }
-  if (walls.length) {
-    const pm = new THREE.Mesh(mergeGeometries(walls), matPartition);
+  for (const [bid, list] of Object.entries(walls)) {
+    const pm = new THREE.Mesh(mergeGeometries(list), matPartition);
     pm.castShadow = true; pm.receiveShadow = true;
-    grp.add(pm);
+    inBlock(grp, blockById(bid)).add(pm);
   }
-  // 家具
-  const furn = buildFurniture(ROOMS.filter((x) => x.floor === f && x.kind === "room"), y0OfFloor(f));
+  // 家具（伸び縮みさせず、航空写真に合わせたあとの部屋の大きさで置く）
+  const furn = buildFurniture(
+    ROOMS.filter((x) => x.floor === f && x.kind === "room").map((x) => ({ name: x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd })),
+    y0OfFloor(f),
+  );
   layers.furniture[f] = furn;
   grp.add(furn);
   layers.rooms[f] = grp;
@@ -940,7 +1017,8 @@ for (const w of WINGS) {
   const obj = new CSS2DObject(div);
   const [c0, r0, c1, r1] = w.area;
   const top = w.id === "wg" ? 3 * FH + 4 : 3 * FH + 2.5;
-  obj.position.set((X(c0) + X(c1 + 1)) / 2, top, (Z(r0) + Z(r1 + 1)) / 2);
+  const [wx, wz] = toWorld((X(c0) + X(c1 + 1)) / 2, (Z(r0) + Z(r1 + 1)) / 2);
+  obj.position.set(wx, top, wz);
   wingLabels.add(obj);
 }
 // まわりの施設のラベル
@@ -963,7 +1041,7 @@ const state = { floor: 0, view: "3d", selected: null };
 // ラベル（HTML）はグループごと消しても残ることがあるので、1つずつ切り替える
 function setLabelsVisible(group, v) {
   group.visible = v;
-  group.children.forEach((o) => { o.visible = v; });
+  group.traverse((o) => { if (o.isCSS2DObject) o.visible = v; });
 }
 const visibleDeep = (o) => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
 
@@ -1041,7 +1119,7 @@ function nearest(r, test) {
   let best = null, bd = Infinity;
   for (const o of ROOMS) {
     if (o.floor !== r.floor || o === r || !test(o)) continue;
-    const d = Math.hypot(o.cx - r.cx, o.cz - r.cz);
+    const d = Math.hypot(o.wx - r.wx, o.wz - r.wz);
     if (d < bd) { bd = d; best = o; }
   }
   return best ? { room: best, dist: Math.round(bd / 5) * 5 || 5 } : null;
@@ -1062,12 +1140,12 @@ function selectRoom(r, { fly = true } = {}) {
   r.label?.classList.add("selected");
   if (fly) {
     if (state.view === "2d") {
-      controls2d.target.set(r.cx, 0, r.cz);
-      ortho.position.set(r.cx, 200, r.cz + 0.001);
+      controls2d.target.set(r.wx, 0, r.wz);
+      ortho.position.set(r.wx, 200, r.wz + 0.001);
       ortho.zoom = Math.max(ortho.zoom, 1.6);
       ortho.updateProjectionMatrix();
     } else {
-      flyTo(new THREE.Vector3(r.cx + 10, base(r.floor) + 26, r.cz + 26), new THREE.Vector3(r.cx, base(r.floor), r.cz));
+      flyTo(new THREE.Vector3(r.wx + 10, base(r.floor) + 26, r.wz + 26), new THREE.Vector3(r.wx, base(r.floor), r.wz));
     }
   }
   const cat = CATEGORIES[r.cat];
@@ -1111,7 +1189,7 @@ function showWing(w) {
   `;
   openPanel();
   const [c0, r0, c1, r1] = w.area;
-  const cx = (X(c0) + X(c1 + 1)) / 2, cz = (Z(r0) + Z(r1 + 1)) / 2;
+  const [cx, cz] = toWorld((X(c0) + X(c1 + 1)) / 2, (Z(r0) + Z(r1 + 1)) / 2);
   flyTo(new THREE.Vector3(cx + 30, 45, cz + 45), new THREE.Vector3(cx, 5, cz));
 }
 
@@ -1164,7 +1242,8 @@ labelRenderer.domElement.addEventListener("pointerup", (e) => {
     const hit = ray.intersectObjects(buildingGroup.children, true).find((h) => visibleDeep(h.object));
     if (hit) {
       const p = hit.point;
-      const c = p.x / CW + C_MID, r = p.z / RH + R_MID;
+      const [dx, dz] = toDrawing(p.x, p.z);
+      const c = dx / CW + C_MID, r = dz / RH + R_MID;
       const w = WINGS.find((w) => c >= w.area[0] - 0.5 && c <= w.area[2] + 1.5 && r >= w.area[1] - 0.5 && r <= w.area[3] + 1.5);
       if (w) showWing(w);
     }
@@ -1312,7 +1391,9 @@ function declutter() {
   const items = [];
   for (const g of groups) {
     if (!g.visible) continue;
-    for (const o of g.children) {
+    const objs = [];
+    g.traverse((o) => { if (o.isCSS2DObject) objs.push(o); });
+    for (const o of objs) {
       const el = o.element;
       if (el.style.display === "none") continue;
       const r = ROOMS.find((x) => x.label === el);

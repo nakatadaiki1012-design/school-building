@@ -32,15 +32,62 @@ const texBooks = canvasTex(128, 128, (g, w, h) => {
   }
 });
 
-const texBoard = canvasTex(256, 64, (g, w, h) => {
+// 黒板（チョークの字と、右はしの日付・日直）
+const texBoard = canvasTex(512, 160, (g, w, h) => {
   g.fillStyle = "#2f5a45"; g.fillRect(0, 0, w, h);
-  g.strokeStyle = "rgba(255,255,255,0.35)"; g.lineWidth = 1.5;
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 1500; i++) { g.fillStyle = `rgba(255,255,255,${Math.random() * 0.04})`; g.fillRect(Math.random() * w, Math.random() * h, 3, 1); }
+  g.strokeStyle = "rgba(255,255,255,0.55)"; g.lineWidth = 2;
+  for (let i = 0; i < 5; i++) {
     g.beginPath();
-    const y = 14 + i * 11;
-    g.moveTo(20 + Math.random() * 20, y);
-    g.lineTo(90 + Math.random() * 100, y + Math.random() * 2);
+    const y = 26 + i * 22;
+    g.moveTo(24, y); g.lineTo(150 + Math.random() * 180, y + Math.random() * 3);
     g.stroke();
+  }
+  g.fillStyle = "rgba(255,255,255,0.8)";
+  g.font = "bold 18px sans-serif";
+  g.fillText("10月20日（火）", w - 150, 30);
+  g.fillText("日直", w - 150, 70);
+  g.strokeStyle = "rgba(255,255,255,0.5)"; g.strokeRect(w - 156, 50, 130, 70);
+  g.fillStyle = "rgba(240,220,120,0.8)"; g.fillText("連絡", 24, h - 14);
+});
+
+// 掲示板（コルクにプリント）
+const texCork = canvasTex(256, 96, (g, w, h) => {
+  g.fillStyle = "#b98a57"; g.fillRect(0, 0, w, h);
+  for (let i = 0; i < 2500; i++) { g.fillStyle = `rgba(80,50,20,${Math.random() * 0.15})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+  const papers = ["#ffffff", "#fff6c9", "#e8f2ff", "#ffe3e3", "#ffffff"];
+  for (let i = 0; i < 9; i++) {
+    const x = 8 + (i % 5) * 50 + Math.random() * 6, y = 6 + Math.floor(i / 5) * 46 + Math.random() * 4;
+    g.fillStyle = papers[i % papers.length]; g.fillRect(x, y, 38, 36);
+    g.fillStyle = "rgba(0,0,0,0.35)";
+    for (let k = 0; k < 5; k++) g.fillRect(x + 4, y + 6 + k * 6, 20 + Math.random() * 10, 2);
+    g.fillStyle = "#d33"; g.fillRect(x + 17, y + 1, 4, 4);
+  }
+});
+
+// 時計の文字盤
+const texClock = canvasTex(128, 128, (g, w, h) => {
+  g.fillStyle = "#ffffff"; g.fillRect(0, 0, w, h);
+  g.strokeStyle = "#222"; g.lineWidth = 6; g.beginPath(); g.arc(64, 64, 58, 0, Math.PI * 2); g.stroke();
+  g.fillStyle = "#222";
+  for (let i = 0; i < 12; i++) { const a = (i / 12) * Math.PI * 2; g.fillRect(64 + Math.cos(a) * 48 - 2, 64 + Math.sin(a) * 48 - 2, 4, 4); }
+  g.lineWidth = 4; g.beginPath(); g.moveTo(64, 64); g.lineTo(64, 26); g.moveTo(64, 64); g.lineTo(92, 70); g.stroke();
+});
+
+// 引き戸（木の戸に、上の方にガラス）
+const texDoor = canvasTex(64, 128, (g, w, h) => {
+  g.fillStyle = "#a0764c"; g.fillRect(0, 0, w, h);
+  g.fillStyle = "rgba(0,0,0,0.12)"; for (let x = 0; x < w; x += 8) g.fillRect(x, 0, 1, h);
+  g.fillStyle = "#9cc3da"; g.fillRect(10, 12, w - 20, 44);
+  g.strokeStyle = "#6b4c2e"; g.lineWidth = 3; g.strokeRect(10, 12, w - 20, 44);
+  g.fillStyle = "#5a3e24"; g.fillRect(w - 12, 70, 4, 16);
+});
+
+// カーテン（クリーム色の布のひだ）
+const texCurtain = canvasTex(64, 64, (g, w, h) => {
+  for (let x = 0; x < w; x++) {
+    const v = 225 + Math.sin(x / 3) * 18;
+    g.fillStyle = `rgb(${v},${v - 8},${v - 30})`; g.fillRect(x, 0, 1, h);
   }
 });
 
@@ -123,6 +170,15 @@ const MAT = {
   blue: M(0xb8cce7),
   kiln: M(0x7c7f82, { metalness: 0.3 }),
   mat: M(0x3d6fb0),
+  cork: new THREE.MeshStandardMaterial({ map: texCork, roughness: 0.95 }),
+  clock: new THREE.MeshStandardMaterial({ map: texClock, roughness: 0.5 }),
+  door: new THREE.MeshStandardMaterial({ map: texDoor, roughness: 0.7 }),
+  curtain: new THREE.MeshStandardMaterial({ map: texCurtain, roughness: 1, side: THREE.DoubleSide }),
+  bag: M(0xffffff, { roughness: 0.9 }),      // 色は1つずつ変える
+  paper: M(0xf5f3ec, { roughness: 0.9 }),
+  mirror: M(0xcfd8de, { metalness: 0.9, roughness: 0.1 }),
+  red: M(0x9e1f2c, { roughness: 0.9 }),
+  gray: M(0x8e98a2),
 };
 
 // ---------- 家具の形（床に置いたとき、正面が -x 向き） ----------
@@ -206,6 +262,20 @@ const SHAPES = {
   mat: [[MAT.mat, merge([b(2.0, 0.05, 1.0)])]],
   sewing: [[MAT.white, merge([b(0.2, 0.3, 0.4, 0, 0.72)])]],
   cabinet: [[MAT.locker, merge([b(0.45, 1.8, 0.9)])]],
+  // 教室の小物
+  bulletin: [[MAT.cork, merge([b(0.03, 0.9, 2.4, 0, 1.25)])], [MAT.darkWood, merge([b(0.05, 0.05, 2.5, 0, 2.15), b(0.05, 0.05, 2.5, 0, 1.2)])]],
+  clock: [[MAT.clock, (() => { const g = new THREE.CylinderGeometry(0.17, 0.17, 0.05, 24); g.rotateZ(-Math.PI / 2); g.translate(0.03, 2.45, 0); return g; })()]],
+  tv: [[MAT.black, merge([b(0.08, 0.62, 1.05, 0.06, 1.75), b(0.05, 0.3, 0.1, 0.02, 2.35)])]],
+  door: [[MAT.door, merge([b(0.9, 1.95, 0.06)])], [MAT.darkWood, merge([b(1.0, 0.06, 0.1, 0, 1.95)])]],
+  curtainPanel: [[MAT.curtain, merge([b(0.7, 2.05, 0.05, 0, 0.3)])]],
+  cleanLocker: [[MAT.gray, merge([b(0.45, 1.8, 0.6)])]],
+  bag: [[MAT.bag, merge([b(0.1, 0.3, 0.34, 0, 0.32)])]],
+  books: [[MAT.paper, merge([b(0.21, 0.035, 0.3, 0, 0.71)])]],
+  laptop: [[MAT.black, merge([b(0.25, 0.02, 0.34, 0, 0.76), b(0.02, 0.22, 0.34, -0.12, 0.77)])]],
+  urinal: [[MAT.white, merge([b(0.32, 0.65, 0.38, 0, 0.4)])]],
+  mirror: [[MAT.mirror, merge([b(0.02, 0.8, 1.6, 0, 1.15)])]],
+  stageCurtain: [[MAT.red, merge([b(0.2, 3.2, 1.0)])]],
+  lectern: [[MAT.darkWood, merge([b(0.5, 1.1, 0.7)])]],
 };
 
 // ---------- 置き方 ----------
@@ -230,7 +300,19 @@ function classroom(out, R, { cols = 6, rows = 7 } = {}) {
   out.push({ t: "blackboard", x: x0 + 0.12, z: (z0 + z1) / 2, rot: 0 });
   out.push({ t: "podium", x: x0 + 0.65, z: (z0 + z1) / 2, rot: 0 });
   out.push({ t: "teacherDesk", x: x0 + 1.35, z: (z0 + z1) / 2, rot: 0, y: 0.18 });
-  along(out, "locker", x1 - 0.35, z0 + 0.3, z1 - 0.3, 0.95, Math.PI);
+  // 後ろのロッカー、廊下側（北）の角に掃除用具入れ
+  along(out, "locker", x1 - 0.35, z0 + 0.9, z1 - 0.3, 0.95, Math.PI);
+  out.push({ t: "cleanLocker", x: x1 - 0.35, z: z0 + 0.45, rot: 0 });
+  // 黒板の上の時計、前のすみのテレビ、後ろの掲示板、教卓のパソコン
+  out.push({ t: "clock", x: x0 + 0.08, z: (z0 + z1) / 2, rot: 0 });
+  out.push({ t: "tv", x: x0 + 0.08, z: z0 + 0.9, rot: 0 });
+  out.push({ t: "bulletin", x: x1 + 0.12, z: (z0 + z1) / 2, rot: 0 });
+  out.push({ t: "laptop", x: x0 + 1.35, z: (z0 + z1) / 2 + 0.2, rot: 0, y: 0.18 });
+  // 廊下側（北）の前と後ろの引き戸
+  out.push({ t: "door", x: x0 + 1.0, z: z0 - 0.17, rot: 0 });
+  out.push({ t: "door", x: x1 - 1.0, z: z0 - 0.17, rot: 0 });
+  // 窓側（南）のカーテン（柱のところにまとめてある）
+  for (let x = x0 + 0.5; x < x1 - 0.3; x += 2.25) out.push({ t: "curtainPanel", x, z: z1 + 0.1, rot: 0 });
   const dx0 = x0 + 2.6, dx1 = x1 - 1.6;
   const dz0 = z0 + 0.7, dz1 = z1 - 0.7;
   const rr = Math.max(2, Math.min(rows, Math.floor((dx1 - dx0) / 0.9) + 1));
@@ -238,10 +320,15 @@ function classroom(out, R, { cols = 6, rows = 7 } = {}) {
   for (let i = 0; i < rr; i++) for (let j = 0; j < cc; j++) {
     const x = dx0 + (dx1 - dx0) * (i / (rr - 1));
     const z = dz0 + (dz1 - dz0) * (j / (cc - 1));
+    // 椅子は少しずつずらして、使っている感じを出す
+    const k = Math.sin(i * 12.9898 + j * 78.233) * 43758.5453, rnd = k - Math.floor(k);
     out.push({ t: "desk", x, z, rot: 0 });
-    out.push({ t: "chair", x: x + 0.42, z, rot: 0 });
+    out.push({ t: "chair", x: x + 0.42 + rnd * 0.12, z: z + (rnd - 0.5) * 0.08, rot: (rnd - 0.5) * 0.3 });
+    if (rnd < 0.55) out.push({ t: "bag", x: x + 0.05, z: z + 0.33, rot: 0, col: BAG_COLORS[Math.floor(rnd * 97) % BAG_COLORS.length] });
+    if (rnd > 0.35) out.push({ t: "books", x: x - 0.02, z: z + (rnd - 0.5) * 0.15, rot: (rnd - 0.5) * 0.4 });
   }
 }
+const BAG_COLORS = [0x1f2a44, 0x2b2b2b, 0x3a5a8c, 0x6b2e2e, 0x2f4f3f, 0x444c56];
 
 function lab(out, R, bench = "labBench") {
   const { x0, x1, z0, z1 } = R;
@@ -374,9 +461,24 @@ function toilet(out, R) {
   if (z1 - z0 >= x1 - x0) {
     for (let z = z0 + 0.6; z < z1 - 1.2; z += 1.0) out.push({ t: "stall", x: x1 - 0.75, z, rot: Math.PI, y: 0.1 });
     out.push({ t: "sink", x: x0 + 0.35, z: (z0 + z1) / 2, rot: 0 });
+    out.push({ t: "mirror", x: x0 + 0.02, z: (z0 + z1) / 2, rot: 0 });
   } else {
     for (let x = x0 + 0.6; x < x1 - 0.6; x += 1.0) out.push({ t: "stall", x, z: z1 - 0.75, rot: -Math.PI / 2, y: 0.1 });
   }
+}
+
+// 小便器（男子トイレ。手洗いと反対側の壁に、ならべる）
+function urinals(out, R) {
+  const { x0, x1, z0, z1 } = R;
+  if (z1 - z0 >= x1 - x0) for (let z = z1 - 0.6; z > z0 + 1.2 && z > z1 - 3.4; z -= 0.8) out.push({ t: "urinal", x: x0 + 0.25, z, rot: 0 });
+}
+
+// 体育館のステージ（赤い幕と演台）。正面は南（体育館の側）
+function stage(out, R) {
+  const { x0, x1, z0, z1 } = R;
+  for (let x = x0 + 0.5; x < x0 + 3; x += 1) out.push({ t: "stageCurtain", x, z: z1 - 0.2, rot: Math.PI / 2, y: 0.85 });
+  for (let x = x1 - 0.5; x > x1 - 3; x -= 1) out.push({ t: "stageCurtain", x, z: z1 - 0.2, rot: Math.PI / 2, y: 0.85 });
+  out.push({ t: "lectern", x: (x0 + x1) / 2, z: z1 - 1.2, rot: 0, y: 0.85 });
 }
 
 function infirmary(out, R) {
@@ -469,7 +571,9 @@ const LAYOUTS = [
   [/売店/, shop],
   [/昇降口/, entrance],
   [/準備室|印刷室|放送室|生徒指導室|生徒会室|技能員室|進路資料室|整理室|資料室/, prep],
+  [/男子トイレ/, (o, R) => { toilet(o, R); urinals(o, R); }],
   [/トイレ/, toilet],
+  [/ステージ/, stage],
   [/卓球場/, pingpong],
   [/ウエイトルーム/, weights],
   [/^体育館$/, gym],
@@ -521,6 +625,7 @@ export function buildFurniture(rooms, y) {
         q.setFromAxisAngle(up, it.rot || 0);
         m4.compose(p, q, s);
         im.setMatrixAt(i, m4);
+        if (it.col !== undefined) im.setColorAt(i, new THREE.Color(it.col));
       });
       im.castShadow = true;
       im.receiveShadow = true;

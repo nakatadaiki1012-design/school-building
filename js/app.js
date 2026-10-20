@@ -3,7 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ROOMS_RAW } from "./data.js";
-import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN } from "./info.js";
+import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
 import { buildSite, createAerial } from "./site.js";
 
@@ -166,31 +166,46 @@ function frame(g, x, y, w, h, t = 4) {
 const H = FH * PX, W = BAY * PX;
 const yFromFloor = (m) => H - m * PX; // 床からの高さ(m) → canvas の y
 
-const texSchool = canvasTex(W, H, (g) => {
-  g.fillStyle = "#ece6d8"; g.fillRect(0, 0, W, H);
-  noise(g, W, H, 0.08);
-  // 床スラブの帯
-  g.fillStyle = "#dcd5c6"; g.fillRect(0, yFromFloor(0.45), W, 0.45 * PX);
-  g.fillStyle = "#cfc7b6"; g.fillRect(0, yFromFloor(0.45), W, 3);
-  // 腰壁の目地
-  g.fillStyle = "rgba(0,0,0,0.06)"; g.fillRect(0, yFromFloor(0.9) + 2, W, 2);
-  // 窓
-  const x = 0.2 * PX, w = 2.6 * PX, y = yFromFloor(3.05), h = 2.15 * PX;
-  glass(g, x, y, w, h);
-  g.fillStyle = "#c3c8cc";
-  g.fillRect(x + w / 2 - 2, y, 4, h);           // 縦の桟
-  g.fillRect(x, yFromFloor(2.45), w, 4);         // 欄間
-  frame(g, x, y, w, h, 5);
-  // 窓台の影
-  g.fillStyle = "rgba(0,0,0,0.18)"; g.fillRect(x, y + h + 2, w, 4);
-  // 柱
-  g.fillStyle = "rgba(0,0,0,0.05)"; g.fillRect(0, 0, 6, H); g.fillRect(W - 6, 0, 6, H);
-});
+// 外壁の色（白い壁と茶色いタイルの壁）
+const PALETTE = {
+  white: { base: "#f1eee7", band: "#e1ddd3", line: "#d3cec2", tile: false },
+  brown: { base: "#8d5f42", band: "#7b5038", line: "#6d4631", tile: true },
+};
+function wallBase(g, p) {
+  g.fillStyle = p.base; g.fillRect(0, 0, W, H);
+  noise(g, W, H, p.tile ? 0.12 : 0.06);
+  if (p.tile) {
+    // タイルの目地
+    g.fillStyle = "rgba(255,240,220,0.10)";
+    for (let y = 0; y < H; y += 0.25 * PX) g.fillRect(0, y, W, 1.5);
+    for (let row = 0, y = 0; y < H; y += 0.25 * PX, row++) for (let x = (row % 2) * 0.3 * PX; x < W; x += 0.6 * PX) g.fillRect(x, y, 1.5, 0.25 * PX);
+  }
+}
+function makeSchoolTex(p) {
+  return canvasTex(W, H, (g) => {
+    wallBase(g, p);
+    // 床スラブの帯
+    g.fillStyle = p.band; g.fillRect(0, yFromFloor(0.45), W, 0.45 * PX);
+    g.fillStyle = p.line; g.fillRect(0, yFromFloor(0.45), W, 3);
+    // 窓
+    const x = 0.2 * PX, w = 2.6 * PX, y = yFromFloor(3.05), h = 2.15 * PX;
+    glass(g, x, y, w, h);
+    g.fillStyle = "#c3c8cc";
+    g.fillRect(x + w / 2 - 2, y, 4, h);           // 縦の桟
+    g.fillRect(x, yFromFloor(2.45), w, 4);         // 欄間
+    frame(g, x, y, w, h, 5);
+    // 窓台の影
+    g.fillStyle = "rgba(0,0,0,0.18)"; g.fillRect(x, y + h + 2, w, 4);
+    // 柱
+    g.fillStyle = "rgba(0,0,0,0.05)"; g.fillRect(0, 0, 6, H); g.fillRect(W - 6, 0, 6, H);
+  });
+}
+const texSchool = makeSchoolTex(PALETTE.white);
+const texSchoolBrown = makeSchoolTex(PALETTE.brown);
 
-const texGymLow = canvasTex(W, H, (g) => {
-  g.fillStyle = "#e3dccb"; g.fillRect(0, 0, W, H);
-  noise(g, W, H, 0.08);
-  g.fillStyle = "#d4ccba"; g.fillRect(0, yFromFloor(0.45), W, 0.45 * PX);
+const makeGymLow = (p) => canvasTex(W, H, (g) => {
+  wallBase(g, p);
+  g.fillStyle = p.band; g.fillRect(0, yFromFloor(0.45), W, 0.45 * PX);
   // 地窓
   glass(g, 0.4 * PX, yFromFloor(1.0), 2.2 * PX, 0.45 * PX);
   frame(g, 0.4 * PX, yFromFloor(1.0), 2.2 * PX, 0.45 * PX, 3);
@@ -198,9 +213,10 @@ const texGymLow = canvasTex(W, H, (g) => {
   g.fillStyle = "rgba(0,0,0,0.06)";
   for (let i = 0; i < 6; i++) g.fillRect(i * W / 6, 0, 2, yFromFloor(1.1));
 });
+const texGymLow = makeGymLow(PALETTE.white);
+const texGymLowBrown = makeGymLow(PALETTE.brown);
 const texGymHigh = canvasTex(W, H, (g) => {
-  g.fillStyle = "#e3dccb"; g.fillRect(0, 0, W, H);
-  noise(g, W, H, 0.08);
+  wallBase(g, PALETTE.white);
   const x = 0.3 * PX, w = 2.4 * PX, y = yFromFloor(3.2), h = 1.9 * PX;
   glass(g, x, y, w, h);
   g.fillStyle = "#c3c8cc"; g.fillRect(x + w / 3, y, 4, h); g.fillRect(x + 2 * w / 3, y, 4, h);
@@ -209,9 +225,8 @@ const texGymHigh = canvasTex(W, H, (g) => {
   for (let i = 0; i < 6; i++) g.fillRect(i * W / 6, yFromFloor(1.2), 2, 1.2 * PX);
 });
 const texHigh = canvasTex(W, H, (g) => {
-  g.fillStyle = "#ece6d8"; g.fillRect(0, 0, W, H);
-  noise(g, W, H, 0.08);
-  g.fillStyle = "#dcd5c6"; g.fillRect(0, yFromFloor(0.45), W, 0.45 * PX);
+  wallBase(g, PALETTE.white);
+  g.fillStyle = PALETTE.white.band; g.fillRect(0, yFromFloor(0.45), W, 0.45 * PX);
   const x = 0.35 * PX, w = 2.3 * PX, y = yFromFloor(3.1), h = 1.4 * PX;
   glass(g, x, y, w, h);
   frame(g, x, y, w, h, 5);
@@ -388,7 +403,9 @@ const wallMat = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.82, 
 const MAT_WALL = {
   school: wallMat(texSchool),
   high: wallMat(texHigh),
+  schoolBrown: wallMat(texSchoolBrown),
   gym2: wallMat(texGymLow),
+  gym2Brown: wallMat(texGymLowBrown),
   gym3: wallMat(texGymHigh),
 };
 
@@ -402,7 +419,10 @@ for (const f of [1, 2, 3]) {
   const ext = new THREE.Group();
   const byStyle = {};
   for (const s of segs) {
-    const st = s.style === "gym" ? "gym" + f : s.style;
+    // 外壁の色分け（info.js の FACADE で設定）
+    let st = s.style === "gym" ? "gym" + f : s.style;
+    if (st === "school" && FACADE.brownFloors.includes(f)) st = "schoolBrown";
+    if (st === "gym2" && FACADE.gymBrownFloors.includes(2)) st = "gym2Brown";
     (byStyle[st] ||= []).push(s);
   }
   for (const [st, list] of Object.entries(byStyle)) {
@@ -569,7 +589,7 @@ ground.receiveShadow = true;
 scene.add(ground);
 
 // 学校の敷地（アスファルト）
-const bb = { x0: -76, x1: 62, z0: -50, z1: 52 };
+const bb = { x0: -78, x1: 62, z0: -50, z1: 56 };
 texPaving.repeat.set((bb.x1 - bb.x0) / 4, (bb.z1 - bb.z0) / 4);
 const paving = new THREE.Mesh(new THREE.PlaneGeometry(bb.x1 - bb.x0, bb.z1 - bb.z0), new THREE.MeshStandardMaterial({ map: texPaving, color: 0xa9a7a1, roughness: 1 }));
 paving.rotation.x = -Math.PI / 2;
@@ -590,15 +610,25 @@ scene.add(outdoor);
   };
   const pinkTex = texPaving.clone(); pinkTex.needsUpdate = true; pinkTex.repeat.set(8, 8);
   const pink = new THREE.MeshStandardMaterial({ map: pinkTex, color: 0xe2a993, roughness: 1 });
+  // 体育館と中央棟のあいだ、体育館の南、図書室の棟と中央棟のあいだ
   flatRect(-13.5, -4.5, -19, 10, pink, -0.19);
-  flatRect(-34, -4.5, 4.5, 10, pink, -0.19);
-  const court = new THREE.MeshStandardMaterial({ color: 0x7c7b76, roughness: 1 });
+  flatRect(-38.9, -4.5, 5, 10, pink, -0.19);
+  flatRect(-15, -4.5, 10, 27.5, pink, -0.19);
+  const planter = new THREE.MeshStandardMaterial({ color: 0x4f7d3a, roughness: 1 });
+  for (const [x, z] of [[-10, 17], [-9, 23.5]]) {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.8, 0.6, 20), planter);
+    m.position.set(x, 0.1, z);
+    m.receiveShadow = true;
+    outdoor.add(m);
+  }
+  // 1号館と2号館のあいだの中庭（アスファルト、十字の通路、植え込み）
+  const court = new THREE.MeshStandardMaterial({ color: 0x77777a, roughness: 1 });
   flatRect(X(42), X(66), Z(32), Z(47), court, -0.19);
   const walk = new THREE.MeshStandardMaterial({ color: 0xe9e6de, roughness: 1 });
-  flatRect(28.5, 31, Z(32), Z(47), walk, -0.185);
-  flatRect(X(42), X(66), 3, 5, walk, -0.185);
+  flatRect(24.5, 26.5, Z(32), Z(47), walk, -0.185);
+  flatRect(X(42), X(66), 2.5, 4.5, walk, -0.185);
   const hedge = new THREE.MeshStandardMaterial({ color: 0x4f7d3a, roughness: 1 });
-  for (const [x0, x1, z0, z1] of [[11, 27, -2.5, 1.5], [33, 44, -2, 1.5], [11, 26, 7, 12], [33, 43.5, 7.5, 12.5]]) {
+  for (const [x0, x1, z0, z1] of [[9.5, 38, -3.3, -1.7], [27.5, 44, -0.6, 2.2], [11, 23, 6.5, 8.5]]) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.9, z1 - z0), hedge);
     m.position.set((x0 + x1) / 2, 0.25, (z0 + z1) / 2);
     m.castShadow = m.receiveShadow = true;
@@ -646,11 +676,13 @@ scene.add(trees);
   spots.push([X(53.5), Z(23.5), 0.6]);
   // グラウンド北東の道路ぞいの並木（2列）
   {
-    const [[ax, az], [bx2, bz2]] = SITE.treeRow;
+    const { from: [ax, az], to: [bx2, bz2], offsets, step } = SITE.treeRow;
     const L = Math.hypot(bx2 - ax, bz2 - az), ux = (bx2 - ax) / L, uz = (bz2 - az) / L;
-    const nx = uz, nz = -ux; // 北東向き
-    for (const off of [3, 13]) for (let t = 0; t < L; t += 7) spots.push([ax + ux * t + nx * off, az + uz * t + nz * off, 0.7]);
+    const nx = uz, nz = -ux;
+    for (const off of offsets) for (let t = 0; t < L; t += step) spots.push([ax + ux * t + nx * off, az + uz * t + nz * off, 0.7]);
   }
+  // 体育館と校舎のあいだの広場の丸い植え込みの木
+  spots.push([-10, 17, 0.75], [-9, 23.5, 0.75]);
   const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.18, 0.25, 2.4, 6), new THREE.MeshStandardMaterial({ color: 0x6b4f35 }), spots.length);
   const crown = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(2.2, 1), new THREE.MeshStandardMaterial({ color: 0x4f7d3a, roughness: 1, flatShading: true }), spots.length);
   const m4 = new THREE.Matrix4();

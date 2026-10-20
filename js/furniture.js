@@ -476,6 +476,9 @@ const LAYOUTS = [
   [/武道場/, (o, R) => grid(o, "mat", R.x0 + 2, R.x1 - 2, R.z1 - 0.8, R.z1 - 0.8, 6, 1, Math.PI / 2, 0)],
 ];
 
+// 黒板・教卓を北側に置く特別教室（普通教室は図面の左＝西側が前）
+const NORTH_FRONT = /選択|オーラル|社会科教室|実験室|調理室|被服室|コンピューター|視聴覚|音楽室|美術教室|工芸教室|STUDY HALL/;
+
 // 床の模様
 export function floorStyle(name) {
   if (/^体育館$/.test(name)) return "gym";
@@ -490,9 +493,20 @@ export function buildFurniture(rooms, y) {
   for (const r of rooms) {
     const fn = LAYOUTS.find(([re]) => re.test(r.name));
     if (!fn) continue;
-    const R = { x0: r.cx - r.w / 2 + 0.2, x1: r.cx + r.w / 2 - 0.2, z0: r.cz - r.d / 2 + 0.2, z1: r.cz + r.d / 2 - 0.2 };
     const list = [];
-    fn[1](list, R);
+    if (NORTH_FRONT.test(r.name)) {
+      // 特別教室は、黒板・教卓・教壇を北側（-z）に置く。
+      // 置き方の関数は「正面が -x」で書いてあるので、部屋の中心のまわりで -90度回して使う
+      fn[1](list, { x0: -r.d / 2 + 0.2, x1: r.d / 2 - 0.2, z0: -r.w / 2 + 0.2, z1: r.w / 2 - 0.2 });
+      for (const it of list) {
+        const { x, z } = it;
+        it.x = r.cx - z;
+        it.z = r.cz + x;
+        it.rot = (it.rot || 0) - Math.PI / 2;
+      }
+    } else {
+      fn[1](list, { x0: r.cx - r.w / 2 + 0.2, x1: r.cx + r.w / 2 - 0.2, z0: r.cz - r.d / 2 + 0.2, z1: r.cz + r.d / 2 - 0.2 });
+    }
     items.push(...list);
   }
   const group = new THREE.Group();

@@ -12,37 +12,37 @@ function canvasTex(w, h, draw) {
 }
 const M = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, ...extra });
 
-// 金網（フェンス）の模様
-const texFence = (() => {
-  const t = canvasTex(64, 64, (g, w, h) => {
-    g.clearRect(0, 0, w, h);
-    g.strokeStyle = "rgba(70,95,80,0.75)"; g.lineWidth = 4;
-    g.beginPath(); g.moveTo(0, 0); g.lineTo(w, h); g.moveTo(w, 0); g.lineTo(0, h); g.stroke();
-  });
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  return t;
-})();
+// フェンス（緑色の網＋支柱＋上の手すり）
+const netMat = new THREE.MeshStandardMaterial({ color: 0x2f5a45, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide, roughness: 0.9 });
+const postMat = new THREE.MeshStandardMaterial({ color: 0x46604f, roughness: 0.6, metalness: 0.3 });
 
-function fence(group, x0, z0, x1, z1, h, sparsePosts = false) {
-  const mat = new THREE.MeshStandardMaterial({ map: texFence.clone(), transparent: true, depthWrite: false, side: THREE.DoubleSide, roughness: 0.8 });
-  const sides = [[x0, z0, x1, z0], [x1, z0, x1, z1], [x1, z1, x0, z1], [x0, z1, x0, z0]];
-  const post = M(0x4f6b57, { metalness: 0.3 });
-  for (const [ax, az, bx, bz] of sides) {
-    const len = Math.hypot(bx - ax, bz - az);
-    const m = mat.clone();
-    m.map = texFence.clone(); m.map.repeat.set(len / 1.2, h / 1.2); m.map.needsUpdate = true;
-    const p = new THREE.Mesh(new THREE.PlaneGeometry(len, h), m);
-    p.position.set((ax + bx) / 2, h / 2, (az + bz) / 2);
-    p.rotation.y = -Math.atan2(bz - az, bx - ax);
+// 1本の直線のフェンス
+function fenceLine(group, ax, az, bx, bz, h) {
+  const len = Math.hypot(bx - ax, bz - az);
+  if (len < 0.01) return;
+  const ang = -Math.atan2(bz - az, bx - ax);
+  const net = new THREE.Mesh(new THREE.PlaneGeometry(len, h), netMat);
+  net.position.set((ax + bx) / 2, h / 2 - 0.15, (az + bz) / 2);
+  net.rotation.y = ang;
+  group.add(net);
+  const rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.08, 0.08), postMat);
+  rail.position.set((ax + bx) / 2, h - 0.15, (az + bz) / 2);
+  rail.rotation.y = ang;
+  group.add(rail);
+  const step = h >= 6 ? 6 : 3;
+  const r = h >= 6 ? 0.12 : 0.05;
+  const n = Math.max(1, Math.ceil(len / step));
+  for (let i = 0; i <= n; i++) {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 6), postMat);
+    p.position.set(ax + (bx - ax) * (i / n), h / 2 - 0.15, az + (bz - az) * (i / n));
+    p.castShadow = true;
     group.add(p);
-    const n = Math.ceil(len / (sparsePosts ? 8 : 4));
-    for (let i = 0; i <= n; i++) {
-      const s = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, h, 6), post);
-      s.position.set(ax + (bx - ax) * (i / n), h / 2, az + (bz - az) * (i / n));
-      s.castShadow = true;
-      group.add(s);
-    }
   }
+}
+// 長方形の囲い
+function fenceRect(group, x0, z0, x1, z1, h) {
+  fenceLine(group, x0, z0, x1, z0, h); fenceLine(group, x1, z0, x1, z1, h);
+  fenceLine(group, x1, z1, x0, z1, h); fenceLine(group, x0, z1, x0, z0, h);
 }
 
 // ---------- グラウンド（航空写真の形どおり。野球とサッカー） ----------
@@ -148,15 +148,19 @@ function buildGround(cfg) {
   // バックネット（ホームベースのうしろ）
   const b = cfg.baseball;
   const ang = Math.atan2(b.z - b.home[1], b.x - b.home[0]);
-  const net = new THREE.Group();
-  fence(net, -8, 0, 8, 0, 8);
-  net.position.set(b.home[0] - Math.cos(ang) * 6, 0, b.home[1] - Math.sin(ang) * 6);
-  net.rotation.y = -ang + Math.PI / 2;
-  g.add(net);
-  // まわりの防球ネット
+  // ホームベースのうしろを囲む、ハの字のバックネット
+  {
+    const bxp = b.home[0] - Math.cos(ang) * 5, bzp = b.home[1] - Math.sin(ang) * 5;
+    const px = -Math.sin(ang), pz = Math.cos(ang);
+    const ends = [-1, 1].map((s) => [bxp + px * s * 7 + Math.cos(ang) * 4, bzp + pz * s * 7 + Math.sin(ang) * 4]);
+    fenceLine(g, ends[0][0], ends[0][1], bxp - px * 2, bzp - pz * 2, 9);
+    fenceLine(g, bxp - px * 2, bzp - pz * 2, bxp + px * 2, bzp + pz * 2, 9);
+    fenceLine(g, bxp + px * 2, bzp + pz * 2, ends[1][0], ends[1][1], 9);
+  }
+  // まわりのフェンス（辺ごとに高さが違う。西側と北西の角は高い防球ネット）
   for (let i = 0; i < cfg.poly.length; i++) {
     const [x0, z0] = cfg.poly[i], [x1, z1] = cfg.poly[(i + 1) % cfg.poly.length];
-    fence(g, x0, z0, x1, z1, 4, true);
+    fenceLine(g, x0, z0, x1, z1, (cfg.fence && cfg.fence[i]) || 3);
   }
   return g;
 }
@@ -196,10 +200,7 @@ function buildTennisArea({ w, d }) {
     net.castShadow = true;
     g.add(net);
   }
-  fence(g, -w / 2, -d / 2, w / 2, -d / 2, 4);
-  fence(g, w / 2, -d / 2, w / 2, d / 2, 4);
-  fence(g, w / 2, d / 2, -w / 2, d / 2, 4);
-  fence(g, -w / 2, d / 2, -w / 2, -d / 2, 4);
+  fenceRect(g, -w / 2, -d / 2, w / 2, d / 2, 4);
   return g;
 }
 
@@ -227,27 +228,24 @@ function buildPool(cfg) {
   water.position.set((wx0 + wx1) / 2, 0.82, (wz0 + wz1) / 2);
   g.add(water);
   const fg = new THREE.Group();
-  fence(fg, x0, z0, x1, z0, 2.2); fence(fg, x1, z0, x1, z1, 2.2); fence(fg, x0, z1, x0, z0, 2.2);
+  fenceLine(fg, x0, z0, x1, z0, 2.2); fenceLine(fg, x1, z0, x1, z1, 2.2); fenceLine(fg, x0, z1, x0, z0, 2.2);
   fg.position.y = 0.8;
   g.add(fg);
   // プールの建物（更衣室・機械室など）
   const [hx0, hx1, hz0, hz1] = cfg.house;
-  const house = new THREE.Mesh(new THREE.BoxGeometry(hx1 - hx0, 3.4, hz1 - hz0), M(0xe6e2d8));
+  const house = new THREE.Mesh(new THREE.BoxGeometry(hx1 - hx0, 3.4, hz1 - hz0), M(0xefede6));
   house.position.set((hx0 + hx1) / 2, 1.5, (hz0 + hz1) / 2);
   house.castShadow = true; house.receiveShadow = true;
   g.add(house);
-  const roof = new THREE.Mesh(new THREE.BoxGeometry(hx1 - hx0 + 0.3, 0.25, hz1 - hz0 + 0.3), M(0x8d9194));
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(hx1 - hx0 + 0.3, 0.25, hz1 - hz0 + 0.3), M(0x9fd1b0));
   roof.position.set((hx0 + hx1) / 2, 3.3, (hz0 + hz1) / 2);
   roof.castShadow = true;
   g.add(roof);
-  const eave = new THREE.Mesh(new THREE.BoxGeometry((hx1 - hx0) * 0.7, 0.2, 2.6), M(0x9fd1b0));
-  eave.position.set((hx0 + hx1) / 2 + (hx1 - hx0) * 0.12, 2.6, hz0 - 0.6);
-  g.add(eave);
   return g;
 }
 
 // ---------- 駐輪場（赤い屋根の細長い建物） ----------
-function buildBikes({ len = 30, depth = 4.6, roof: roofColor = 0xa8473d }) {
+function buildBikes({ len = 30, depth = 4.6, roof: roofColor = 0x9ea3a6 }) {
   const g = new THREE.Group();
   const roof = new THREE.Mesh(new THREE.BoxGeometry(len, 0.15, depth + 0.6), M(roofColor, { roughness: 0.6 }));
   roof.position.set(0, 2.6, 0);
@@ -306,10 +304,71 @@ function buildShed({ x0, x1, z0, z1, h = 3.2, color = 0xa8473d }) {
   return g;
 }
 
+function distSeg(x, z, ax, az, bx, bz) {
+  const dx = bx - ax, dz = bz - az;
+  const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz)));
+  return Math.hypot(x - ax - t * dx, z - az - t * dz);
+}
+
+// ---------- 駐車場（白線と車） ----------
+function buildParking({ x0, x1, z0, z1 }) {
+  const g = new THREE.Group();
+  const w = x1 - x0, d = z1 - z0;
+  const along = w >= d; // 長い方向にならべる
+  const tex = canvasTex(Math.round(w * 10), Math.round(d * 10), (c, W, H) => {
+    c.fillStyle = "#6c6e70"; c.fillRect(0, 0, W, H);
+    c.fillStyle = "rgba(255,255,255,0.9)";
+    if (along) for (let x = 0; x <= W; x += 25) c.fillRect(x, 0, 2, H * 0.9);
+    else for (let y = 0; y <= H; y += 25) c.fillRect(0, y, W * 0.9, 2);
+  });
+  const p = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }));
+  p.rotation.x = -Math.PI / 2;
+  p.position.set((x0 + x1) / 2, -0.185, (z0 + z1) / 2);
+  g.add(p);
+  // 車（何台か）
+  const colors = [0xf2f2f2, 0x222222, 0x8a8f96, 0x2b4d80, 0xb33a3a, 0xd9d4c8];
+  const n = Math.floor((along ? w : d) / 2.5);
+  const body = new THREE.BoxGeometry(along ? 1.7 : 4.3, 0.8, along ? 4.3 : 1.7);
+  const cab = new THREE.BoxGeometry(along ? 1.5 : 2.2, 0.6, along ? 2.2 : 1.5);
+  let seed = Math.round(x0 * 7 + z0 * 13);
+  const rnd = () => ((seed = (seed * 16807 + 11) % 2147483647) / 2147483647);
+  for (let i = 0; i < n; i++) {
+    if (rnd() < 0.35) continue;
+    const mat = M(colors[Math.floor(rnd() * colors.length)], { metalness: 0.4, roughness: 0.4 });
+    const cx = along ? x0 + 1.25 + i * 2.5 : (x0 + x1) / 2, cz = along ? (z0 + z1) / 2 : z0 + 1.25 + i * 2.5;
+    const b = new THREE.Mesh(body, mat); b.position.set(cx, 0.35, cz);
+    const c = new THREE.Mesh(cab, mat); c.position.set(cx, 1.0, cz);
+    b.castShadow = c.castShadow = true;
+    g.add(b, c);
+  }
+  return g;
+}
+
+// ---------- 道路 ----------
+function buildRoad({ w, pts }) {
+  const pos = [], idx = [];
+  for (let i = 0; i < pts.length; i++) {
+    const [x, z] = pts[i];
+    const [px, pz] = pts[Math.max(0, i - 1)], [nx, nz] = pts[Math.min(pts.length - 1, i + 1)];
+    const dx = nx - px, dz = nz - pz, L = Math.hypot(dx, dz);
+    const ox = (-dz / L) * w / 2, oz = (dx / L) * w / 2;
+    pos.push(x + ox, 0, z + oz, x - ox, 0, z - oz);
+    if (i > 0) { const k = i * 2; idx.push(k - 2, k, k - 1, k - 1, k, k + 1); }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x5d6063, roughness: 1, side: THREE.DoubleSide }));
+  m.position.y = -0.22;
+  return m;
+}
+
 // 配置。x, z はメートル（校舎の中心が 0、図面の上＝北が -z）、rot は度
 export function buildSite(scene, SITE) {
   const group = new THREE.Group();
   const rects = [];   // 木を植えない場所
+  const roadSegs = [];
   const polys = [];
   const placed = (obj, x, z, rotDeg = 0) => {
     obj.position.set(x, 0, z);
@@ -332,18 +391,27 @@ export function buildSite(scene, SITE) {
   }
   if (SITE.bikes) {
     const b = SITE.bikes;
-    placed(buildBikes(b), b.x, b.z, b.rot);
-    rects.push([b.x - b.len / 2 - 3, b.x + b.len / 2 + 3, b.z - 6, b.z + 6]);
+    const len = b.x1 - b.x0, depth = b.z1 - b.z0;
+    placed(buildBikes({ len, depth: depth - 0.6 }), (b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2, 0);
+    rects.push([b.x0 - 3, b.x1 + 3, b.z0 - 3, b.z1 + 3]);
   }
   for (const s of SITE.sheds || []) {
     group.add(buildShed(s));
     rects.push([s.x0 - 3, s.x1 + 3, s.z0 - 3, s.z1 + 3]);
   }
+  for (const p of SITE.parking || []) {
+    group.add(buildParking(p));
+    rects.push([p.x0 - 2, p.x1 + 2, p.z0 - 2, p.z1 + 2]);
+  }
+  for (const r of SITE.roads || []) {
+    group.add(buildRoad(r));
+    for (let i = 0; i + 1 < r.pts.length; i++) roadSegs.push([...r.pts[i], ...r.pts[i + 1], r.w / 2 + 2]);
+  }
   group.traverse((o) => { if (o.isMesh) o.receiveShadow = true; });
   scene.add(group);
   return {
     group,
-    isFree: (x, z) => rects.every(([x0, x1, z0, z1]) => x < x0 || x > x1 || z < z0 || z > z1) &&
+    isFree: (x, z) => roadSegs.every(([ax, az, bx, bz, r]) => distSeg(x, z, ax, az, bx, bz) > r) && rects.every(([x0, x1, z0, z1]) => x < x0 || x > x1 || z < z0 || z > z1) &&
       polys.every((p) => !inPoly(x, z, p) && !inPoly(x + 4, z, p) && !inPoly(x - 4, z, p) && !inPoly(x, z + 4, p) && !inPoly(x, z - 4, p)),
   };
 }

@@ -885,9 +885,11 @@ function rustTex() {
   // 西側は、北の端の踊り場だけ2階の高さ。そこから南に向かって1階へ下りる外階段がある（写真）
   const landL = 3, stairL = 9.4, sw = 2.4;
   deck(gx - sw - 0.2, gx, zTop, zTop + landL);  // 北西の踊り場
+  // 西側の2階の外廊下（体育館の長さいっぱい）
+  deck(gx - sw - 0.2, gx, zTop + landL, gz1 + 2.5);
+  rail(gx - sw - 0.2, gx - sw - 0.2, zTop + landL + stairL, gz1 + 2.5);
   deck(gx, gxe + dw, gz1, zBot);                // 南
   deck(gxe, gxe + dw, zTop, gz1);               // 東
-  rail(gx - sw - 0.2, gx - sw - 0.2, zTop, zTop + landL + stairL * 0.15);
   rail(gx - sw - 0.2, gx, zTop, zTop);
   // 南：保健体育科準備室（西の端）の前が踊り場。そこから東へ下りる外階段
   const pl = 3.2, sl = 9.4;
@@ -918,7 +920,12 @@ function rustTex() {
     gymExtras.add(rr);
   }
   // 外階段：北西の踊り場から南へ1階に下りる階段と、南側の外から2階に上がる階段
-  stair(geos1, gx - sw / 2 - 0.1, zTop + landL + stairL, gx - sw / 2 - 0.1, zTop + landL, -0.2, ty, sw);
+  // 外廊下のさらに西に、北の踊り場へ上がる外階段（南から北へ上る）
+  stair(geos1, gx - sw * 1.5 - 0.3, zTop + landL + stairL, gx - sw * 1.5 - 0.3, zTop + landL, -0.2, ty, sw);
+  deck(gx - sw * 2 - 0.4, gx - sw - 0.2, zTop, zTop + landL);
+  for (let z = zTop + 4.5; z <= gz1; z += 4.5) box(geos2, 0.35, ty, 0.35, gx - sw, ty / 2 - 0.15, z);
+  // 南側の2階の入口の上は、3階の床がのびた ひさし
+  box(geos2, gxe + dw - gx, 0.35, zBot + 2.5 - gz1, (gx + gxe + dw) / 2, 2 * FH - 0.2, (gz1 + zBot + 2.5) / 2);
   stair(geos1, gx + pl + sl, zBot + 1.25, gx + pl, zBot + 1.25, -0.2, ty, 2.3);
   stair(geos1, gxe + dw + 1.2, zTop + 2.4 + sl, gxe + dw + 1.2, zTop + 2.4, -0.2, ty, 2.3);
   // 1階の南側の柱（柱が並ぶ吹きさらしの部分）

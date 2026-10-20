@@ -1115,8 +1115,6 @@ function rustTex() {
   rail(gxe + dw, gxe + dw, bz1, zBot);
   rail(gxe, gxe + dw, zTop, zTop);
   box(geos2, 0.35, ty, 0.35, gxe + dw + 2.2, ty / 2 - 0.15, zTop + 0.2);
-  // 東の外廊下の上の白いひさし（体育館の壁から外廊下の上へ張り出す）
-  box(geos2, dw + 0.4, 0.2, zBot - zTop, gxe + (dw + 0.4) / 2, ty + 2.9, (zTop + zBot) / 2);
   // 外廊下と踊り場を支える柱
   for (let z = zTop; z <= zBot; z += 4.5) box(geos2, 0.35, ty, 0.35, gxe + dw - 0.3, ty / 2 - 0.15, z);
   for (let x = gx; x <= gxe + dw; x += 4.5) box(geos2, 0.35, ty, 0.35, x, ty / 2 - 0.15, zBot - 0.3);

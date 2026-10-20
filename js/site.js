@@ -1167,7 +1167,8 @@ export function buildSite(scene, SITE) {
   }
   for (const c of SITE.crosswalks || []) group.add(crosswalk(c));
   for (const st of SITE.streetscape || []) group.add(buildStreetscape(st));
-  if (SITE.roads && SITE.boundary) group.add(buildPoles(SITE.roads, SITE.boundary));
+  // 電柱と電線は出さない（SITE.showPoles を true にすると出る）
+  if (SITE.showPoles && SITE.roads && SITE.boundary) group.add(buildPoles(SITE.roads, SITE.boundary));
   // 正門から中庭までの通路（中庭から東へ出て、少し南へ折れて正門へ）と、門の手前の半円の広場
   if (SITE.approach) {
     const a = SITE.approach, pave = M(0xe6e2d8, { roughness: 1 });

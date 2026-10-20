@@ -728,7 +728,16 @@ function buildHouses(SITE) {
   }
   const wallColors = [0xf2efe8, 0xe8e2d4, 0xd9d6cf, 0xeae6dc, 0xc9c4b8, 0xe4ddd0];
   const roofColors = [0x4a5260, 0x5b6676, 0x3f4650, 0x7a4a45, 0x8a5048, 0x56607a, 0x6d6f73, 0x8c6f5a, 0x8e9ba5];
-  const matBody = new THREE.MeshStandardMaterial({ roughness: 0.85 });
+  // 家の壁：1階と2階の窓（どの面にも同じ模様。壁の色は家ごとに変える）
+  const winTex = canvasTex(128, 128, (c, W, H) => {
+    c.fillStyle = "#ffffff"; c.fillRect(0, 0, W, H);
+    for (const [y, h] of [[28, 22], [74, 26]]) for (const x of [16, 56, 92]) {
+      c.fillStyle = "#4c5a66"; c.fillRect(x, y, 22, h);
+      c.fillStyle = "#e9e6de"; c.fillRect(x - 2, y + h, 26, 3); // 窓の下の枠
+      c.fillStyle = "rgba(255,255,255,0.35)"; c.fillRect(x + 11, y, 1.5, h);
+    }
+  });
+  const matBody = new THREE.MeshStandardMaterial({ map: winTex, roughness: 0.85 });
   const matRoof = new THREE.MeshStandardMaterial({ roughness: 0.7, side: THREE.DoubleSide });
   const g = new THREE.Group();
   // 近くの家だけ影を落とす（遠くは影なしで軽く）

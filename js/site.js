@@ -551,6 +551,18 @@ function buildParking({ x0, x1, z0, z1 }) {
 }
 
 // ---------- 道路 ----------
+// アスファルト：細かい粒と、ところどころの補修あと・ひび
+const matAsphalt = (() => {
+  const t = canvasTex(256, 256, (c, W, H) => {
+    c.fillStyle = "#5f6264"; c.fillRect(0, 0, W, H);
+    for (let i = 0; i < 9000; i++) { const v = Math.random(); c.fillStyle = v < 0.5 ? `rgba(30,30,32,${Math.random() * 0.25})` : `rgba(200,200,195,${Math.random() * 0.18})`; c.fillRect(Math.random() * W, Math.random() * H, 1.5, 1.5); }
+    for (let i = 0; i < 3; i++) { c.fillStyle = "rgba(40,42,45,0.09)"; c.fillRect(Math.random() * W, Math.random() * H, 30 + Math.random() * 50, 20 + Math.random() * 40); }
+    c.strokeStyle = "rgba(35,35,35,0.35)"; c.lineWidth = 1;
+    for (let i = 0; i < 4; i++) { let x = Math.random() * W, y = Math.random() * H; c.beginPath(); c.moveTo(x, y); for (let k = 0; k < 6; k++) { x += Math.random() * 16 - 8; y += Math.random() * 16 - 4; c.lineTo(x, y); } c.stroke(); }
+  });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return new THREE.MeshStandardMaterial({ map: t, roughness: 1, side: THREE.DoubleSide });
+})();
 function buildRoad({ w, pts: raw, dy = 0 }) {
   // 斜面にそうように、4mおきに点を足す
   const pts = [];
@@ -560,21 +572,26 @@ function buildRoad({ w, pts: raw, dy = 0 }) {
     for (let j = 0; j < k; j++) pts.push([ax + ((bx - ax) * j) / k, az + ((bz - az) * j) / k]);
   }
   pts.push(raw[raw.length - 1]);
-  const pos = [], idx = [];
+  const pos = [], idx = [], uv = [];
+  let run = 0;
   for (let i = 0; i < pts.length; i++) {
     const [x, z] = pts[i];
     const [px, pz] = pts[Math.max(0, i - 1)], [nx, nz] = pts[Math.min(pts.length - 1, i + 1)];
     const dx = nx - px, dz = nz - pz, L = Math.hypot(dx, dz);
     const ox = (-dz / L) * w / 2, oz = (dx / L) * w / 2;
+    if (i > 0) run += Math.hypot(x - pts[i - 1][0], z - pts[i - 1][1]);
     pos.push(x + ox, terrainH(x + ox, z + oz), z + oz, x - ox, terrainH(x - ox, z - oz), z - oz);
+    uv.push(0, run / 6, w / 6, run / 6); // アスファルトの模様は 6m 四方
     if (i > 0) { const k = i * 2; idx.push(k - 2, k, k - 1, k - 1, k, k + 1); }
   }
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
   geo.setIndex(idx);
   geo.computeVertexNormals();
   const g = new THREE.Group();
-  const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x5d6063, roughness: 1, side: THREE.DoubleSide }));
+  const m = new THREE.Mesh(geo, matAsphalt);
+  m.receiveShadow = true;
   m.position.y = -0.22 + dy;
   g.add(m);
   // センターライン（白い破線）と、ふちの白線
@@ -657,6 +674,68 @@ function buildStreetscape({ pts, w, gaps = [], treeStep = 9 }) {
     along += L;
   }
   if (trees.length) g.add(buildTrees(trees));
+  return g;
+}
+
+// 電柱と電線（日本の住宅地らしく、道路の学校と反対側に約30mおき）。電柱・腕木は InstancedMesh、電線は1本の線の形なので軽い
+function buildPoles(roads, boundary) {
+  const tops = [];
+  for (const r of roads) {
+    const pts = r.pts, o = r.w / 2 + 2.9;
+    let next = 10, run = 0, line = [], lastSide = 0;
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
+      const L = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / L, uz = (bz - az) / L;
+      const mx = (ax + bx) / 2, mz = (az + bz) / 2;
+      const side = inPoly(mx - uz * o, mz + ux * o, boundary) || inPoly(mx - uz * (o + 6), mz + ux * (o + 6), boundary) ? -1 : 1;
+      if (lastSide && side !== lastSide && line.length) { tops.push(line); line = []; } // 反対側へ移るところで電線を切る
+      lastSide = side;
+      while (next <= run + L) {
+        const t = next - run;
+        const x = ax + ux * t - uz * o * side, z = az + uz * t + ux * o * side;
+        line.push([x, terrainH(x, z) - 0.2, z, Math.atan2(uz, ux)]);
+        next += 30;
+      }
+      run += L;
+    }
+    if (line.length) tops.push(line);
+  }
+  const all = tops.flat();
+  const g = new THREE.Group();
+  if (!all.length) return g;
+  const poleGeo = new THREE.CylinderGeometry(0.14, 0.2, 10, 8); poleGeo.translate(0, 5, 0);
+  const armGeo = new THREE.BoxGeometry(0.12, 0.12, 1.6); armGeo.translate(0, 9.2, 0);
+  const transGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.9, 8); transGeo.translate(0.35, 7.4, 0); // 変圧器（ところどころ）
+  const poles = new THREE.InstancedMesh(poleGeo, M(0x9c9a93, { roughness: 0.9 }), all.length);
+  const arms = new THREE.InstancedMesh(armGeo, M(0x6b6b66, { metalness: 0.4 }), all.length);
+  const trans = new THREE.InstancedMesh(transGeo, M(0x8b8f93, { metalness: 0.3 }), all.length);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1), zero = new THREE.Vector3(0, 0, 0);
+  all.forEach(([x, y, z, a], i) => {
+    q.setFromAxisAngle(up, -a);
+    m4.compose(new THREE.Vector3(x, y, z), q, one);
+    poles.setMatrixAt(i, m4); arms.setMatrixAt(i, m4);
+    m4.compose(new THREE.Vector3(x, y, z), q, i % 3 === 0 ? one : zero);
+    trans.setMatrixAt(i, m4);
+  });
+  poles.castShadow = true;
+  g.add(poles, arms, trans);
+  // 電線：となりの電柱のあいだに3本（少したるませる）
+  const lp = [];
+  for (const line of tops) for (let i = 0; i + 1 < line.length; i++) {
+    const [x0, y0, z0, a] = line[i], [x1, y1, z1] = line[i + 1];
+    for (const off of [-0.7, 0, 0.7]) {
+      const nx = Math.cos(a + Math.PI / 2) * off, nz = Math.sin(a + Math.PI / 2) * off;
+      const N = 6;
+      for (let k = 0; k < N; k++) {
+        const t0 = k / N, t1 = (k + 1) / N;
+        const sag = (t) => -0.6 * 4 * t * (1 - t);
+        lp.push(x0 + (x1 - x0) * t0 + nx, y0 + 9.25 + (y1 - y0) * t0 + sag(t0), z0 + (z1 - z0) * t0 + nz);
+        lp.push(x0 + (x1 - x0) * t1 + nx, y0 + 9.25 + (y1 - y0) * t1 + sag(t1), z0 + (z1 - z0) * t1 + nz);
+      }
+    }
+  }
+  const wg = new THREE.BufferGeometry(); wg.setAttribute("position", new THREE.Float32BufferAttribute(lp, 3));
+  g.add(new THREE.LineSegments(wg, new THREE.LineBasicMaterial({ color: 0x2a2a2a })));
   return g;
 }
 
@@ -1080,6 +1159,7 @@ export function buildSite(scene, SITE) {
   }
   for (const c of SITE.crosswalks || []) group.add(crosswalk(c));
   for (const st of SITE.streetscape || []) group.add(buildStreetscape(st));
+  if (SITE.roads && SITE.boundary) group.add(buildPoles(SITE.roads, SITE.boundary));
   // 正門から中庭までの通路（中庭から東へ出て、少し南へ折れて正門へ）と、門の手前の半円の広場
   if (SITE.approach) {
     const a = SITE.approach, pave = M(0xe6e2d8, { roughness: 1 });

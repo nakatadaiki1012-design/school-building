@@ -193,6 +193,7 @@ const MAT = {
   clock: new THREE.MeshStandardMaterial({ map: texClock, roughness: 0.5 }),
   door: new THREE.MeshStandardMaterial({ map: texDoor, roughness: 0.7 }),
   curtain: new THREE.MeshStandardMaterial({ map: texCurtain, roughness: 1, side: THREE.DoubleSide }),
+  transom: new THREE.MeshStandardMaterial({ color: 0x9cc3da, roughness: 0.2, metalness: 0.2, transparent: true, opacity: 0.7 }),
   bag: M(0xffffff, { roughness: 0.9 }),      // 色は1つずつ変える
   paper: M(0xf5f3ec, { roughness: 0.9 }),
   mirror: M(0xcfd8de, { metalness: 0.9, roughness: 0.1 }),
@@ -292,7 +293,8 @@ const SHAPES = {
     [MAT.screenOn, merge([b(0.04, 0.95, 1.62, 0.06, 0.85)])],
     [MAT.black, merge([b(0.1, 1.03, 1.7, 0, 0.81), b(0.08, 0.85, 0.08, 0, 0, -0.45), b(0.08, 0.85, 0.08, 0, 0, 0.45), b(0.6, 0.06, 1.1, 0, 0.05)])],
   ],
-  door: [[MAT.door, merge([b(0.9, 1.95, 0.06)])], [MAT.darkWood, merge([b(1.0, 0.06, 0.1, 0, 1.95)])]],
+  // 引き戸（壁の両側に見えるよう壁より厚め）と、まわりの枠、上の欄間のガラス
+  door: [[MAT.door, merge([b(0.9, 1.95, 0.2)])], [MAT.darkWood, merge([b(1.06, 0.07, 0.24, 0, 1.95), b(0.07, 2.02, 0.24, -0.5), b(0.07, 2.02, 0.24, 0.5)])], [MAT.transom, merge([b(0.9, 0.35, 0.17, 0, 2.03)])]],
   curtainPanel: [[MAT.curtain, merge([b(0.7, 2.05, 0.05, 0, 0.3)])]],
   cleanLocker: [[MAT.gray, merge([b(0.45, 1.8, 0.6)])]],
   bag: [[MAT.bag, merge([b(0.1, 0.3, 0.34, 0, 0.32)])]],
@@ -405,14 +407,23 @@ function office(out, R, perIsland = 6) {
   }
 }
 
+// 会議室：長い机が2列（部屋の長い方向にのびる）。机の両側に椅子
 function meeting(out, R) {
   const { x0, x1, z0, z1 } = R;
-  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-  const n = Math.max(1, Math.floor((x1 - x0 - 2.2) / 1.85));
-  for (let i = 0; i < n; i++) {
-    const x = cx - ((n - 1) * 1.85) / 2 + i * 1.85;
-    out.push({ t: "table", x, z: cz, rot: Math.PI / 2 });
-    for (const s of [-1, 1]) for (const k of [-0.45, 0.45]) out.push({ t: "officeChair", x: x + k, z: cz + s * 0.85, rot: s > 0 ? -Math.PI / 2 : Math.PI / 2 });
+  const long = x1 - x0 >= z1 - z0;
+  const L0 = long ? x0 : z0, L1 = long ? x1 : z1, S0 = long ? z0 : x0, S1 = long ? z1 : x1;
+  const n = Math.max(1, Math.floor((L1 - L0 - 1.6) / 1.85));
+  for (const f of [0.3, 0.7]) {
+    const s = S0 + (S1 - S0) * f;
+    for (let i = 0; i < n; i++) {
+      const l = (L0 + L1) / 2 - ((n - 1) * 1.85) / 2 + i * 1.85;
+      const [x, z] = long ? [l, s] : [s, l];
+      out.push({ t: "table", x, z, rot: long ? Math.PI / 2 : 0 });
+      for (const side of [-1, 1]) for (const k of [-0.45, 0.45]) {
+        const [cx, cz] = long ? [x + k, z + side * 0.85] : [x + side * 0.85, z + k];
+        out.push({ t: "officeChair", x: cx, z: cz, rot: long ? (side > 0 ? -Math.PI / 2 : Math.PI / 2) : (side > 0 ? Math.PI : 0) });
+      }
+    }
   }
 }
 
@@ -626,6 +637,12 @@ const LAYOUTS = [
   [/工芸教室/, (o, R) => artroom(o, R, true)],
   [/^窯$/, (o, R) => o.push({ t: "kiln", x: (R.x0 + R.x1) / 2, z: (R.z0 + R.z1) / 2, rot: 0 })],
   [/図書室/, library],
+  // 第2職員室：縦長の机をつなげ、両側に椅子を5つずつ
+  [/第２職員室/, (o, R) => {
+    const cx = (R.x0 + R.x1) / 2, n = 5, zs = R.z0 + 0.8, ze = R.z1 - 0.8;
+    for (let i = 0; i < 3; i++) o.push({ t: "table", x: cx, z: zs + ((ze - zs) * (i + 0.5)) / 3, rot: 0, len: 1 });
+    for (let i = 0; i < n; i++) { const z = zs + ((ze - zs) * (i + 0.5)) / n; for (const s of [-1, 1]) o.push({ t: "officeChair", x: cx + s * 0.85, z, rot: s > 0 ? 0 : Math.PI }); }
+  }],
   [/職員室|事務室/, (o, R) => office(o, R)],
   [/会議室/, meeting],
   [/校長室/, principal],
@@ -646,7 +663,7 @@ const LAYOUTS = [
 // 黒板・教卓を北側に置く特別教室（普通教室は図面の左＝西側が前）
 const NORTH_FRONT = /選択|オーラル|社会科教室|実験室|視聴覚|音楽室|美術教室|工芸教室|STUDY HALL/;
 // 先生の机・黒板が南側にある特別教室
-const SOUTH_FRONT = /^$/;
+const SOUTH_FRONT = /選択第２教室|選択第2教室/;
 // 東側を向いて授業を受ける部屋（被服室は西向きなので、ふつうの教室と同じ）
 const EAST_FRONT = /調理室|コンピューター/;
 

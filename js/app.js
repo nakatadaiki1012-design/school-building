@@ -1323,6 +1323,8 @@ function stairGuard(r, y, list) {
 }
 
 const styleOf = (r) => ROOM_STYLE.find((s) => s.name === r.name && s.floor === r.floor && (s.r0 === undefined || s.r0 === r.r0));
+// 部屋の仕切りの壁の高さ（天井まで描くと中が見えにくいので、ドアの上が少し見える高さ）
+const WALL_H = 2.45;
 const pickables = [];
 const matStairs = new THREE.MeshStandardMaterial({ color: 0xd9d6cf, roughness: 0.9 });
 const matPartition = new THREE.MeshStandardMaterial({ color: 0xfaf8f3, roughness: 0.9 });
@@ -1384,13 +1386,13 @@ for (const f of [1, 2, 3]) {
       const cells = new Map();
       for (const q of [r, ...r.parts, ...(r.joined || [])]) for (let c = q.c0; c <= q.c1; c++) for (let rr = q.r0; rr <= q.r1; rr++) cells.set(key(c, rr), "p");
       for (const sg of boundarySegments(cells)) {
-        const len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az), t = 0.14, h = 1.25;
+        const len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az), t = 0.14, h = WALL_H;
         const g = new THREE.BoxGeometry(sg.n[1] !== 0 ? len : t, h, sg.n[1] !== 0 ? t : len);
         g.translate((sg.ax + sg.bx) / 2, y + h / 2, (sg.az + sg.bz) / 2);
         (walls[r.block.id] ||= []).push(g);
       }
     } else if (!isCourt && r.kind !== "stairs" && r.kind !== "part" && !r.joinedTo) {
-      const t = 0.14, h = isOpen ? 1.0 : 1.25;
+      const t = 0.14, h = isOpen ? 1.0 : WALL_H;
       const rc = { x0: r.cx - r.w / 2, x1: r.cx + r.w / 2, z0: r.cz - r.d / 2, z1: r.cz + r.d / 2 };
       const sty = styleOf(r);
       for (const [w, d, x, z, side] of [

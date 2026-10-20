@@ -439,7 +439,7 @@ function buildParking({ x0, x1, z0, z1 }) {
 }
 
 // ---------- 道路 ----------
-function buildRoad({ w, pts: raw }) {
+function buildRoad({ w, pts: raw, dy = 0 }) {
   // 斜面にそうように、4mおきに点を足す
   const pts = [];
   for (let i = 0; i + 1 < raw.length; i++) {
@@ -463,7 +463,7 @@ function buildRoad({ w, pts: raw }) {
   geo.computeVertexNormals();
   const g = new THREE.Group();
   const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x5d6063, roughness: 1, side: THREE.DoubleSide }));
-  m.position.y = -0.22;
+  m.position.y = -0.22 + dy;
   g.add(m);
   // センターライン（白い破線）と、ふちの白線
   const dash = new THREE.MeshStandardMaterial({ color: 0xf0f0ea, roughness: 0.9 });
@@ -472,7 +472,7 @@ function buildRoad({ w, pts: raw }) {
     const L = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / L, uz = (bz - az) / L, ang = Math.atan2(ux, uz);
     // 坂に合わせて線を傾ける
     const pitch = -Math.atan2(terrainH(bx, bz) - terrainH(ax, az), L);
-    const put = (m, x, z) => { m.rotation.order = "YXZ"; m.rotation.set(pitch, ang, 0); m.position.set(x, terrainH(x, z) - 0.2, z); g.add(m); };
+    const put = (m, x, z) => { m.rotation.order = "YXZ"; m.rotation.set(pitch, ang, 0); m.position.set(x, terrainH(x, z) - 0.2 + dy, z); g.add(m); };
     for (let t = 2; t < L - 2; t += 8) put(new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.02, 4), dash), ax + ux * (t + 2), az + uz * (t + 2));
     for (const s of [-1, 1]) put(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, L), dash), (ax + bx) / 2 - uz * s * (w / 2 - 0.4), (az + bz) / 2 + ux * s * (w / 2 - 0.4));
   }
@@ -549,7 +549,7 @@ function buildStreetscape({ pts, w, gaps = [], treeStep = 9 }) {
 }
 
 // 横断歩道（しま模様）。x, z は中心、rot は道路の向き（度）
-function crosswalk({ x, z, rot = 0, len = 8, red = false }) {
+function crosswalk({ x, z, rot = 0, len = 8, red = false, dy = 0 }) {
   const g = new THREE.Group();
   if (red) {
     const r = new THREE.Mesh(new THREE.BoxGeometry(len + 2, 0.02, 6), M(0xa8483e, { roughness: 1 }));
@@ -562,7 +562,7 @@ function crosswalk({ x, z, rot = 0, len = 8, red = false }) {
     st.position.set(i, -0.19, 0);
     g.add(st);
   }
-  g.position.set(x, terrainH(x, z), z);
+  g.position.set(x, terrainH(x, z) + dy, z);
   g.rotation.y = THREE.MathUtils.degToRad(rot);
   return g;
 }

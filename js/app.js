@@ -62,7 +62,7 @@ const splitRooms = ROOMS_RAW.filter((r) => r.name !== "窯").flatMap((r) => { //
   return Array.from({ length: sp.n }, (_, i) => ({ ...r, id: `${r.id}-${i + 1}`, name: `${r.name}${i + 1}`, c0: r.c0 + w * i, c1: r.c0 + w * (i + 1) - 1 }));
 });
 const ROOMS = [...splitRooms, ...EXTRA_ROOMS].map((r) => {
-  const ed = ROOM_EDITS.find((e) => e.name === r.name && e.floor === r.floor);
+  const ed = ROOM_EDITS.find((e) => e.name === r.name && e.floor === r.floor && (e.at === undefined || e.at === r.c0));
   if (ed) r = { ...r, ...ed.set };
   const d = describe(r.name);
   return { ...r, ...d, kind: "room" };

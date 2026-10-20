@@ -1421,7 +1421,8 @@ for (const f of [1, 2, 3]) {
       else if (st === "flooring") { map.repeat.set(r.w / 3, r.d / 3); tint = new THREE.Color(0xd9b07a); } // 武道場の木の床
       else if (st === "tile") map.repeat.set(r.w / 1.2, r.d / 1.2);
       else map.repeat.set(r.w / 4, r.d / 4);
-      if (/コンピューター/.test(r.name)) tint = new THREE.Color(0x4a74c9); // コンピューター教室の床は青
+      if (/ステージ/.test(r.name)) tint = new THREE.Color(0xc99560); // ステージの木の床
+      else if (/コンピューター/.test(r.name)) tint = new THREE.Color(0x4a74c9); // コンピューター教室の床は青
       else if (/教室/.test(r.name) && st === "wood") tint = new THREE.Color(0xeadfc8); // 教室の床はうすいベージュ
     }
     const mat = r.kind === "part" ? r.parent.mesh.material : new THREE.MeshStandardMaterial({

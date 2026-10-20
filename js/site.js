@@ -400,7 +400,18 @@ function bikeInstances(spots) {
 }
 
 // 2階建ての駐輪場（1階と2階に自転車。外階段つき）
-function buildBikes2({ x0, x1, z0, z1, roof = 0x9ea3a6 }) {
+// L字などの形は parts（[x0, x1, z0, z1] の並び）で、屋根のつながった1つの建物にする
+function buildBikes2({ parts, roof = 0x9ea3a6, ...main }) {
+  if (parts) {
+    const g = new THREE.Group();
+    parts.forEach(([x0, x1, z0, z1], i) => {
+      const p = buildBikes2({ x0, x1, z0, z1, roof });
+      p.position.y += i * 0.01; // 屋根の重なりのちらつきを防ぐ
+      g.add(p);
+    });
+    return g;
+  }
+  const { x0, x1, z0, z1 } = main;
   const g = new THREE.Group();
   const w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
   const conc = M(0xd6d3cb), steel = M(0x8c949b, { metalness: 0.4 });
@@ -1151,7 +1162,7 @@ export function buildSite(scene, SITE) {
   if (SITE.bikes2) {
     const b = SITE.bikes2;
     group.add(buildBikes2(b));
-    rects.push([b.x0 - 3, b.x1 + 3, b.z0 - 3, b.z1 + 3]);
+    for (const [x0, x1, z0, z1] of b.parts || [[b.x0, b.x1, b.z0, b.z1]]) rects.push([x0 - 3, x1 + 3, z0 - 3, z1 + 3]);
   }
   for (const s of SITE.sheds || []) {
     group.add(buildShed(s));

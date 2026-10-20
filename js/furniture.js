@@ -206,6 +206,7 @@ const MAT = {
   vendFace: new THREE.MeshStandardMaterial({ map: texVend, roughness: 0.3, emissive: 0xffffff, emissiveMap: texVend, emissiveIntensity: 0.35 }),
   screenOn: new THREE.MeshStandardMaterial({ map: texEboard, roughness: 0.3, emissive: 0xffffff, emissiveMap: texEboard, emissiveIntensity: 0.55 }),
   gray: M(0x8e98a2),
+  curtainDark: M(0x5c1420, { roughness: 1 }),
   cardboard: M(0xb8935e, { roughness: 1 }),
   doorFrame: M(0xc9b796, { roughness: 0.7 }), // ドアと窓の枠もベージュ
   tank: M(0x6d97b8, { roughness: 0.6 }),
@@ -350,6 +351,13 @@ const SHAPES = {
   mirror: [[MAT.mirror, merge([b(0.02, 0.8, 1.6, 0, 1.15)])]],
   stageCurtain: [[MAT.red, merge([b(0.2, 3.2, 1.0)])]],
   lectern: [[MAT.darkWood, merge([b(0.5, 1.1, 0.7)])]],
+  // ステージまわり（len で横の長さをのばす。rot: π/2 で東西向き）
+  stageHeader: [[MAT.white, merge([b(0.5, 1.2, 1.0, 0, 5.2)])], [MAT.darkWood, merge([b(0.55, 0.12, 1.0, 0, 5.15)])]], // 舞台の上の額ぶち
+  stageBackdrop: [[MAT.curtainDark, merge([b(0.12, 3.4, 1.0)])]],   // 奥の幕
+  stageValance: [[MAT.red, merge([b(0.15, 0.6, 1.0, 0, 3.7)])]],     // 上の横幕
+  stageSteps: [[MAT.darkWood, merge([b(0.9, 0.33, 1.2, 0, 0), b(0.6, 0.33, 1.2, -0.15, 0.33), b(0.3, 0.33, 1.2, -0.3, 0.66)])]],
+  stagePillar: [[MAT.white, merge([b(1.0, 6.2, 0.8)])]],
+  flowerStand: [[MAT.darkWood, merge([b(0.4, 0.8, 0.4)])], [MAT.green, merge([b(0.7, 0.5, 0.7, 0, 0.8)])], [MAT.pink, merge([b(0.5, 0.25, 0.5, 0, 1.3)])]],
   // 自動販売機（正面が -x）
   vending: [[MAT.white, merge([b(0.75, 1.83, 1.0)])], [MAT.vendFace, merge([b(0.03, 1.2, 0.85, -0.38, 0.5)])], [MAT.red, merge([b(0.04, 0.25, 1.0, -0.37, 1.6)])]],
   // 長机（長さは1mの形を len 倍にのばす）と、跳ね上げ椅子（座面が上がった形）
@@ -675,9 +683,22 @@ function urinals(out, R) {
 // 体育館のステージ（赤い幕と演台）。正面は南（体育館の側）
 function stage(out, R) {
   const { x0, x1, z0, z1 } = R;
-  for (let x = x0 + 0.5; x < x0 + 3; x += 1) out.push({ t: "stageCurtain", x, z: z1 - 0.2, rot: Math.PI / 2, y: 0.85 });
-  for (let x = x1 - 0.5; x > x1 - 3; x -= 1) out.push({ t: "stageCurtain", x, z: z1 - 0.2, rot: Math.PI / 2, y: 0.85 });
-  out.push({ t: "lectern", x: (x0 + x1) / 2, z: z1 - 1.2, rot: 0, y: 0.85 });
+  const cx = (x0 + x1) / 2, W = x1 - x0, top = 0.85; // ステージの床の上
+  const P = Math.PI / 2;
+  // 奥の幕と上の横幕（ステージの幅いっぱい）
+  out.push({ t: "stageBackdrop", x: cx, z: z0 + 0.15, rot: P, y: top, len: W });
+  out.push({ t: "stageValance", x: cx, z: z1 - 0.3, rot: P, y: top, len: W - 2.4 });
+  // 両そでの、開けてある幕
+  for (let x = x0 + 0.5; x < x0 + 2.2; x += 0.9) out.push({ t: "stageCurtain", x, z: z1 - 0.3, rot: P, y: top });
+  for (let x = x1 - 0.5; x > x1 - 2.2; x -= 0.9) out.push({ t: "stageCurtain", x, z: z1 - 0.3, rot: P, y: top });
+  // 舞台の口の額ぶち（両はしの柱と上の梁）。体育館の床から立つ
+  out.push({ t: "stagePillar", x: x0 - 0.3, z: z1 + 0.1, rot: 0, y: -0.15 }, { t: "stagePillar", x: x1 + 0.3, z: z1 + 0.1, rot: 0, y: -0.15 });
+  out.push({ t: "stageHeader", x: cx, z: z1 + 0.1, rot: P, y: -0.15, len: W + 1.6 });
+  // 演台と、両わきの花
+  out.push({ t: "lectern", x: cx, z: z1 - 1.3, rot: -P, y: top });
+  out.push({ t: "flowerStand", x: cx - 2.2, z: z1 - 0.9, rot: 0, y: top }, { t: "flowerStand", x: cx + 2.2, z: z1 - 0.9, rot: 0, y: top });
+  // 体育館の床からステージへ上がる階段（左右のはし）
+  out.push({ t: "stageSteps", x: x0 + 1.2, z: z1 + 0.65, rot: P, y: -0.15 }, { t: "stageSteps", x: x1 - 1.2, z: z1 + 0.65, rot: P, y: -0.15 });
 }
 
 function infirmary(out, R) {

@@ -590,15 +590,19 @@ function computers(out, R) {
   }
 }
 
+// 美術教室・工芸教室：前に黒板。机は2列×6（前から後ろへ6つ）で、机のまわりに椅子を4つ（長い辺に2つずつ）
 function artroom(out, R, kiln = false) {
   const { x0, x1, z0, z1 } = R;
   out.push({ t: "blackboard", x: x0 + 0.12, z: (z0 + z1) / 2, rot: 0 });
-  const nx = Math.max(1, Math.floor((x1 - x0 - 1.5) / 2.6));
-  const nz = Math.max(1, Math.floor((z1 - z0 - 1) / 3.2));
-  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
-    const x = x0 + 1.6 + (i + 0.5) * ((x1 - x0 - 2) / nx), z = z0 + 0.5 + (j + 0.5) * ((z1 - z0 - 1) / nz);
-    out.push({ t: "bigTable", x, z, rot: 0 });
-    for (const s of [-1, 1]) for (const k of [-0.7, 0, 0.7]) out.push({ t: "stool", x: x + s * 0.85, z: z + k, rot: 0 });
+  out.push({ t: "teacherDesk", x: x0 + 1.0, z: (z0 + z1) / 2, rot: 0 });
+  const xa = x0 + 2.4, xb = x1 - (kiln ? 2.2 : 1.1), w = z1 - z0;
+  for (let i = 0; i < 6; i++) {
+    const x = xa + ((xb - xa) * (i + 0.5)) / 6;
+    for (const f of [0.28, 0.72]) {
+      const z = z0 + w * f;
+      out.push({ t: "table", x, z, rot: 0 });
+      for (const s of [-1, 1]) for (const k of [-0.45, 0.45]) out.push({ t: "stool", x: x + s * 0.72, z: z + k, rot: 0 });
+    }
   }
   along(out, "cabinet", x1 - 0.3, z0 + (kiln ? 2.8 : 0.5), z1 - 0.5, 0.95, Math.PI);
   if (kiln) { out.push({ t: "kiln", x: x1 - 0.8, z: z0 + 0.8, rot: 0 }); out.push({ t: "kiln", x: x1 - 0.8, z: z0 + 2.0, rot: 0 }); } // 窯は教室のすみ
@@ -772,9 +776,9 @@ const LAYOUTS = [
 ];
 
 // 黒板・教卓を北側に置く特別教室（普通教室は図面の左＝西側が前）
-const NORTH_FRONT = /選択|オーラル|社会科教室|視聴覚|音楽室|美術教室|工芸教室/;
+const NORTH_FRONT = /選択|オーラル|社会科教室|視聴覚|音楽室/;
 // 先生の机・黒板が南側にある特別教室
-const SOUTH_FRONT = /選択第２教室|選択第2教室/;
+const SOUTH_FRONT = /選択第２教室|選択第2教室|美術教室|工芸教室/; // 美術・工芸は黒板が南側
 // 東側を向いて授業を受ける部屋（被服室は西向きなので、ふつうの教室と同じ）
 const EAST_FRONT = /調理室|コンピューター|実験室/; // 物理・化学・生物の実験室も、教卓は東側
 

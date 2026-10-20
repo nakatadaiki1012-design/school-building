@@ -498,8 +498,8 @@ function artroom(out, R, kiln = false) {
     out.push({ t: "bigTable", x, z, rot: 0 });
     for (const s of [-1, 1]) for (const k of [-0.7, 0, 0.7]) out.push({ t: "stool", x: x + s * 0.85, z: z + k, rot: 0 });
   }
-  along(out, "cabinet", x1 - 0.3, z0 + 0.5, z1 - 0.5, 0.95, Math.PI);
-  if (kiln) out.push({ t: "kiln", x: (x0 + x1) / 2, z: (z0 + z1) / 2, rot: 0 });
+  along(out, "cabinet", x1 - 0.3, z0 + (kiln ? 2.8 : 0.5), z1 - 0.5, 0.95, Math.PI);
+  if (kiln) { out.push({ t: "kiln", x: x1 - 0.8, z: z0 + 0.8, rot: 0 }); out.push({ t: "kiln", x: x1 - 0.8, z: z0 + 2.0, rot: 0 }); } // 窯は教室のすみ
 }
 
 function prep(out, R) {
@@ -623,7 +623,7 @@ const LAYOUTS = [
   [/練習室/, (o, R) => { o.push({ t: "piano", x: (R.x0 + R.x1) / 2 - 0.5, z: (R.z0 + R.z1) / 2, rot: 0 }); o.push({ t: "chair", x: (R.x0 + R.x1) / 2 + 1.2, z: (R.z0 + R.z1) / 2, rot: 0 }); }],
   [/音楽室/, (o, R) => { classroom(o, R, { cols: 8, rows: 5, seats: 40, eboard: false }); o.push({ t: "piano", x: R.x0 + 1.6, z: R.z0 + 1.2, rot: 0 }); }],
   [/美術教室/, (o, R) => artroom(o, R)],
-  [/工芸教室/, (o, R) => artroom(o, R)],
+  [/工芸教室/, (o, R) => artroom(o, R, true)],
   [/^窯$/, (o, R) => o.push({ t: "kiln", x: (R.x0 + R.x1) / 2, z: (R.z0 + R.z1) / 2, rot: 0 })],
   [/図書室/, library],
   [/職員室|事務室/, (o, R) => office(o, R)],

@@ -55,7 +55,7 @@ function inBlock(parent, b) {
 
 // ---------- 部屋データ ----------
 // 分ける部屋を、横にならんだ小さな部屋にする
-const splitRooms = ROOMS_RAW.flatMap((r) => {
+const splitRooms = ROOMS_RAW.filter((r) => r.name !== "窯").flatMap((r) => { // 窯は工芸教室の中の家具にする
   const sp = ROOM_SPLITS.find((x) => x.name === r.name && x.floor === r.floor && x.r0 === r.r0);
   if (!sp) return [r];
   const w = (r.c1 - r.c0 + 1) / sp.n;

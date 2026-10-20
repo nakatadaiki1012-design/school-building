@@ -355,12 +355,12 @@ const texPaving = canvasTex(256, 256, (g, w, h) => {
 // 外のレンガ敷き（昇降口のあいだ・体育館のまわりの広場で同じものを使う）
 function makeBrickFloorTex() {
   return canvasTex(256, 256, (g, W2, H2) => {
-    g.fillStyle = "#8e4f3a"; g.fillRect(0, 0, W2, H2);
+    g.fillStyle = "#a7685a"; g.fillRect(0, 0, W2, H2);
     const bh = 16, bw = 32;
     for (let row = 0, y = 0; y < H2; y += bh, row++) {
       for (let x = -(row % 2) * bw / 2; x < W2; x += bw) {
         const v = Math.random() * 26 - 13;
-        g.fillStyle = `rgb(${150 + v},${80 + v * 0.6},${60 + v * 0.5})`;
+        g.fillStyle = `rgb(${172 + v},${108 + v * 0.6},${88 + v * 0.5})`; // 少し明るめのレンガ
         g.fillRect(x + 1, y + 1, bw - 2, bh - 2);
       }
     }
@@ -1050,6 +1050,11 @@ scene.add(outdoor);
   flatRect(-13.4, -4.95, -14.9, 10.4, pink, -0.19);
   flatRect(-43.5, -13.4, 2.7, 10.4, pink, -0.19); // 重ならないように分ける
   flatRect(-16.3, -4.95, 10.4, 33.0, pink, -0.19);
+  // 武道場の前のピロティ（体育館の2階の下）も、同じレンガ敷き
+  {
+    const [px0, pz0] = toWorld(X(20), Z(23), blockById("gym")), [px1, pz1] = toWorld(X(27), Z(39), blockById("gym"));
+    flatRect(px0, px1, pz0, pz1, pink, -0.188);
+  }
   const planter = matHedge;
   for (const [x, z] of [[-8.6, 20.5], [-7.8, 27]]) {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.8, 0.6, 20), planter);

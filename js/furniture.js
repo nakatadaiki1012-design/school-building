@@ -205,6 +205,8 @@ const MAT = {
   vendFace: new THREE.MeshStandardMaterial({ map: texVend, roughness: 0.3, emissive: 0xffffff, emissiveMap: texVend, emissiveIntensity: 0.35 }),
   screenOn: new THREE.MeshStandardMaterial({ map: texEboard, roughness: 0.3, emissive: 0xffffff, emissiveMap: texEboard, emissiveIntensity: 0.55 }),
   gray: M(0x8e98a2),
+  cardboard: M(0xb8935e, { roughness: 1 }),
+  tank: M(0x6d97b8, { roughness: 0.6 }),
 };
 
 // ---------- 家具の形（床に置いたとき、正面が -x 向き） ----------
@@ -292,6 +294,23 @@ const SHAPES = {
   mat: [[MAT.mat, merge([b(2.0, 0.05, 1.0)])]],
   sewing: [[MAT.white, merge([b(0.2, 0.3, 0.4, 0, 0.72)])]],
   cabinet: [[MAT.locker, merge([b(0.45, 1.8, 0.9)])]],
+  // 倉庫などのスチール棚（段ボール箱がのっている）
+  rack: [[MAT.metal, merge([b(0.5, 0.03, 1.5, 0, 0.3), b(0.5, 0.03, 1.5, 0, 1.0), b(0.5, 0.03, 1.5, 0, 1.7), ...legs(0.5, 1.5, 1.8, 0.04)])], [MAT.cardboard, merge([b(0.4, 0.3, 0.5, 0, 0.33, -0.4), b(0.4, 0.35, 0.6, 0, 1.03, 0.3), b(0.4, 0.25, 0.45, 0, 1.73, -0.3)])]],
+  // 更衣室・部室のロッカー（背の高いもの）
+  tallLocker: [[MAT.locker, merge([b(0.5, 1.8, 0.9)])], [MAT.metal, merge([b(0.02, 0.15, 0.04, -0.26, 1.0, 0.2), b(0.02, 0.15, 0.04, -0.26, 1.0, -0.2)])]],
+  // 木のベンチ・丸いテーブル
+  bench: [[MAT.wood, merge([b(0.4, 0.05, 1.6, 0, 0.42)])], [MAT.metal, merge([b(0.35, 0.42, 0.05, 0, 0, -0.7), b(0.35, 0.42, 0.05, 0, 0, 0.7)])]],
+  roundTable: [[MAT.white, merge([new THREE.CylinderGeometry(0.45, 0.45, 0.04, 16).translate(0, 0.72, 0)])], [MAT.metal, merge([new THREE.CylinderGeometry(0.04, 0.04, 0.72, 6).translate(0, 0.36, 0)])]],
+  // 受水槽・電気室の機械
+  tank: [[MAT.tank, merge([b(2.2, 2.0, 3.0)])], [MAT.metal, merge([b(0.3, 0.3, 0.3, 0, 2.0, 0.8)])]],
+  panel: [[MAT.gray, merge([b(0.6, 2.0, 1.2)])], [MAT.black, merge([b(0.02, 0.4, 0.3, -0.31, 1.3, -0.25), b(0.02, 0.4, 0.3, -0.31, 1.3, 0.25)])]],
+  // 給湯室の流し台
+  kitchen: [[MAT.white, merge([b(0.6, 0.85, 1.8)])], [MAT.steel, merge([b(0.62, 0.04, 1.82, 0, 0.85)])]],
+  // 正面玄関の傘立て・下駄箱（来客用）
+  umbrella: [[MAT.metal, merge([b(0.3, 0.55, 0.9)])]],
+  // 作法室の座卓と床の間
+  zataku: [[MAT.darkWood, merge([b(0.9, 0.33, 1.6)])]],
+  tokonoma: [[MAT.darkWood, merge([b(0.6, 0.15, 1.8)])], [MAT.paper, merge([b(0.02, 1.2, 0.5, -0.28, 0.9)])]],
   // 教室の小物
   bulletin: [[MAT.cork, merge([b(0.03, 0.9, 2.4, 0, 1.25)])], [MAT.darkWood, merge([b(0.05, 0.05, 2.5, 0, 2.15), b(0.05, 0.05, 2.5, 0, 1.2)])]],
   clock: [[MAT.clock, (() => { const g = new THREE.CylinderGeometry(0.17, 0.17, 0.05, 24); g.rotateZ(-Math.PI / 2); g.translate(0.03, 2.45, 0); return g; })()]],
@@ -731,6 +750,21 @@ const LAYOUTS = [
   [/ウエイトルーム/, weights],
   [/^体育館$/, gym],
   [/受付カウンター/, shop],
+  // ここから下は、図面では中身がわからない部屋に、それらしい物を少しだけ置く
+  [/倉庫|器具庫|器具室|保管室/, (o, R) => { along(o, "rack", R.x0 + 0.3, R.z0 + 0.9, R.z1 - 0.9, 1.6, 0); along(o, "rack", R.x1 - 0.3, R.z0 + 0.9, R.z1 - 0.9, 1.6, Math.PI); }],
+  [/^(?!職員).*更衣室|部室/, (o, R) => { along(o, "tallLocker", R.x0 + 0.3, R.z0 + 0.6, R.z1 - 0.6, 0.92, 0); if (R.x1 - R.x0 > 3) o.push({ t: "bench", x: (R.x0 + R.x1) / 2 + 0.3, z: (R.z0 + R.z1) / 2, rot: 0 }); }],
+  [/受水槽/, (o, R) => o.push({ t: "tank", x: (R.x0 + R.x1) / 2, z: (R.z0 + R.z1) / 2, rot: 0 })],
+  [/電気室/, (o, R) => along(o, "panel", R.x0 + 0.35, R.z0 + 0.8, R.z1 - 0.8, 1.25, 0)],
+  [/給湯室/, (o, R) => o.push({ t: "kitchen", x: R.x0 + 0.35, z: (R.z0 + R.z1) / 2, rot: 0 })],
+  [/ラウンジ|らくらくスペース|コミュニティルーム/, (o, R) => {
+    const cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2;
+    for (const dz of (R.z1 - R.z0 > 4.5 ? [-1.2, 1.2] : [0])) {
+      o.push({ t: "roundTable", x: cx, z: cz + dz, rot: 0 });
+      for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) o.push({ t: "chair", x: cx + Math.cos(a) * 0.75, z: cz + dz + Math.sin(a) * 0.75, rot: a });
+    }
+  }],
+  [/作法室/, (o, R) => { o.push({ t: "zataku", x: (R.x0 + R.x1) / 2, z: (R.z0 + R.z1) / 2, rot: 0 }); o.push({ t: "tokonoma", x: R.x0 + 0.3, z: (R.z0 + R.z1) / 2, rot: 0 }); }],
+  [/正面玄関/, (o, R) => { o.push({ t: "umbrella", x: R.x1 - 0.5, z: R.z0 + 0.8, rot: Math.PI }); along(o, "shoeRack", R.x0 + 0.3, R.z1 - 2.6, R.z1 - 0.9, 1.8, 0); }],
 ];
 
 // 黒板・教卓を北側に置く特別教室（普通教室は図面の左＝西側が前）

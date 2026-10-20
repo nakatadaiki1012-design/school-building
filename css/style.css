@@ -251,3 +251,4 @@ dialog::backdrop { background: rgba(20, 30, 40, 0.45); }
   .floor-btn { height: 40px; }
   .legend { max-height: calc(100vh - 390px); overflow: auto; }
 }
+.room-photo { display: block; width: 100%; height: auto; border-radius: 10px; margin: 8px 0 10px; }

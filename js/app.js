@@ -3,7 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ROOMS_RAW } from "./data.js";
-import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS } from "./info.js";
+import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
 import { buildSite, createAerial, flatPoly, polyBounds, inPoly } from "./site.js";
 
@@ -865,6 +865,38 @@ scene.add(outdoor);
   m.position.set(38, 0.25, 0.3);
   m.castShadow = m.receiveShadow = true;
   outdoor.add(m);
+}
+
+// 2つの昇降口のあいだのレンガ敷きの屋外（上に2・3階がのっている）
+{
+  const rc = rectOf({ c0: PILOTIS.cells[0], r0: PILOTIS.cells[1], c1: PILOTIS.cells[2], r1: PILOTIS.cells[3] });
+  const b = blockAtCell(PILOTIS.cells[0], PILOTIS.cells[1]);
+  const w = rc.x1 - rc.x0, d = rc.z1 - rc.z0;
+  const brickTex = canvasTex(256, 256, (g, W2, H2) => {
+    g.fillStyle = "#8e4f3a"; g.fillRect(0, 0, W2, H2);
+    const bh = 16, bw = 32;
+    for (let row = 0, y = 0; y < H2; y += bh, row++) {
+      for (let x = -(row % 2) * bw / 2; x < W2; x += bw) {
+        const v = Math.random() * 26 - 13;
+        g.fillStyle = `rgb(${150 + v},${80 + v * 0.6},${60 + v * 0.5})`;
+        g.fillRect(x + 1, y + 1, bw - 2, bh - 2);
+      }
+    }
+  });
+  brickTex.repeat.set(w / 4, d / 4);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: brickTex, roughness: 0.95 }));
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.set((rc.x0 + rc.x1) / 2, -0.17, (rc.z0 + rc.z1) / 2);
+  floor.receiveShadow = true;
+  inBlock(outdoor, b).add(floor);
+  // 2階の床の裏（天井）と、それを支える柱
+  const geos = [];
+  const box = (bw2, bh2, bd, x, y, z) => { const g = new THREE.BoxGeometry(bw2, bh2, bd); g.translate(x, y, z); geos.push(g); };
+  box(w, 0.4, d, (rc.x0 + rc.x1) / 2, FH - 0.2, (rc.z0 + rc.z1) / 2);
+  for (const x of [rc.x0 + 0.4, (rc.x0 + rc.x1) / 2]) for (let z = rc.z0 + 3; z < rc.z1 - 1; z += 4.5) box(0.6, FH, 0.6, x, FH / 2 - 0.2, z);
+  const m = new THREE.Mesh(mergeGeometries(geos), matRelief);
+  m.castShadow = m.receiveShadow = true;
+  inBlock(layers.exterior[1], b).add(m);
 }
 
 // 光庭の芝生

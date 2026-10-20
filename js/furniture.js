@@ -51,6 +51,17 @@ const texBoard = canvasTex(512, 160, (g, w, h) => {
   g.fillStyle = "rgba(240,220,120,0.8)"; g.fillText("連絡", 24, h - 14);
 });
 
+// 電子黒板の画面（授業のスライド）
+const texEboard = canvasTex(256, 150, (g, w, h) => {
+  g.fillStyle = "#f7f9fc"; g.fillRect(0, 0, w, h);
+  g.fillStyle = "#2d6cb5"; g.fillRect(0, 0, w, 26);
+  g.fillStyle = "#fff"; g.font = "bold 16px sans-serif"; g.fillText("今日の授業", 10, 19);
+  g.fillStyle = "#555";
+  for (let i = 0; i < 4; i++) g.fillRect(14, 42 + i * 20, 120 + Math.random() * 80, 6);
+  g.fillStyle = "#f2b33d"; g.fillRect(180, 40, 60, 60);
+  g.fillStyle = "#4caf7a"; g.fillRect(190, 110, 50, 26);
+});
+
 // 掲示板（コルクにプリント）
 const texCork = canvasTex(256, 96, (g, w, h) => {
   g.fillStyle = "#b98a57"; g.fillRect(0, 0, w, h);
@@ -178,6 +189,7 @@ const MAT = {
   paper: M(0xf5f3ec, { roughness: 0.9 }),
   mirror: M(0xcfd8de, { metalness: 0.9, roughness: 0.1 }),
   red: M(0x9e1f2c, { roughness: 0.9 }),
+  screenOn: new THREE.MeshStandardMaterial({ map: texEboard, roughness: 0.3, emissive: 0xffffff, emissiveMap: texEboard, emissiveIntensity: 0.55 }),
   gray: M(0x8e98a2),
 };
 
@@ -266,6 +278,11 @@ const SHAPES = {
   bulletin: [[MAT.cork, merge([b(0.03, 0.9, 2.4, 0, 1.25)])], [MAT.darkWood, merge([b(0.05, 0.05, 2.5, 0, 2.15), b(0.05, 0.05, 2.5, 0, 1.2)])]],
   clock: [[MAT.clock, (() => { const g = new THREE.CylinderGeometry(0.17, 0.17, 0.05, 24); g.rotateZ(-Math.PI / 2); g.translate(0.03, 2.45, 0); return g; })()]],
   tv: [[MAT.black, merge([b(0.08, 0.62, 1.05, 0.06, 1.75), b(0.05, 0.3, 0.1, 0.02, 2.35)])]],
+  // 大型の電子黒板（キャスター付きのスタンドに、横長の画面）。画面は +x（生徒）向き
+  eboard: [
+    [MAT.screenOn, merge([b(0.04, 0.95, 1.62, 0.06, 0.85)])],
+    [MAT.black, merge([b(0.1, 1.03, 1.7, 0, 0.81), b(0.08, 0.85, 0.08, 0, 0, -0.45), b(0.08, 0.85, 0.08, 0, 0, 0.45), b(0.6, 0.06, 1.1, 0, 0.05)])],
+  ],
   door: [[MAT.door, merge([b(0.9, 1.95, 0.06)])], [MAT.darkWood, merge([b(1.0, 0.06, 0.1, 0, 1.95)])]],
   curtainPanel: [[MAT.curtain, merge([b(0.7, 2.05, 0.05, 0, 0.3)])]],
   cleanLocker: [[MAT.gray, merge([b(0.45, 1.8, 0.6)])]],
@@ -295,7 +312,8 @@ const alongX = (out, t, z, x0, x1, step, rot = Math.PI / 2) => {
 };
 
 // 普通教室：前（-x側）に黒板と教卓、後ろにロッカー、机は 6列 × 7行
-function classroom(out, R, { cols = 6, rows = 7 } = {}) {
+// 普通教室は40人（6列×7行から、いちばん後ろの両はしの2席を除く）
+function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true } = {}) {
   const { x0, x1, z0, z1 } = R;
   out.push({ t: "blackboard", x: x0 + 0.12, z: (z0 + z1) / 2, rot: 0 });
   out.push({ t: "podium", x: x0 + 0.65, z: (z0 + z1) / 2, rot: 0 });
@@ -303,9 +321,9 @@ function classroom(out, R, { cols = 6, rows = 7 } = {}) {
   // 後ろのロッカー、廊下側（北）の角に掃除用具入れ
   along(out, "locker", x1 - 0.35, z0 + 0.9, z1 - 0.3, 0.95, Math.PI);
   out.push({ t: "cleanLocker", x: x1 - 0.35, z: z0 + 0.45, rot: 0 });
-  // 黒板の上の時計、前のすみのテレビ、後ろの掲示板、教卓のパソコン
+  // 黒板の上の時計、左前（窓側の前）の大型の電子黒板、後ろの掲示板、教卓のパソコン
   out.push({ t: "clock", x: x0 + 0.08, z: (z0 + z1) / 2, rot: 0 });
-  out.push({ t: "tv", x: x0 + 0.08, z: z0 + 0.9, rot: 0 });
+  if (eboard) out.push({ t: "eboard", x: x0 + 0.55, z: z1 - 0.95, rot: 0 });
   out.push({ t: "bulletin", x: x1 + 0.12, z: (z0 + z1) / 2, rot: 0 });
   out.push({ t: "laptop", x: x0 + 1.35, z: (z0 + z1) / 2 + 0.2, rot: 0, y: 0.18 });
   // 廊下側（北）の前と後ろの引き戸
@@ -313,11 +331,12 @@ function classroom(out, R, { cols = 6, rows = 7 } = {}) {
   out.push({ t: "door", x: x1 - 1.0, z: z0 - 0.17, rot: 0 });
   // 窓側（南）のカーテン（柱のところにまとめてある）
   for (let x = x0 + 0.5; x < x1 - 0.3; x += 2.25) out.push({ t: "curtainPanel", x, z: z1 + 0.1, rot: 0 });
-  const dx0 = x0 + 2.6, dx1 = x1 - 1.6;
+  const dx0 = x0 + 2.2, dx1 = x1 - 1.3;
   const dz0 = z0 + 0.7, dz1 = z1 - 0.7;
-  const rr = Math.max(2, Math.min(rows, Math.floor((dx1 - dx0) / 0.9) + 1));
-  const cc = Math.max(2, Math.min(cols, Math.floor((dz1 - dz0) / 0.75) + 1));
+  const rr = rows, cc = cols;
+  const skip = rr * cc - seats; // いちばん後ろの列の両はしから空ける
   for (let i = 0; i < rr; i++) for (let j = 0; j < cc; j++) {
+    if (i === rr - 1 && skip > 0 && (j < Math.ceil(skip / 2) || j >= cc - Math.floor(skip / 2))) continue;
     const x = dx0 + (dx1 - dx0) * (i / (rr - 1));
     const z = dz0 + (dz1 - dz0) * (j / (cc - 1));
     // 椅子は少しずつずらして、使っている感じを出す
@@ -551,7 +570,7 @@ function gym(out, R) {
 // 部屋の名前 → 置き方
 const LAYOUTS = [
   [/年\d+組/, classroom],
-  [/選択|オーラル|社会科教室/, (o, R) => classroom(o, R, { cols: 5, rows: 6 })],
+  [/選択|オーラル|社会科教室/, (o, R) => classroom(o, R, { cols: 5, rows: 6, seats: 30, eboard: false })],
   [/STUDY HALL/, (o, R) => grid(o, "bigTable", R.x0 + 1.4, R.x1 - 1.4, R.z0 + 1.5, R.z1 - 1.5, 2, 2)],
   [/化学実験室|物理実験室|生物実験室/, (o, R) => lab(o, R)],
   [/調理室/, (o, R) => lab(o, R, "cookBench")],
@@ -581,7 +600,9 @@ const LAYOUTS = [
 ];
 
 // 黒板・教卓を北側に置く特別教室（普通教室は図面の左＝西側が前）
-const NORTH_FRONT = /選択|オーラル|社会科教室|実験室|調理室|被服室|コンピューター|視聴覚|音楽室|美術教室|工芸教室|STUDY HALL/;
+const NORTH_FRONT = /選択|オーラル|社会科教室|実験室|被服室|視聴覚|音楽室|美術教室|工芸教室|STUDY HALL/;
+// 先生の机・黒板が南側にある特別教室
+const SOUTH_FRONT = /調理室|コンピューター/;
 
 // 床の模様
 export function floorStyle(name) {
@@ -598,7 +619,16 @@ export function buildFurniture(rooms, y) {
     const fn = LAYOUTS.find(([re]) => re.test(r.name));
     if (!fn) continue;
     const list = [];
-    if (NORTH_FRONT.test(r.name)) {
+    if (SOUTH_FRONT.test(r.name)) {
+      // 南側（+z）が前。「正面が -x」の置き方を +90度回して使う
+      fn[1](list, { x0: -r.d / 2 + 0.2, x1: r.d / 2 - 0.2, z0: -r.w / 2 + 0.2, z1: r.w / 2 - 0.2 });
+      for (const it of list) {
+        const { x, z } = it;
+        it.x = r.cx + z;
+        it.z = r.cz - x;
+        it.rot = (it.rot || 0) + Math.PI / 2;
+      }
+    } else if (NORTH_FRONT.test(r.name)) {
       // 特別教室は、黒板・教卓・教壇を北側（-z）に置く。
       // 置き方の関数は「正面が -x」で書いてあるので、部屋の中心のまわりで -90度回して使う
       fn[1](list, { x0: -r.d / 2 + 0.2, x1: r.d / 2 - 0.2, z0: -r.w / 2 + 0.2, z1: r.w / 2 - 0.2 });

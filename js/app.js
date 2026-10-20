@@ -1889,6 +1889,20 @@ function declutter() {
   }
 }
 
+// 軽くするため、画面が止まっているときは描き直さない。
+// カメラが動いたとき、操作の直後（1.5秒）、アニメーション中だけ描く（念のため1秒に1回は描く）
+let activeUntil = 0, lastDraw = 0;
+const camKey = new Float64Array(18);
+const poke = () => { activeUntil = performance.now() + 1500; };
+for (const ev of ["pointerdown", "pointermove", "wheel", "keydown", "click", "touchstart", "touchmove", "resize"]) window.addEventListener(ev, poke, { passive: true, capture: true });
+function cameraChanged(cam) {
+  const e = cam.matrixWorld.elements;
+  let ch = false;
+  for (let i = 0; i < 16; i++) if (camKey[i] !== e[i]) { camKey[i] = e[i]; ch = true; }
+  if (camKey[16] !== cam.zoom) { camKey[16] = cam.zoom; ch = true; }
+  if (camKey[17] !== (cam === ortho ? 1 : 0)) { camKey[17] = cam === ortho ? 1 : 0; ch = true; }
+  return ch;
+}
 function tick(now) {
   if (anim) {
     const k = Math.min(1, (now - anim.t0) / anim.ms);
@@ -1902,9 +1916,13 @@ function tick(now) {
   const az = cam === ortho ? 0 : controls3d.getAzimuthalAngle();
   compassEl.style.transform = `rotate(${THREE.MathUtils.radToDeg(az)}deg)`;
   (cam === ortho ? controls2d : controls3d).update();
-  renderer.render(scene, cam);
-  labelRenderer.render(scene, cam);
-  if (now - lastDeclutter > 200) { lastDeclutter = now; declutter(); }
+  cam.updateMatrixWorld();
+  if (anim || cameraChanged(cam) || now < activeUntil || now - lastDraw > 1000) {
+    lastDraw = now;
+    renderer.render(scene, cam);
+    labelRenderer.render(scene, cam);
+    if (now - lastDeclutter > 200) { lastDeclutter = now; declutter(); }
+  }
   requestAnimationFrame(tick);
 }
 
@@ -1917,6 +1935,3 @@ const m = location.hash.match(/room=([\w-]+)/);
 if (m && ROOM_BY_ID[m[1]]) selectRoom(ROOM_BY_ID[m[1]]);
 requestAnimationFrame(tick);
 document.getElementById("loading").remove();
-window.__flyTo = (p, t) => flyTo(new THREE.Vector3(...p), new THREE.Vector3(...t), 10);
-window.__R = ROOMS;
-window.__perf = () => { renderer.info.autoReset = true; const t0 = performance.now(); let n = 0; for (let i = 0; i < 10; i++) { renderer.render(scene, persp); n++; } const dt = (performance.now() - t0) / n; return { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, ms: Math.round(dt), geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }; };

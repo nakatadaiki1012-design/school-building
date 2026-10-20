@@ -301,6 +301,15 @@ const SHAPES = {
   // 更衣室・部室のロッカー（背の高いもの）
   tallLocker: [[MAT.locker, merge([b(0.5, 1.8, 0.9)])], [MAT.metal, merge([b(0.02, 0.15, 0.04, -0.26, 1.0, 0.2), b(0.02, 0.15, 0.04, -0.26, 1.0, -0.2)])]],
   // 木のベンチ・丸いテーブル
+  // 応接室のだ円形の机（真ん中があいている）。南北（z）に長い。天板の高さ 0.7m
+  ovalTable: (() => {
+    const sh = new THREE.Shape(); sh.absellipse(0, 0, 1.25, 2.6, 0, Math.PI * 2, false);
+    const hole = new THREE.Path(); hole.absellipse(0, 0, 0.55, 1.9, 0, Math.PI * 2, true); sh.holes.push(hole);
+    const top = new THREE.ExtrudeGeometry(sh, { depth: 0.05, bevelEnabled: false, curveSegments: 32 });
+    top.rotateX(-Math.PI / 2); top.translate(0, 0.68, 0);
+    const legs = [[0.9, 0], [-0.9, 0], [0, 2.25], [0, -2.25]].map(([x, z]) => b(0.08, 0.68, 0.08, x, 0, z));
+    return [[MAT.darkWood, merge([top])], [MAT.metal, merge(legs)]];
+  })(),
   bench: [[MAT.wood, merge([b(0.4, 0.05, 1.6, 0, 0.42)])], [MAT.metal, merge([b(0.35, 0.42, 0.05, 0, 0, -0.7), b(0.35, 0.42, 0.05, 0, 0, 0.7)])]],
   roundTable: [[MAT.white, merge([new THREE.CylinderGeometry(0.45, 0.45, 0.04, 16).translate(0, 0.72, 0)])], [MAT.metal, merge([new THREE.CylinderGeometry(0.04, 0.04, 0.72, 6).translate(0, 0.36, 0)])]],
   // 受水槽・電気室の機械
@@ -771,7 +780,16 @@ const LAYOUTS = [
   [/職員室|事務室/, (o, R) => office(o, R)],
   [/会議室/, meeting],
   [/校長室/, principal],
-  [/応接室/, reception],
+  // 応接室：南北に長いだ円形の机（真ん中があいている）と、まわりの椅子
+  [/応接室/, (o, R) => {
+    const cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2;
+    o.push({ t: "ovalTable", x: cx, z: cz, rot: 0 });
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2;
+      const x = cx + Math.cos(a) * 1.75, z = cz + Math.sin(a) * 3.1;
+      o.push({ t: "officeChair", x, z, rot: -a }); // 机のほうを向く
+    }
+  }],
   [/保健室/, infirmary],
   [/売店/, shop],
   [/昇降口/, entrance],

@@ -405,6 +405,50 @@ export function distSeg(x, z, ax, az, bx, bz) {
 }
 
 // ---------- 駐車場（白線と車） ----------
+// 車の形（長さ方向が x）。ミニバン（背の高い車）とふつうの車
+const carGlass = M(0x1d2733, { roughness: 0.15, metalness: 0.5 });
+const carTire = M(0x1a1a1a, { roughness: 0.9 });
+const carLight = M(0xf4f1e4, { roughness: 0.3 });
+const carBodyMats = {};
+function carModel(color, tall) {
+  const g = new THREE.Group();
+  const mat = (carBodyMats[color] ||= M(color, { metalness: 0.45, roughness: 0.35 }));
+  const L = tall ? 4.6 : 4.3, W = 1.72;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(L, 0.72, W), mat);
+  body.position.y = 0.62;
+  // 屋根（上が少しせまい台形）
+  const cabL = tall ? 3.2 : 2.3, cabH = tall ? 0.85 : 0.6;
+  const cg = new THREE.BoxGeometry(cabL, cabH, W - 0.12);
+  const pos = cg.attributes.position;
+  for (let i = 0; i < pos.count; i++) if (pos.getY(i) > 0) { pos.setX(i, pos.getX(i) * (tall ? 0.94 : 0.78)); pos.setZ(i, pos.getZ(i) * 0.92); }
+  cg.computeVertexNormals();
+  const cab = new THREE.Mesh(cg, mat);
+  cab.position.set(tall ? -0.25 : -0.15, 0.98 + cabH / 2, 0);
+  // 窓（屋根より少しだけ大きい黒いガラスの帯）
+  const wg = new THREE.BoxGeometry(cabL * 0.96, cabH * 0.62, W - 0.08);
+  const wp = wg.attributes.position;
+  for (let i = 0; i < wp.count; i++) if (wp.getY(i) > 0) { wp.setX(i, wp.getX(i) * (tall ? 0.95 : 0.84)); wp.setZ(i, wp.getZ(i) * 0.94); }
+  const win = new THREE.Mesh(wg, carGlass);
+  win.position.set(cab.position.x, 0.98 + cabH * 0.45, 0);
+  g.add(body, cab, win);
+  // タイヤ
+  const tg = new THREE.CylinderGeometry(0.32, 0.32, 0.24, 12);
+  tg.rotateX(Math.PI / 2);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const t = new THREE.Mesh(tg, carTire);
+    t.position.set(sx * (L / 2 - 0.8), 0.32, sz * (W / 2 - 0.08));
+    g.add(t);
+  }
+  // 前のライト
+  for (const sz of [-1, 1]) {
+    const l = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.12, 0.32), carLight);
+    l.position.set(L / 2, 0.78, sz * 0.58);
+    g.add(l);
+  }
+  g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+  return g;
+}
+
 function buildParking({ x0, x1, z0, z1 }) {
   const g = new THREE.Group();
   const w = x1 - x0, d = z1 - z0;
@@ -419,21 +463,18 @@ function buildParking({ x0, x1, z0, z1 }) {
   p.rotation.x = -Math.PI / 2;
   p.position.set((x0 + x1) / 2, -0.185, (z0 + z1) / 2);
   g.add(p);
-  // 車（何台か）
+  // 車（何台か）：車体・窓のついた屋根・タイヤ・ライト
   const colors = [0xf2f2f2, 0x222222, 0x8a8f96, 0x2b4d80, 0xb33a3a, 0xd9d4c8];
   const n = Math.floor((along ? w : d) / 2.5);
-  const body = new THREE.BoxGeometry(along ? 1.7 : 4.3, 0.8, along ? 4.3 : 1.7);
-  const cab = new THREE.BoxGeometry(along ? 1.5 : 2.2, 0.6, along ? 2.2 : 1.5);
   let seed = Math.round(x0 * 7 + z0 * 13);
   const rnd = () => ((seed = (seed * 16807 + 11) % 2147483647) / 2147483647);
   for (let i = 0; i < n; i++) {
     if (rnd() < 0.35) continue;
-    const mat = M(colors[Math.floor(rnd() * colors.length)], { metalness: 0.4, roughness: 0.4 });
+    const car = carModel(colors[Math.floor(rnd() * colors.length)], rnd() < 0.5);
     const cx = along ? x0 + 1.25 + i * 2.5 : (x0 + x1) / 2, cz = along ? (z0 + z1) / 2 : z0 + 1.25 + i * 2.5;
-    const b = new THREE.Mesh(body, mat); b.position.set(cx, 0.35, cz);
-    const c = new THREE.Mesh(cab, mat); c.position.set(cx, 1.0, cz);
-    b.castShadow = c.castShadow = true;
-    g.add(b, c);
+    car.position.set(cx, -0.18, cz);
+    car.rotation.y = along ? Math.PI / 2 : 0;
+    g.add(car);
   }
   return g;
 }

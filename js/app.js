@@ -560,6 +560,7 @@ function solarPanels(rects, y) {
 const matSlab = new THREE.MeshStandardMaterial({ color: 0xeeebe4, roughness: 0.95 });
 const wallMat = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.82, metalness: 0.0 });
 const matStack = new THREE.MeshStandardMaterial({ map: texStack, roughness: 0.8 });
+const matStackSide = new THREE.MeshStandardMaterial({ color: 0xf2efe8, roughness: 0.85, side: THREE.DoubleSide });
 const cutMats = {};
 function cutMat(style) {
   if (!cutMats[style]) {
@@ -626,22 +627,24 @@ for (const f of [1, 2, 3]) {
     }
   }
   // 白い丸い階段塔（位置は実際のメートル）
+  // 半円のバルコニー（東の壁から半円に出る）と、音楽室の横の半円の塔（北の壁から出る）
   for (const t of FACADE.roundStairs) {
     if (!t.tower) {
-      // 東の端の壁の、茶色いレンガの面のあいだの白い帯（中に階段。小さい窓が縦にならぶ）。壁から少しだけ出ている
-      const m = new THREE.Mesh(new THREE.BoxGeometry(0.5, FH, 3.2), matStack);
-      m.position.set(t.x - t.r + 0.2, base(f) + FH / 2, t.z);
-      m.castShadow = m.receiveShadow = true;
-      ext.add(m);
-      if (f === 3) { const cap = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.5, 3.4), matParapet); cap.position.set(t.x - t.r + 0.2, base(f) + FH + 0.25, t.z); ext.add(cap); }
+      // 床（半円の板）と、手すり壁（半円の輪）。東向きの半分＝theta 0〜π
+      const slab = new THREE.Mesh(new THREE.CylinderGeometry(t.r, t.r, 0.22, 24, 1, false, 0, Math.PI), matRelief);
+      slab.position.set(t.x, base(f) + 0.0, t.z);
+      const rail = new THREE.Mesh(new THREE.CylinderGeometry(t.r, t.r, 1.1, 24, 1, true, 0, Math.PI), matStackSide);
+      rail.position.set(t.x, base(f) + 0.65, t.z);
+      for (const m of [slab, rail]) { m.castShadow = m.receiveShadow = true; ext.add(m); }
       continue;
     }
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(t.r, t.r, FH, 28), t.tower ? matTower : matStack);
+    // 北向きの半分＝theta π/2〜3π/2
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(t.r, t.r, FH, 28, 1, false, Math.PI / 2, Math.PI), matTower);
     m.position.set(t.x, base(f) + FH / 2, t.z);
     m.castShadow = m.receiveShadow = true;
     ext.add(m);
     if (f === 3) {
-      const cap = new THREE.Mesh(new THREE.CylinderGeometry(t.r + 0.1, t.r + 0.1, 0.5, 28), matParapet);
+      const cap = new THREE.Mesh(new THREE.CylinderGeometry(t.r + 0.1, t.r + 0.1, 0.5, 28, 1, false, Math.PI / 2, Math.PI), matParapet);
       cap.position.set(t.x, base(f) + FH + 0.25, t.z);
       cap.castShadow = true;
       ext.add(cap);

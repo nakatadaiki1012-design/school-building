@@ -187,7 +187,8 @@ function buildGround(cfg) {
   // まわりのフェンス（辺ごとに高さが違う。西側と北西の角は高い防球ネット）
   for (let i = 0; i < cfg.poly.length; i++) {
     const [x0, z0] = cfg.poly[i], [x1, z1] = cfg.poly[(i + 1) % cfg.poly.length];
-    fenceLine(g, x0, z0, x1, z1, (cfg.fence && cfg.fence[i]) || 3);
+    const fh = cfg.fence ? cfg.fence[i] ?? 3 : 3;
+    if (fh > 0) fenceLine(g, x0, z0, x1, z1, fh);
   }
   // 白いテント、物置、ベンチ（写真に写っている小物。位置はおおよそ）
   for (const t of cfg.tents || []) g.add(tent(t));
@@ -604,7 +605,9 @@ export function offsetBoundary(boundary) {
     let nx = n1[0] / l1 + n2[0] / l2, nz = n1[1] / l1 + n2[1] / l2;
     const l = Math.hypot(nx, nz); nx /= l; nz /= l;
     if (inPoly(x + nx * 0.5, z + nz * 0.5, boundary)) { nx = -nx; nz = -nz; }
-    const w = Math.max(0.4, Math.abs(terrainH(x, z)) * SLOPE_RUN);
+    // 外が高い（北）ところは、ほぼ垂直な石積みの壁。外が低い（南・西）ところは斜めの石積み
+    const H = terrainH(x, z);
+    const w = H > 0 ? Math.max(2.8, H * 0.5) : Math.max(0.4, -H * SLOPE_RUN);
     out.push([x + nx * w, z + nz * w]);
   }
   return out;
@@ -621,7 +624,7 @@ export function buildTerrain(boundary, material, roads = []) {
     const x = pos.getX(i), z = pos.getZ(i);
     let h = terrainH(x, z) - 0.25;
     // 敷地とのり面の内側は、敷地の地面やのり面より下にかくす
-    if (inPoly(x, z, hole)) h = Math.min(h, 0) - 0.6;
+    if (inPoly(x, z, hole)) h = Math.min(h, 0) - 10;
     // 道路の下も少し下げて、地面が道路の上に出ないようにする
     else if (roads.some((r) => r.pts.some((p, k) => k + 1 < r.pts.length && distSeg(x, z, p[0], p[1], r.pts[k + 1][0], r.pts[k + 1][1]) < r.w / 2 + 1.5))) h -= 0.35;
     pos.setY(i, h);

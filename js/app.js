@@ -1015,13 +1015,6 @@ function rustTex() {
   for (let z = zTop; z <= zBot; z += 4.5) box(geos2, 0.35, ty, 0.35, gxe + dw - 0.3, ty / 2 - 0.15, z);
   for (let x = gx; x <= gxe + dw; x += 4.5) box(geos2, 0.35, ty, 0.35, x, ty / 2 - 0.15, zBot - 0.3);
   box(geos2, 0.35, ty, 0.35, gx - sw, ty / 2 - 0.15, zTop + 0.3);
-  // 西側の壁の上の、さびた茶色の細長い軒（写真で体育館の長さいっぱいに見える）
-  {
-    const rr = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.2, gz1 - zTop + 1), new THREE.MeshStandardMaterial({ map: rustTex(), roughness: 0.8, metalness: 0.2 }));
-    rr.position.set(gx - 0.8, ty + 2.8, (zTop + gz1) / 2);
-    rr.castShadow = true;
-    gymExtras.add(rr);
-  }
   // 外階段：北西の踊り場から南へ1階に下りる階段と、南側の外から2階に上がる階段
   // 外廊下のさらに西に、北の踊り場へ上がる外階段（南から北へ上る）
   stair(geos1, gx - sw / 2 - 0.1, zTop + landL + stairL, gx - sw / 2 - 0.1, zTop + landL, -0.2, ty, sw);

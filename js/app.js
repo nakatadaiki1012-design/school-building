@@ -675,16 +675,16 @@ for (const f of [1, 2, 3]) {
       holder.add(fl);
       for (const sg of list) {
         const len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az), alongX = sg.n[1] !== 0;
-        const w = new THREE.Mesh(new THREE.BoxGeometry(alongX ? len : 0.2, 1.2, alongX ? 0.2 : len), matRelief);
-        w.position.set((sg.ax + sg.bx) / 2, base(f) + 0.6, (sg.az + sg.bz) / 2);
+        const w = new THREE.Mesh(new THREE.BoxGeometry(alongX ? len : 0.2, 1.7, alongX ? 0.2 : len), matRelief); // 腰壁は少し高め（1.7m）
+        w.position.set((sg.ax + sg.bx) / 2, base(f) + 0.85, (sg.az + sg.bz) / 2);
         w.castShadow = w.receiveShadow = true;
         holder.add(w);
       }
       for (const sg of list) {
         const len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az), n = Math.max(1, Math.round(len / 3));
         for (let i = 0; i <= n; i++) {
-          const p = new THREE.Mesh(new THREE.BoxGeometry(0.25, FH - 1.2, 0.25), matRelief);
-          p.position.set(sg.ax + ((sg.bx - sg.ax) * i) / n, base(f) + 1.2 + (FH - 1.2) / 2, sg.az + ((sg.bz - sg.az) * i) / n);
+          const p = new THREE.Mesh(new THREE.BoxGeometry(0.25, FH - 1.7, 0.25), matRelief);
+          p.position.set(sg.ax + ((sg.bx - sg.ax) * i) / n, base(f) + 1.7 + (FH - 1.7) / 2, sg.az + ((sg.bz - sg.az) * i) / n);
           holder.add(p);
         }
       }
@@ -935,10 +935,10 @@ function rustTex() {
     c.fillStyle = "rgba(0,0,0,0.15)"; for (let x = 0; x < W2; x += 8) c.fillRect(x, 0, 2, H2);
   });
 }
-// 渡り廊下の屋根は、さびたオレンジ色の平らな屋根
+// 渡り廊下の屋根は、白い平らな屋根
 {
   const rc = rectOf({ c0: 27, r0: 19, c1: 32, r1: 21 });
-  const m = new THREE.Mesh(new THREE.BoxGeometry(rc.x1 - rc.x0, 0.35, rc.z1 - rc.z0), new THREE.MeshStandardMaterial({ map: rustTex(), roughness: 0.8 }));
+  const m = new THREE.Mesh(new THREE.BoxGeometry(rc.x1 - rc.x0, 0.35, rc.z1 - rc.z0), matRelief);
   m.position.set((rc.x0 + rc.x1) / 2, 2 * FH + 0.2, (rc.z0 + rc.z1) / 2);
   m.castShadow = true;
   inBlock(layers.roofs[2], blockById("bridge")).add(m);

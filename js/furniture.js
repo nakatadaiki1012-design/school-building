@@ -335,7 +335,8 @@ const SHAPES = {
   // 廊下側の壁の上の細長い窓（欄間）と、下の小窓。壁より厚くして両側から見える
   hallWindow: [[MAT.transom, merge([b(1.7, 0.42, 0.24, 0, 1.92), b(1.7, 0.32, 0.24, 0, 0.12)])], [MAT.doorFrame, merge([b(1.78, 0.04, 0.26, 0, 2.34), b(1.78, 0.04, 0.26, 0, 1.88), b(0.04, 0.46, 0.26, 0, 1.88)])]],
   // 壁より厚くして、教室の中からも廊下からも見えるようにする
-  door: [[MAT.door, merge([b(0.9, 1.95, 0.3)])], [MAT.doorFrame, merge([b(1.06, 0.07, 0.34, 0, 1.95), b(0.07, 2.02, 0.34, -0.5), b(0.07, 2.02, 0.34, 0.5)])], [MAT.transom, merge([b(0.9, 0.35, 0.26, 0, 2.03)])]],
+  // 2枚の引き戸（少し前後にずらして重ねる）
+  door: [[MAT.door, merge([b(0.9, 1.95, 0.3, -0.45, 0, -0.02), b(0.9, 1.95, 0.3, 0.45, 0, 0.02)])], [MAT.doorFrame, merge([b(1.96, 0.07, 0.34, 0, 1.95), b(0.07, 2.02, 0.34, -0.95), b(0.07, 2.02, 0.34, 0.95), b(0.03, 1.95, 0.35, 0)])], [MAT.transom, merge([b(1.8, 0.35, 0.26, 0, 2.03)])]],
   curtainPanel: [[MAT.curtain, merge([b(0.7, 2.05, 0.05, 0, 0.3)])]],
   cleanLocker: [[MAT.gray, merge([b(0.45, 1.8, 0.6)])]],
   bag: [[MAT.bag, merge([b(0.1, 0.3, 0.34, 0, 0.32)])]],
@@ -387,10 +388,11 @@ function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back
   out.push({ t: "bulletin", x: x1 + 0.12, z: (z0 + z1) / 2, rot: 0 });
   out.push({ t: "laptop", x: x0 + 1.35, z: (z0 + z1) / 2 + 0.2, rot: 0, y: 0.18 });
   // 廊下側（北）の前と後ろの引き戸
-  out.push({ t: "door", x: x0 + 1.0, z: z0 - 0.2, rot: 0 }); // 壁のまんなか
-  out.push({ t: "door", x: x1 - 1.0, z: z0 - 0.2, rot: 0 });
+  // 前のドアは教壇（窓から壁までの段）にかからないよう、教壇のすぐうしろ
+  out.push({ t: "door", x: x0 + 2.2, z: z0 - 0.2, rot: 0 }); // 壁のまんなか
+  out.push({ t: "door", x: x1 - 1.2, z: z0 - 0.2, rot: 0 });
   // 2つのドアのあいだの、廊下側の窓
-  for (let x = x0 + 2.6; x < x1 - 2.4; x += 1.85) out.push({ t: "hallWindow", x, z: z0 - 0.2, rot: 0 });
+  for (let x = x0 + 4.1; x < x1 - 2.9; x += 1.85) out.push({ t: "hallWindow", x, z: z0 - 0.2, rot: 0 });
   // 窓側（南）のカーテン（柱のところにまとめてある）
   for (let x = x0 + 0.5; x < x1 - 0.3; x += 2.25) out.push({ t: "curtainPanel", x, z: z1 + 0.1, rot: 0 });
   const dx0 = x0 + 2.2, dx1 = x1 - 1.3 - (x1 - x0) * back;
@@ -697,11 +699,11 @@ function reception(out, R) {
 
 function principal(out, R) {
   const { x0, x1, z0, z1 } = R;
-  // 校長の机は東の壁ぎわで、西を向いて座る。応接セットは西側
-  const cz = (z0 + z1) / 2;
-  out.push({ t: "teacherDesk", x: x1 - 1.3, z: cz, rot: Math.PI }, { t: "monitor", x: x1 - 1.2, z: cz + 0.3, rot: 0, y: 0.03 });
-  out.push({ t: "officeChair", x: x1 - 0.55, z: cz, rot: 0 });
-  reception(out, { x0, x1: x1 - 2.2, z0, z1 });
+  // 校長の机は南の窓の近く（西を向いて座る）。応接セットは北側
+  const dz = z1 - 1.0;
+  out.push({ t: "teacherDesk", x: x1 - 1.3, z: dz, rot: Math.PI }, { t: "monitor", x: x1 - 1.2, z: dz + 0.3, rot: 0, y: 0.03 });
+  out.push({ t: "officeChair", x: x1 - 0.55, z: dz, rot: 0 });
+  reception(out, { x0, x1, z0, z1: z1 - 1.8 });
 }
 
 function entrance(out, R) {

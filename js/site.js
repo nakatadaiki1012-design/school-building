@@ -527,7 +527,7 @@ function buildHouses(SITE) {
     }
     return false;
   };
-  const R = 290, ang = THREE.MathUtils.degToRad(-17), ca = Math.cos(ang), sa = Math.sin(ang);
+  const R = 135, ang = THREE.MathUtils.degToRad(-17), ca = Math.cos(ang), sa = Math.sin(ang);
   const sx = 11.5, sz = 12.5;
   for (let i = -Math.ceil(R / sx); i <= Math.ceil(R / sx); i++) {
     // 何列かおきに道（家をおかない）
@@ -637,7 +637,7 @@ export function offsetBoundary(boundary) {
 
 export function buildTerrain(boundary, material, roads = []) {
   // 斜面の高さが場所ごとに変わるので、細かい格子の面にする
-  const R = 300, step = 2.5, n = Math.round((2 * R) / step);
+  const R = 200, step = 3, n = Math.round((2 * R) / step);
   const hole = offsetBoundary(boundary);
   const geo = new THREE.PlaneGeometry(2 * R, 2 * R, n, n);
   geo.rotateX(-Math.PI / 2);
@@ -977,8 +977,9 @@ export function buildSite(scene, SITE) {
     group.add(m);
   }
   if (SITE.boundary) group.add(buildRetaining(SITE.boundary, SITE.gates || []));
-  if (SITE.neighborSchool) group.add(buildNeighborSchool(SITE.neighborSchool));
-  if (SITE.neighborJHS) group.add(buildNeighborJHS(SITE.neighborJHS));
+  // となりの小学校・中学校は、軽くするため描かない（SITE.showNeighbors を true にすると出る）
+  if (SITE.showNeighbors && SITE.neighborSchool) group.add(buildNeighborSchool(SITE.neighborSchool));
+  if (SITE.showNeighbors && SITE.neighborJHS) group.add(buildNeighborJHS(SITE.neighborJHS));
   const houses = SITE.roads && SITE.boundary ? buildHouses(SITE) : null;
   if (houses) group.add(houses);
   group.traverse((o) => { if (o.isMesh) o.receiveShadow = true; });

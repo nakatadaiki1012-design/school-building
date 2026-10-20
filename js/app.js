@@ -150,7 +150,7 @@ app.appendChild(labelRenderer.domElement);
 const scene = new THREE.Scene();
 scene.background = skyTexture();
 // 遠くの家並みは霧でうすくなって消えていく
-scene.fog = new THREE.Fog(0xdde8f1, 230, 520);
+scene.fog = new THREE.Fog(0xdde8f1, 230, 360);
 
 const persp = new THREE.PerspectiveCamera(45, 1, 0.5, 1000);
 persp.position.set(55, 75, 95);
@@ -162,7 +162,7 @@ const controls3d = new OrbitControls(persp, labelRenderer.domElement);
 controls3d.enableDamping = true;
 controls3d.maxPolarAngle = Math.PI * 0.48;
 controls3d.minDistance = 12;
-controls3d.maxDistance = 260;
+controls3d.maxDistance = 220;
 controls3d.target.set(0, 4, 0);
 
 const controls2d = new OrbitControls(ortho, labelRenderer.domElement);

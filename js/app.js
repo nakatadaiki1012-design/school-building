@@ -982,7 +982,8 @@ function rustTex() {
   const ty = FH, dw = 3; // 床の高さ、幅
   const zTop = gz0 + 2, zBot = gz1 + 2.5;
   const deck = (x0, x1, z0, z1) => box(geos2, x1 - x0, 0.3, z1 - z0, (x0 + x1) / 2, ty - 0.15, (z0 + z1) / 2);
-  const rail = (x0, x1, z0, z1) => box(geos2, Math.max(0.18, x1 - x0), 1.1, Math.max(0.18, z1 - z0), (x0 + x1) / 2, ty + 0.4, (z0 + z1) / 2);
+  // 外廊下の腰壁（写真では高め、約1.6m）
+  const rail = (x0, x1, z0, z1) => box(geos2, Math.max(0.18, x1 - x0), 1.6, Math.max(0.18, z1 - z0), (x0 + x1) / 2, ty + 0.65, (z0 + z1) / 2);
   // 西側は、北の端の踊り場だけ2階の高さ。そこから南に向かって1階へ下りる外階段がある（写真）
   const landL = 3, stairL = 9.4, sw = 2.4;
   deck(gx - sw - 0.2, gx, zTop, zTop + landL);  // 北西の踊り場
@@ -1011,6 +1012,8 @@ function rustTex() {
   rail(gxe + dw, gxe + dw, bz1, zBot);
   rail(gxe, gxe + dw, zTop, zTop);
   box(geos2, 0.35, ty, 0.35, gxe + dw + 2.2, ty / 2 - 0.15, zTop + 0.2);
+  // 東の外廊下の上の白いひさし（体育館の壁から外廊下の上へ張り出す）
+  box(geos2, dw + 0.4, 0.2, zBot - zTop, gxe + (dw + 0.4) / 2, ty + 2.9, (zTop + zBot) / 2);
   // 外廊下と踊り場を支える柱
   for (let z = zTop; z <= zBot; z += 4.5) box(geos2, 0.35, ty, 0.35, gxe + dw - 0.3, ty / 2 - 0.15, z);
   for (let x = gx; x <= gxe + dw; x += 4.5) box(geos2, 0.35, ty, 0.35, x, ty / 2 - 0.15, zBot - 0.3);

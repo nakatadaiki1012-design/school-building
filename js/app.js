@@ -690,7 +690,8 @@ for (const f of [1, 2, 3]) {
   const roofCells = new Set();
   for (const [k, st] of OCC[f]) {
     if (st === "gym" && f === 3) continue;
-    if (f === 3 && (st === "high" || blockAtCell(...k.split(",").map(Number)).id === "art")) continue; // 図書室の棟は寄棟の屋根（別に作る）
+    if (f === 2 && blockAtCell(...k.split(",").map(Number)).id === "art") continue; // 図書室の棟は2階の上に寄棟の屋根（別に作る）
+    if (f === 3 && st === "high") continue;
     if (f === 3 || !OCC[f + 1].has(k)) roofCells.add(k);
   }
   const roof = new THREE.Group();
@@ -779,7 +780,7 @@ for (const f of [1, 2, 3]) {
 // 図書室の棟のピンク色の寄棟屋根
 {
   const rc = rectOf({ c0: 9, r0: 44, c1: 22, r1: 62 });
-  const ov = 0.5, y = 3 * FH, rise = 3.2;
+  const ov = 0.5, y = 2 * FH, rise = 3.2; // 2階の上
   const x0 = rc.x0 - ov, x1 = rc.x1 + ov, z0 = rc.z0 - ov, z1 = rc.z1 + ov;
   const h = (z1 - z0) / 2, zc = (z0 + z1) / 2;
   const v = [
@@ -794,7 +795,7 @@ for (const f of [1, 2, 3]) {
   geo.computeVertexNormals();
   const hip = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xd4917e, roughness: 0.75, side: THREE.DoubleSide }));
   hip.castShadow = hip.receiveShadow = true;
-  inBlock(layers.roofs[3], blockById("art")).add(hip);
+  inBlock(layers.roofs[2], blockById("art")).add(hip);
 }
 
 // 中央棟の屋上の設備（白い箱）

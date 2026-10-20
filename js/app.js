@@ -796,19 +796,26 @@ inBlock(buildingGroup, blockById("gym")).add(gymRoof);
   };
   const gymExtras = new THREE.Group();
   const gx = X(7), gz0 = Z(1), gz1 = Z(39), gxe = X(27);
-  // 西側の通路（高さ1.8m、幅2.6m）
-  const wy = 1.8, ww = 2.6;
-  box(geos1, ww, 0.3, gz1 - gz0 - 6, gx - ww / 2, wy - 0.15, (gz0 + 6 + gz1) / 2);
-  box(geos1, 0.18, 1.1, gz1 - gz0 - 6, gx - ww, wy + 0.4, (gz0 + 6 + gz1) / 2);
-  for (let z = gz0 + 6; z <= gz1; z += 4) box(geos1, 0.3, wy, 0.3, gx - ww + 0.3, wy / 2 - 0.15, z);
-  // 北の端の外階段（通路から北へ下りる）
-  stair(geos1, gx - ww / 2, gz0 - 4.5, gx - ww / 2, gz0 + 6, -0.2, wy, ww - 0.2);
-  // 南側の2階のテラスと、西から上がる外階段
-  const ty = FH, tw = 2.4;
-  box(geos2, gxe - gx - 8, 0.3, tw, (gx + 8 + gxe) / 2, ty - 0.15, gz1 + tw / 2);
-  box(geos2, gxe - gx - 8, 1.1, 0.18, (gx + 8 + gxe) / 2, ty + 0.4, gz1 + tw);
-  for (let x = gx + 8; x <= gxe; x += 4) box(geos2, 0.3, ty, 0.3, x, ty / 2 - 0.15, gz1 + tw - 0.3);
-  stair(geos2, gx - 1, gz1 + tw / 2, gx + 8, gz1 + tw / 2, -0.2, ty, tw - 0.2);
+  // 2階の高さで体育館を囲む外廊下（渡り廊下）。東側で中央棟からの渡り廊下につながり、南の2階の玄関まで行ける
+  const ty = FH, dw = 3; // 床の高さ、幅
+  const zTop = gz0 + 2, zBot = gz1 + 2.5;
+  const deck = (x0, x1, z0, z1) => box(geos2, x1 - x0, 0.3, z1 - z0, (x0 + x1) / 2, ty - 0.15, (z0 + z1) / 2);
+  const rail = (x0, x1, z0, z1) => box(geos2, Math.max(0.18, x1 - x0), 1.1, Math.max(0.18, z1 - z0), (x0 + x1) / 2, ty + 0.4, (z0 + z1) / 2);
+  deck(gx - dw, gx, zTop, gz1);            // 西
+  deck(gx - dw, gxe + dw, gz1, zBot);      // 南
+  deck(gxe, gxe + dw, zTop, gz1);          // 東
+  rail(gx - dw, gx - dw, zTop, zBot);
+  rail(gx - dw, gxe + dw, zBot, zBot);
+  const bz0 = Z(19), bz1 = Z(22);          // 中央棟からの渡り廊下がつながるところは手すりなし
+  rail(gxe + dw, gxe + dw, zTop, bz0);
+  rail(gxe + dw, gxe + dw, bz1, zBot);
+  rail(gx - dw, gx, zTop, zTop); rail(gxe, gxe + dw, zTop, zTop);
+  // 外廊下を支える柱
+  for (let z = zTop; z <= zBot; z += 4.5) { box(geos2, 0.35, ty, 0.35, gx - dw + 0.3, ty / 2 - 0.15, z); box(geos2, 0.35, ty, 0.35, gxe + dw - 0.3, ty / 2 - 0.15, z); }
+  for (let x = gx - dw; x <= gxe + dw; x += 4.5) box(geos2, 0.35, ty, 0.35, x, ty / 2 - 0.15, zBot - 0.3);
+  // 外階段：西側の北の端から北へ下りる階段と、南側の外から上がる階段
+  stair(geos1, gx - dw / 2, zTop - 6.5, gx - dw / 2, zTop, -0.2, ty, dw - 0.2);
+  stair(geos1, gx + 2, zBot + 1.25, gx + 9, zBot + 1.25, -0.2, ty, 2.3);
   // 1階の南側の柱（柱が並ぶ吹きさらしの部分）
   for (let x = gx + 9; x < gxe; x += 4.2) box(geos2, 0.5, FH, 0.5, x, FH / 2 - 0.2, gz1 + 0.3);
   const gymHolder = inBlock(layers.exterior[1], blockById("gym"));
@@ -905,14 +912,19 @@ scene.add(outdoor);
   floor.position.set((rc.x0 + rc.x1) / 2, -0.17, (rc.z0 + rc.z1) / 2);
   floor.receiveShadow = true;
   inBlock(outdoor, b).add(floor);
-  // 2階の床の裏（天井）と、それを支える柱
-  const geos = [];
-  const box = (bw2, bh2, bd, x, y, z) => { const g = new THREE.BoxGeometry(bw2, bh2, bd); g.translate(x, y, z); geos.push(g); };
-  box(w, 0.4, d, (rc.x0 + rc.x1) / 2, FH - 0.2, (rc.z0 + rc.z1) / 2);
-  for (const x of [rc.x0 + 0.4, (rc.x0 + rc.x1) / 2]) for (let z = rc.z0 + 3; z < rc.z1 - 1; z += 4.5) box(0.6, FH, 0.6, x, FH / 2 - 0.2, z);
-  const m = new THREE.Mesh(mergeGeometries(geos), matRelief);
-  m.castShadow = m.receiveShadow = true;
-  inBlock(layers.exterior[1], b).add(m);
+  // 2階は吹き抜け。3階の床の裏（天井）と、それを支える2階分の高さの柱
+  const low = [], high = [];
+  const box = (list, bw2, bh2, bd, x, y, z) => { const g = new THREE.BoxGeometry(bw2, bh2, bd); g.translate(x, y, z); list.push(g); };
+  box(high, w, 0.4, d, (rc.x0 + rc.x1) / 2, 2 * FH - 0.2, (rc.z0 + rc.z1) / 2);
+  for (const x of [rc.x0 + 0.4, (rc.x0 + rc.x1) / 2]) for (let z = rc.z0 + 3; z < rc.z1 - 1; z += 4.5) {
+    box(low, 0.6, FH, 0.6, x, FH / 2 - 0.2, z);
+    box(high, 0.6, FH, 0.6, x, FH * 1.5 - 0.2, z);
+  }
+  for (const [list, f] of [[low, 1], [high, 2]]) {
+    const m = new THREE.Mesh(mergeGeometries(list), matRelief);
+    m.castShadow = m.receiveShadow = true;
+    inBlock(layers.exterior[f], b).add(m);
+  }
 }
 
 // 光庭の芝生

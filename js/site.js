@@ -1,5 +1,6 @@
 // 校舎のまわり（グラウンド・テニスコート・駐輪場）と、航空写真の重ね表示
 import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 function canvasTex(w, h, draw) {
   const cv = document.createElement("canvas");
@@ -11,6 +12,13 @@ function canvasTex(w, h, draw) {
   return t;
 }
 const M = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, ...extra });
+
+// ---------- 斜面 ----------
+// 学校は斜面に建っている。敷地の中は平ら（高さ 0）で、まわりの土地は北が高く南が低い。
+// 北側は道路のほうが高いので敷地の内側に擁壁、南側は敷地のほうが高いので外側に擁壁がある
+let SLOPE = { zZero: -35, perMeter: 0.045 };
+export function setSlope(s) { if (s) SLOPE = s; }
+export const terrainH = (x, z) => -(z - SLOPE.zZero) * SLOPE.perMeter;
 
 // フェンス（緑色の網＋支柱＋上の手すり）
 const netMat = new THREE.MeshStandardMaterial({ color: 0x3f7a5c, transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide, roughness: 0.9 });
@@ -390,7 +398,7 @@ function buildRoad({ w, pts }) {
     const [px, pz] = pts[Math.max(0, i - 1)], [nx, nz] = pts[Math.min(pts.length - 1, i + 1)];
     const dx = nx - px, dz = nz - pz, L = Math.hypot(dx, dz);
     const ox = (-dz / L) * w / 2, oz = (dx / L) * w / 2;
-    pos.push(x + ox, 0, z + oz, x - ox, 0, z - oz);
+    pos.push(x + ox, terrainH(x + ox, z + oz), z + oz, x - ox, terrainH(x - ox, z - oz), z - oz);
     if (i > 0) { const k = i * 2; idx.push(k - 2, k, k - 1, k - 1, k, k + 1); }
   }
   const geo = new THREE.BufferGeometry();
@@ -406,16 +414,11 @@ function buildRoad({ w, pts }) {
   for (let i = 0; i + 1 < pts.length; i++) {
     const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
     const L = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / L, uz = (bz - az) / L, ang = Math.atan2(ux, uz);
-    for (let t = 2; t < L - 2; t += 8) {
-      const d = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.02, 4), dash);
-      d.position.set(ax + ux * (t + 2), -0.2, az + uz * (t + 2)); d.rotation.y = ang;
-      g.add(d);
-    }
-    for (const s of [-1, 1]) {
-      const e = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, L), dash);
-      e.position.set((ax + bx) / 2 - uz * s * (w / 2 - 0.4), -0.2, (az + bz) / 2 + ux * s * (w / 2 - 0.4)); e.rotation.y = ang;
-      g.add(e);
-    }
+    // 坂に合わせて線を傾ける
+    const pitch = -Math.atan2(terrainH(bx, bz) - terrainH(ax, az), L);
+    const put = (m, x, z) => { m.rotation.order = "YXZ"; m.rotation.set(pitch, ang, 0); m.position.set(x, terrainH(x, z) - 0.2, z); g.add(m); };
+    for (let t = 2; t < L - 2; t += 8) put(new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.02, 4), dash), ax + ux * (t + 2), az + uz * (t + 2));
+    for (const s of [-1, 1]) put(new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, L), dash), (ax + bx) / 2 - uz * s * (w / 2 - 0.4), (az + bz) / 2 + ux * s * (w / 2 - 0.4));
   }
   return g;
 }
@@ -434,7 +437,7 @@ function crosswalk({ x, z, rot = 0, len = 8, red = false }) {
     st.position.set(i, -0.19, 0);
     g.add(st);
   }
-  g.position.set(x, 0, z);
+  g.position.set(x, terrainH(x, z), z);
   g.rotation.y = THREE.MathUtils.degToRad(rot);
   return g;
 }
@@ -491,10 +494,11 @@ function buildHouses(SITE) {
   const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
   spots.forEach((h, i) => {
     q.setFromAxisAngle(up, h.ang);
-    m4.compose(new THREE.Vector3(h.x, -0.2, h.z), q, new THREE.Vector3(h.w, h.h, h.d));
+    const gy = terrainH(h.x, h.z);
+    m4.compose(new THREE.Vector3(h.x, gy - 0.6, h.z), q, new THREE.Vector3(h.w, h.h + 0.4, h.d));
     body.setMatrixAt(i, m4);
     body.setColorAt(i, new THREE.Color(wallColors[i % wallColors.length]));
-    m4.compose(new THREE.Vector3(h.x, h.h - 0.2, h.z), q, new THREE.Vector3(h.w + 0.8, 2.2, h.d + 0.8));
+    m4.compose(new THREE.Vector3(h.x, gy + h.h - 0.2, h.z), q, new THREE.Vector3(h.w + 0.8, 2.2, h.d + 0.8));
     roof.setMatrixAt(i, m4);
     roof.setColorAt(i, new THREE.Color(roofColors[Math.floor(rnd() * roofColors.length)]));
   });
@@ -503,6 +507,102 @@ function buildHouses(SITE) {
   const g = new THREE.Group();
   g.add(body, roof);
   g.userData.spots = spots;
+  return g;
+}
+
+// ---------- まわりの土地（斜面）。敷地の形に穴をあけた大きな面を、斜面の高さに合わせる ----------
+export function buildTerrain(boundary, material) {
+  const R = 420;
+  const shape = new THREE.Shape([[-R, -R], [R, -R], [R, R], [-R, R]].map(([x, z]) => new THREE.Vector2(x, -z)));
+  shape.holes.push(new THREE.Path(boundary.map(([x, z]) => new THREE.Vector2(x, -z)).reverse()));
+  const geo = new THREE.ShapeGeometry(shape);
+  geo.rotateX(-Math.PI / 2);
+  const pos = geo.attributes.position, uv = geo.attributes.uv;
+  for (let i = 0; i < pos.count; i++) {
+    pos.setY(i, terrainH(pos.getX(i), pos.getZ(i)) - 0.25);
+    uv.setXY(i, pos.getX(i) / 6, pos.getZ(i) / 6);
+  }
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, material);
+  m.receiveShadow = true;
+  return m;
+}
+
+// 擁壁（敷地のふちのコンクリートの壁）と、その上の柵
+const texWall = (() => {
+  const t = canvasTex(256, 128, (c, W, H) => {
+    c.fillStyle = "#b9b6ae"; c.fillRect(0, 0, W, H);
+    for (let i = 0; i < 3000; i++) { c.fillStyle = `rgba(${Math.random() > 0.5 ? "255,255,255" : "60,60,55"},${Math.random() * 0.08})`; c.fillRect(Math.random() * W, Math.random() * H, 2, 2); }
+    c.fillStyle = "rgba(0,0,0,0.12)";
+    for (let x = 0; x < W; x += 64) c.fillRect(x, 0, 2, H);   // 目地
+    for (let x = 32; x < W; x += 64) { c.fillStyle = "rgba(0,0,0,0.25)"; c.beginPath(); c.arc(x, H * 0.75, 3, 0, Math.PI * 2); c.fill(); } // 水抜き穴
+  });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+})();
+const matWall = new THREE.MeshStandardMaterial({ map: texWall, roughness: 0.95, side: THREE.DoubleSide });
+const matCoping = M(0xcfccc4);
+const railMat = M(0x4e6b5a, { metalness: 0.4, roughness: 0.5 });
+
+// 柵（たて格子のフェンス）を、ふちにそってつくる。y はそれぞれの点の地面の高さ
+function railing(group, ax, az, ay, bx, bz, by, h = 1.5) {
+  const L = Math.hypot(bx - ax, bz - az);
+  if (L < 0.2) return;
+  const ang = -Math.atan2(bz - az, bx - ax);
+  const pitch = Math.atan2(by - ay, L);
+  const mk = (geo, t, dy) => { const m = new THREE.Mesh(geo, railMat); m.position.set(ax + (bx - ax) * t, ay + (by - ay) * t + dy, az + (bz - az) * t); m.rotation.order = "YZX"; m.rotation.set(0, ang, pitch); group.add(m); return m; };
+  mk(new THREE.BoxGeometry(L, 0.06, 0.06), 0.5, h);
+  mk(new THREE.BoxGeometry(L, 0.05, 0.05), 0.5, 0.15);
+  const n = Math.max(1, Math.round(L / 0.15));
+  const bars = new THREE.InstancedMesh(new THREE.BoxGeometry(0.025, h - 0.15, 0.025), railMat, n);
+  const m4 = new THREE.Matrix4();
+  for (let i = 0; i < n; i++) { const t = (i + 0.5) / n; m4.makeTranslation(ax + (bx - ax) * t, ay + (by - ay) * t + 0.15 + (h - 0.15) / 2, az + (bz - az) * t); bars.setMatrixAt(i, m4); }
+  group.add(bars);
+  for (let i = 0; i <= Math.ceil(L / 2.5); i++) { const t = Math.min(1, i / Math.ceil(L / 2.5)); const p = new THREE.Mesh(new THREE.BoxGeometry(0.08, h, 0.08), railMat); p.position.set(ax + (bx - ax) * t, ay + (by - ay) * t + h / 2, az + (bz - az) * t); group.add(p); }
+}
+
+export function buildRetaining(boundary, gates = []) {
+  const g = new THREE.Group();
+  const pos = [], uv = [], idx = [];
+  const cop = [];
+  const inGate = (x, z) => gates.some(([gx, gz, gw]) => Math.hypot(x - gx, z - gz) < gw / 2);
+  for (let i = 0; i < boundary.length; i++) {
+    const [ax, az] = boundary[i], [bx, bz] = boundary[(i + 1) % boundary.length];
+    const L = Math.hypot(bx - ax, bz - az);
+    const n = Math.max(1, Math.ceil(L / 4));
+    for (let k = 0; k < n; k++) {
+      const t0 = k / n, t1 = (k + 1) / n;
+      const x0 = ax + (bx - ax) * t0, z0 = az + (bz - az) * t0, x1 = ax + (bx - ax) * t1, z1 = az + (bz - az) * t1;
+      const h0 = terrainH(x0, z0), h1 = terrainH(x1, z1);
+      // 壁の下と上：外の土地と敷地（高さ 0）のうち、低いほうから高いほうまで。最低でも 0.6m の低い塀
+      const lo0 = Math.min(0, h0) - 0.3, lo1 = Math.min(0, h1) - 0.3;
+      const hi0 = Math.max(0.6, h0 + 0.3, 0.6), hi1 = Math.max(0.6, h1 + 0.3, 0.6);
+      const top0 = Math.max(hi0, 0.6), top1 = Math.max(hi1, 0.6);
+      const j = pos.length / 3;
+      pos.push(x0, lo0, z0, x1, lo1, z1, x1, top1, z1, x0, top0, z0);
+      const u0 = (i * 100 + k * 4) / 8, u1 = u0 + (L / n) / 8;
+      uv.push(u0, lo0 / 4, u1, lo1 / 4, u1, top1 / 4, u0, top0 / 4);
+      idx.push(j, j + 1, j + 2, j, j + 2, j + 3);
+      // 笠木（上のふち）
+      const cg = new THREE.BoxGeometry(L / n + 0.05, 0.12, 0.35);
+      const m4 = new THREE.Matrix4().compose(new THREE.Vector3((x0 + x1) / 2, (top0 + top1) / 2, (z0 + z1) / 2), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, -Math.atan2(z1 - z0, x1 - x0), Math.atan2(top1 - top0, L / n), "YZX")), new THREE.Vector3(1, 1, 1));
+      cg.applyMatrix4(m4);
+      cop.push(cg);
+      // 柵（門のところは開けておく）
+      if (!inGate((x0 + x1) / 2, (z0 + z1) / 2)) railing(g, x0, z0, top0, x1, z1, top1, 1.4);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const wall = new THREE.Mesh(geo, matWall);
+  wall.castShadow = wall.receiveShadow = true;
+  g.add(wall);
+  const cm = new THREE.Mesh(mergeGeometries(cop), matCoping);
+  cm.castShadow = true;
+  g.add(cm);
   return g;
 }
 
@@ -558,6 +658,7 @@ export function buildSite(scene, SITE) {
     m.castShadow = m.receiveShadow = true;
     group.add(m);
   }
+  if (SITE.boundary) group.add(buildRetaining(SITE.boundary, SITE.gates || []));
   const houses = SITE.roads && SITE.boundary ? buildHouses(SITE) : null;
   if (houses) group.add(houses);
   group.traverse((o) => { if (o.isMesh) o.receiveShadow = true; });

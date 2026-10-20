@@ -5,7 +5,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ROOMS_RAW } from "./data.js";
 import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
-import { buildSite, createAerial, flatPoly, polyBounds, inPoly } from "./site.js";
+import { buildSite, createAerial, flatPoly, polyBounds, inPoly, buildTerrain, setSlope } from "./site.js";
 
 // ---------- 寸法（メートル） ----------
 const CW = 1.5;   // 図面の1列の幅
@@ -240,12 +240,14 @@ function makeSchoolTex(p) {
     // 床スラブの帯
     g.fillStyle = p.band; g.fillRect(0, yFromFloor(0.45), W, 0.45 * PX);
     g.fillStyle = p.line; g.fillRect(0, yFromFloor(0.45), W, 3);
-    // 窓
-    const x = 0.2 * PX, w = 2.6 * PX, y = yFromFloor(3.05), h = 2.15 * PX;
+    // 窓（写真では、床から約1.2mまでは白い腰壁で、窓はその上だけ）
+    const x = 0.3 * PX, w = 2.4 * PX, y = yFromFloor(2.9), h = 1.65 * PX;
     glass(g, x, y, w, h);
     g.fillStyle = "#c3c8cc";
     g.fillRect(x + w / 2 - 2, y, 4, h);           // 縦の桟
-    g.fillRect(x, yFromFloor(2.45), w, 4);         // 欄間
+    g.fillRect(x, yFromFloor(2.35), w, 4);         // 欄間
+    // 腰壁の目地
+    g.fillStyle = "rgba(0,0,0,0.07)"; g.fillRect(0, yFromFloor(1.15), W, 3);
     frame(g, x, y, w, h, 5);
     // 窓台の影
     g.fillStyle = "rgba(0,0,0,0.18)"; g.fillRect(x, y + h + 2, w, 4);
@@ -493,13 +495,22 @@ function wallRelief(segs, f) {
     for (let i = 0; i <= n; i++) {
       const t = i / n;
       const x = sg.ax + (sg.bx - sg.ax) * t + nx * 0.2, z = sg.az + (sg.bz - sg.az) * t + nz * 0.2;
-      box(alongX ? 0.45 : 0.4, FH, alongX ? 0.4 : 0.45, x, y0 + FH / 2, z);
+      const cd = gym ? 0.4 : 0.55; // 柱の出っ張り（教室棟は腰壁の帯より前に出る）
+      box(alongX ? 0.45 : cd, FH, alongX ? cd : 0.45, x + nx * (cd / 2 - 0.2), y0 + FH / 2, z + nz * (cd / 2 - 0.2));
     }
-    // 庇（よこ）。教室棟は奥行きを深めにして影ができるように
-    const dep = gym ? 0.35 : 0.7;
-    const cx = (sg.ax + sg.bx) / 2 + nx * dep / 2, cz = (sg.az + sg.bz) / 2 + nz * dep / 2;
-    if (alongX) box(len + 0.4, 0.2, dep, cx, y0 + FH - 0.1, cz);
-    else box(dep, 0.2, len + 0.4, cx, y0 + FH - 0.1, cz);
+    if (gym) {
+      // 体育館は上のふちに細い庇
+      const dep = 0.35;
+      const cx = (sg.ax + sg.bx) / 2 + nx * dep / 2, cz = (sg.az + sg.bz) / 2 + nz * dep / 2;
+      if (alongX) box(len + 0.4, 0.2, dep, cx, y0 + FH - 0.1, cz);
+      else box(dep, 0.2, len + 0.4, cx, y0 + FH - 0.1, cz);
+    } else {
+      // 教室棟は、各階の下の白い腰壁の帯が外に出ている（写真の太い白い横帯）
+      const dep = 0.3, bh = 1.25;
+      const cx = (sg.ax + sg.bx) / 2 + nx * dep / 2, cz = (sg.az + sg.bz) / 2 + nz * dep / 2;
+      if (alongX) box(len + 0.3, bh, dep, cx, y0 + bh / 2 - 0.05, cz);
+      else box(dep, bh, len + 0.3, cx, y0 + bh / 2 - 0.05, cz);
+    }
     // 1階の足もと（基礎の帯）
     if (f === 1) {
       const bx = (sg.ax + sg.bx) / 2 + nx * 0.1, bz = (sg.az + sg.bz) / 2 + nz * 0.1;
@@ -847,30 +858,33 @@ function rustTex() {
   const zTop = gz0 + 2, zBot = gz1 + 2.5;
   const deck = (x0, x1, z0, z1) => box(geos2, x1 - x0, 0.3, z1 - z0, (x0 + x1) / 2, ty - 0.15, (z0 + z1) / 2);
   const rail = (x0, x1, z0, z1) => box(geos2, Math.max(0.18, x1 - x0), 1.1, Math.max(0.18, z1 - z0), (x0 + x1) / 2, ty + 0.4, (z0 + z1) / 2);
-  deck(gx - dw, gx, zTop, gz1);            // 西
-  deck(gx - dw, gxe + dw, gz1, zBot);      // 南
-  deck(gxe, gxe + dw, zTop, gz1);          // 東
-  rail(gx - dw, gx - dw, zTop, zBot);
-  rail(gx - dw, gxe + dw, zBot, zBot);
+  // 西側は、北の端の踊り場だけ2階の高さ。そこから南に向かって1階へ下りる外階段がある（写真）
+  const landL = 3, stairL = 9.4, sw = 2.4;
+  deck(gx - sw - 0.2, gx, zTop, zTop + landL);  // 北西の踊り場
+  deck(gx, gxe + dw, gz1, zBot);                // 南
+  deck(gxe, gxe + dw, zTop, gz1);               // 東
+  rail(gx - sw - 0.2, gx - sw - 0.2, zTop, zTop + landL + stairL * 0.15);
+  rail(gx - sw - 0.2, gx, zTop, zTop);
+  rail(gx, gxe + dw, zBot, zBot);
   // 中央棟からの渡り廊下がつながるところは手すりなし（渡り廊下の実際の位置を、体育館の図面の座標に直す）
   const gb = blockById("gym"), brw = blockById("bridge").world;
   const bz0 = (brw[1] - gb.oz) / gb.sz, bz1 = (brw[3] - gb.oz) / gb.sz;
   rail(gxe + dw, gxe + dw, zTop, bz0);
   rail(gxe + dw, gxe + dw, bz1, zBot);
-  rail(gx - dw, gx, zTop, zTop); rail(gxe, gxe + dw, zTop, zTop);
-  // 外廊下を支える柱
-  for (let z = zTop; z <= zBot; z += 4.5) { box(geos2, 0.35, ty, 0.35, gx - dw + 0.3, ty / 2 - 0.15, z); box(geos2, 0.35, ty, 0.35, gxe + dw - 0.3, ty / 2 - 0.15, z); }
-  for (let x = gx - dw; x <= gxe + dw; x += 4.5) box(geos2, 0.35, ty, 0.35, x, ty / 2 - 0.15, zBot - 0.3);
-  // 西側の外廊下の上の、さびた茶色の細長い屋根（写真で体育館の長さいっぱいに見える）
+  rail(gxe, gxe + dw, zTop, zTop);
+  // 外廊下と踊り場を支える柱
+  for (let z = zTop; z <= zBot; z += 4.5) box(geos2, 0.35, ty, 0.35, gxe + dw - 0.3, ty / 2 - 0.15, z);
+  for (let x = gx; x <= gxe + dw; x += 4.5) box(geos2, 0.35, ty, 0.35, x, ty / 2 - 0.15, zBot - 0.3);
+  box(geos2, 0.35, ty, 0.35, gx - sw, ty / 2 - 0.15, zTop + 0.3);
+  // 西側の壁の上の、さびた茶色の細長い軒（写真で体育館の長さいっぱいに見える）
   {
-    const rr = new THREE.Mesh(new THREE.BoxGeometry(dw + 0.6, 0.2, gz1 - zTop + 1), new THREE.MeshStandardMaterial({ map: rustTex(), roughness: 0.8, metalness: 0.2 }));
-    rr.position.set(gx - dw / 2, ty + 2.8, (zTop + gz1) / 2);
+    const rr = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.2, gz1 - zTop + 1), new THREE.MeshStandardMaterial({ map: rustTex(), roughness: 0.8, metalness: 0.2 }));
+    rr.position.set(gx - 0.8, ty + 2.8, (zTop + gz1) / 2);
     rr.castShadow = true;
     gymExtras.add(rr);
-    for (let z = zTop; z <= gz1; z += 4.5) box(geos2, 0.2, 2.8, 0.2, gx - dw + 0.2, ty + 1.4, z);
   }
-  // 外階段：西側の北の端から北へ下りる階段と、南側の外から上がる階段
-  stair(geos1, gx - dw / 2, zTop - 6.5, gx - dw / 2, zTop, -0.2, ty, dw - 0.2);
+  // 外階段：北西の踊り場から南へ1階に下りる階段と、南側の外から2階に上がる階段
+  stair(geos1, gx - sw / 2 - 0.1, zTop + landL + stairL, gx - sw / 2 - 0.1, zTop + landL, -0.2, ty, sw);
   stair(geos1, gx + 2, zBot + 1.25, gx + 9, zBot + 1.25, -0.2, ty, 2.3);
   // 1階の南側の柱（柱が並ぶ吹きさらしの部分）
   for (let x = gx + 9; x < gxe; x += 4.2) box(geos2, 0.5, FH, 0.5, x, FH / 2 - 0.2, gz1 + 0.3);
@@ -884,10 +898,10 @@ function rustTex() {
 }
 
 // ---------- 地面・植栽 ----------
-const ground = new THREE.Mesh(new THREE.PlaneGeometry(800, 800), new THREE.MeshStandardMaterial({ map: texGrass, roughness: 1 }));
-ground.rotation.x = -Math.PI / 2;
-ground.position.y = -0.25;
-ground.receiveShadow = true;
+// まわりの土地は斜面（北が高く南が低い）。敷地の形に穴をあけてある
+setSlope(SITE.slope);
+const grassFar = texGrass.clone(); grassFar.needsUpdate = true; grassFar.repeat.set(1, 1);
+const ground = buildTerrain(SITE.boundary, new THREE.MeshStandardMaterial({ map: grassFar, roughness: 1 }));
 scene.add(ground);
 
 // 学校の敷地（アスファルト）

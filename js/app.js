@@ -64,7 +64,7 @@ STAIRS.forEach((s, i) => {
   s.floors.forEach((f) => {
     ROOMS.push({
       id: `F${f}-ST${i}`, name: s.name, floor: f, c0: s.c0, r0: s.r0, c1: s.c1, r1: s.r1,
-      cat: "stairs", kind: "stairs", upTo: s.floors.includes(f + 1),
+      cat: "stairs", kind: "stairs", upTo: s.floors.includes(f + 1), fromBelow: s.floors.includes(f - 1),
       desc: `${s.floors.join("・")}階をつなぐ階段です。（位置は図面から読み取ったおおよその場所です）`,
     });
   });
@@ -716,6 +716,8 @@ for (const f of [1, 2, 3]) {
     // 3階の体育館は吹き抜け。ギャラリー（細い通路）と卓球場などの部屋のところだけ床がある
     if (f === 3 && st === "gym" && !GYM_GALLERY.some((g) => inCells(c, r, g)) && r < 33) continue;
     if (f === 3 && st === "high") continue;
+    // 下の階から上ってくる階段のところは床に穴をあける
+    if (STAIRS.some((sr) => sr.floors.includes(f - 1) && sr.floors.includes(f) && inCells(c, r, [sr.c0, sr.r0, sr.c1, sr.r1]))) continue;
     (slabSets[blockAtCell(c, r).id] ||= new Set()).add(k);
   }
   for (const [bid, set] of Object.entries(slabSets)) {
@@ -1048,6 +1050,32 @@ scene.add(outdoor);
   rounded(9.8, 23.4, -7.8, -4.7);   // 北西：1号館ぞいの太い生け垣
   rounded(23.4, 39, -8.2, -6.4);    // 北東：1号館ぞいの細い生け垣
   rounded(23.1, 38, -2.7, 3.1);     // まんなか：細長い植え込み（東西の通路の先）
+  // 中央の植え込みの正門側のはしに立つ、高い時計塔（白い柱の上に四面の時計）
+  {
+    const tx = 38.6, tz = 0.2, H = 7.5;
+    const white = new THREE.MeshStandardMaterial({ color: 0xf1efea, roughness: 0.7 });
+    const pole = new THREE.Mesh(new THREE.BoxGeometry(0.5, H, 0.5), white);
+    pole.position.set(tx, H / 2 - 0.2, tz);
+    const head = new THREE.Mesh(new THREE.BoxGeometry(1.0, 1.0, 1.0), white);
+    head.position.set(tx, H + 0.3, tz);
+    const capT = new THREE.Mesh(new THREE.ConeGeometry(0.75, 0.6, 4), new THREE.MeshStandardMaterial({ color: 0x5f6b72, roughness: 0.6 }));
+    capT.position.set(tx, H + 1.1, tz); capT.rotation.y = Math.PI / 4;
+    const cv = document.createElement("canvas"); cv.width = cv.height = 64;
+    const c = cv.getContext("2d");
+    c.fillStyle = "#fff"; c.fillRect(0, 0, 64, 64); c.strokeStyle = "#222"; c.lineWidth = 3;
+    c.beginPath(); c.arc(32, 32, 28, 0, Math.PI * 2); c.stroke();
+    c.beginPath(); c.moveTo(32, 32); c.lineTo(32, 12); c.moveTo(32, 32); c.lineTo(46, 38); c.stroke();
+    const face = new THREE.CanvasTexture(cv); face.colorSpace = THREE.SRGBColorSpace;
+    const fm = new THREE.MeshStandardMaterial({ map: face, roughness: 0.5 });
+    for (let k = 0; k < 4; k++) {
+      const f2 = new THREE.Mesh(new THREE.CircleGeometry(0.4, 24), fm);
+      const a = (k * Math.PI) / 2;
+      f2.position.set(tx + Math.sin(a) * 0.51, H + 0.3, tz + Math.cos(a) * 0.51);
+      f2.rotation.y = a;
+      outdoor.add(f2);
+    }
+    for (const m of [pole, head, capT]) { m.castShadow = true; outdoor.add(m); }
+  }
   rounded(11.5, 20.6, 4.8, 7.6);    // 南西：2号館ぞいの生け垣
 }
 
@@ -1162,6 +1190,44 @@ scene.add(trees);
 }
 
 // ---------- 部屋（フロア表示） ----------
+// 折り返し階段の形。上り始めの向き dir（0=東, 90=南, 180=西, 270=北）。上り口から見て右側が上り、左側が下り（左側通行で下り）
+function stairFrame(r) {
+  const st = STAIRS.find((x) => x.name === r.name);
+  const A = THREE.MathUtils.degToRad(st && st.dir !== undefined ? st.dir : r.w >= r.d ? 0 : 90);
+  const ca = Math.round(Math.cos(A)), sa = Math.round(Math.sin(A)); // 90度ごと
+  const L = ca !== 0 ? r.w : r.d, Wd = ca !== 0 ? r.d : r.w;
+  // 部屋の中の座標 (u: 上る向き, v: 上る向きの右) の箱を、図面の座標に置く
+  const add = (list, u0, u1, v0, v1, y0, y1) => {
+    const su = u1 - u0, sv = v1 - v0, cu = (u0 + u1) / 2, cv = (v0 + v1) / 2;
+    const g = new THREE.BoxGeometry(Math.abs(ca) * su + Math.abs(sa) * sv, y1 - y0, Math.abs(sa) * su + Math.abs(ca) * sv);
+    g.translate(r.cx + cu * ca - cv * sa, (y0 + y1) / 2, r.cz + cu * sa + cv * ca);
+    list.push(g);
+  };
+  const n = 11, land = Math.min(1.6, L * 0.28), run = L - land - 0.2, tread = run / n, rise = FH / 2 / n;
+  return { add, L, Wd, n, tread, rise, a0: -L / 2 + 0.1, landU: L / 2 - 0.1 - land };
+}
+function stairFlights(r, y, list, upperOnly = false) {
+  const { add, L, Wd, n, tread, rise, a0, landU } = stairFrame(r);
+  for (let i = 0; i < n; i++) {
+    if (!upperOnly) add(list, a0 + i * tread, a0 + (i + 1) * tread, 0.06, Wd / 2 - 0.1, y, y + rise * (i + 1)); // 上り（右側）
+    const top = y + FH / 2 + rise * (i + 1);
+    add(list, landU - (i + 1) * tread, landU - i * tread, -Wd / 2 + 0.1, -0.06, top - 0.35, top);              // 踊り場から上の階へ（左側）
+  }
+  add(list, landU, L / 2 - 0.1, -Wd / 2 + 0.1, Wd / 2 - 0.1, y + FH / 2 - 0.25, y + FH / 2);                  // 踊り場
+  add(list, a0, landU, -0.06, 0.06, upperOnly ? y + FH / 2 : y, y + FH);                                      // まんなかの壁
+}
+// いちばん上の階：上り切ったところの床と、吹き抜けのまわりの手すり壁
+function stairGuard(r, y, list) {
+  const { add, L, Wd, a0, landU } = stairFrame(r);
+  add(list, -L / 2, a0 + 0.02, -Wd / 2, Wd / 2, y - 0.2, y);           // 上り切ったところの床
+  add(list, a0, landU, -0.08, 0.08, y, y + 1.1);                        // 吹き抜けと上りの段のあいだの手すり壁
+  add(list, a0 - 0.08, a0 + 0.08, 0, Wd / 2 - 0.1, y, y + 1.1);         // 吹き抜けの手前の手すり壁
+  add(list, landU, L / 2 - 0.1, Wd / 2 - 0.18, Wd / 2 - 0.1, y, y + 1.1); // 踊り場の上の壁ぎわ
+  add(list, -L / 2, L / 2, -Wd / 2 - 0.05, -Wd / 2 + 0.1, y, y + 1.1);   // 外側の壁
+  add(list, -L / 2, L / 2, Wd / 2 - 0.1, Wd / 2 + 0.05, y, y + 1.1);
+  add(list, L / 2 - 0.1, L / 2 + 0.05, -Wd / 2, Wd / 2, y, y + 1.1);
+}
+
 const pickables = [];
 const matStairs = new THREE.MeshStandardMaterial({ color: 0xd9d6cf, roughness: 0.9 });
 const matPartition = new THREE.MeshStandardMaterial({ color: 0xfaf8f3, roughness: 0.9 });
@@ -1193,6 +1259,7 @@ for (const f of [1, 2, 3]) {
       transparent: isOpen, opacity: isCourt ? 0.0 : isOpen ? 0.35 : 1,
       depthWrite: !isOpen,
     });
+    if (r.kind === "stairs") { mat.transparent = true; mat.opacity = 0; mat.depthWrite = false; } // 階段は形で見せ、板はクリック用
     const th = /ステージ/.test(r.name) ? 1.0 : 0.14; // ステージは高くする
     const tile = new THREE.Mesh(new THREE.BoxGeometry(r.w - 0.14, th, r.d - 0.14), mat);
     tile.position.set(r.cx, y + 0.01 + th / 2, r.cz);
@@ -1204,32 +1271,17 @@ for (const f of [1, 2, 3]) {
     pickables.push(tile);
 
     // 建物の中の階段：上の階へ上がる折り返し階段（行きの段・踊り場・帰りの段）
-    // 上り始めの向き dir（0=東, 90=南, 180=西, 270=北）。上り口から見て、右側が上り、左側が下り（左側通行で下り）
-    if (r.kind === "stairs" && r.upTo) {
+    // その階から上る段と、下の階から上ってきた段（上り切ったところ）の両方を見せる。いちばん上の階では吹き抜けに手すり
+    if (r.kind === "stairs") {
       const list = [];
-      const st = STAIRS.find((x) => x.name === r.name);
-      const A = THREE.MathUtils.degToRad(st && st.dir !== undefined ? st.dir : r.w >= r.d ? 0 : 90);
-      const ca = Math.round(Math.cos(A)), sa = Math.round(Math.sin(A)); // 90度ごと
-      const L = ca !== 0 ? r.w : r.d, Wd = ca !== 0 ? r.d : r.w;
-      // 部屋の中の座標 (u: 上る向き, v: 上る向きの右) から、図面の座標へ
-      const add = (u0, u1, v0, v1, y0, y1) => {
-        const su = u1 - u0, sv = v1 - v0, cu = (u0 + u1) / 2, cv = (v0 + v1) / 2;
-        const g = new THREE.BoxGeometry(Math.abs(ca) * su + Math.abs(sa) * sv, y1 - y0, Math.abs(sa) * su + Math.abs(ca) * sv);
-        g.translate(r.cx + cu * ca - cv * sa, (y0 + y1) / 2, r.cz + cu * sa + cv * ca);
-        list.push(g);
-      };
-      const n = 11, land = Math.min(1.6, L * 0.28), run = L - land - 0.2, tread = run / n, rise = FH / 2 / n;
-      const a0 = -L / 2 + 0.1, landU = L / 2 - 0.1 - land;
-      for (let i = 0; i < n; i++) {
-        add(a0 + i * tread, a0 + (i + 1) * tread, 0.06, Wd / 2 - 0.1, y, y + rise * (i + 1));               // 上り（右側）
-        const top = y + FH / 2 + rise * (i + 1);
-        add(landU - (i + 1) * tread, landU - i * tread, -Wd / 2 + 0.1, -0.06, top - 0.35, top);              // 踊り場から上の階へ（左側。上の階から見ると下り）
+      if (r.upTo) stairFlights(r, y, list);
+      if (r.fromBelow) stairFlights(r, y - FH, list, true);
+      if (!r.upTo && r.fromBelow) stairGuard(r, y, list);
+      if (list.length) {
+        const m = new THREE.Mesh(mergeGeometries(list), matStairs);
+        m.castShadow = m.receiveShadow = true;
+        inBlock(grp, r.block).add(m);
       }
-      add(landU, L / 2 - 0.1, -Wd / 2 + 0.1, Wd / 2 - 0.1, y + FH / 2 - 0.25, y + FH / 2);                  // 踊り場
-      add(a0, landU, -0.06, 0.06, y, y + FH);                                                              // まんなかの壁
-      const m = new THREE.Mesh(mergeGeometries(list), matStairs);
-      m.castShadow = m.receiveShadow = true;
-      inBlock(grp, r.block).add(m);
     }
 
     if (r.parts) {

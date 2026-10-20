@@ -293,6 +293,9 @@ const SHAPES = {
   mirror: [[MAT.mirror, merge([b(0.02, 0.8, 1.6, 0, 1.15)])]],
   stageCurtain: [[MAT.red, merge([b(0.2, 3.2, 1.0)])]],
   lectern: [[MAT.darkWood, merge([b(0.5, 1.1, 0.7)])]],
+  // 長机（長さは1mの形を len 倍にのばす）と、跳ね上げ椅子（座面が上がった形）
+  longDesk: [[MAT.wood, merge([b(0.45, 0.04, 1, 0, 0.7)])], [MAT.metal, merge([b(0.04, 0.7, 0.04, 0.18, 0, -0.48), b(0.04, 0.7, 0.04, 0.18, 0, 0.48), b(0.03, 0.3, 1, 0.2, 0.35)])]],
+  flipSeat: [[MAT.navy, merge([b(0.08, 0.45, 0.44, 0.2, 0.45), b(0.05, 0.42, 0.42, 0.05, 0.35)])], [MAT.metal, merge([b(0.05, 0.42, 0.05, 0.15, 0, -0.22), b(0.05, 0.42, 0.05, 0.15, 0, 0.22)])]],
 };
 
 // ---------- 置き方 ----------
@@ -427,14 +430,20 @@ function music(out, R) {
   }
 }
 
+// 視聴覚教室：前方の半分は広いスペース。後ろ半分に大学のような長机と跳ね上げ椅子が5列
 function theater(out, R) {
   const { x0, x1, z0, z1 } = R;
-  out.push({ t: "screenBoard", x: x0 + 0.12, z: (z0 + z1) / 2, rot: 0 });
-  out.push({ t: "teacherDesk", x: x0 + 1.2, z: z0 + 1.0, rot: 0 });
-  const rows = Math.floor((x1 - x0 - 3) / 0.9);
-  for (let i = 0; i < rows; i++) {
-    const x = x0 + 2.8 + i * 0.9;
-    for (let z = z0 + 0.8; z < z1 - 0.6; z += 0.55) out.push({ t: "chair", x, z, rot: 0 });
+  const cz = (z0 + z1) / 2;
+  out.push({ t: "screenBoard", x: x0 + 0.12, z: cz, rot: 0 });
+  out.push({ t: "lectern", x: x0 + 1.6, z: z0 + 1.4, rot: 0 });
+  const xs = x0 + (x1 - x0) * 0.5, xe = x1 - 0.9;
+  for (let i = 0; i < 5; i++) {
+    const x = xs + ((xe - xs) * i) / 4;
+    // 通路をはさんで左右2つの長机
+    for (const [za, zb] of [[z0 + 0.5, cz - 0.6], [cz + 0.6, z1 - 0.5]]) {
+      out.push({ t: "longDesk", x, z: (za + zb) / 2, rot: 0, len: zb - za });
+      for (let z = za + 0.35; z < zb - 0.2; z += 0.6) out.push({ t: "flipSeat", x: x + 0.5, z, rot: 0 });
+    }
   }
 }
 
@@ -677,6 +686,7 @@ export function buildFurniture(rooms, y) {
       list.forEach((it, i) => {
         p.set(it.x, y + 0.15 + (it.y || 0), it.z);
         q.setFromAxisAngle(up, it.rot || 0);
+        s.set(1, 1, it.len || 1);
         m4.compose(p, q, s);
         im.setMatrixAt(i, m4);
         if (it.col !== undefined) im.setColorAt(i, new THREE.Color(it.col));

@@ -362,7 +362,11 @@ export const GYM_GALLERY = [[25, 4, 26, 34], [23, 4, 26, 7], [23, 33, 26, 38]];
 
 // 図面（Excel）から読み取った部屋の直し。今年度の図面では音楽室が1つにまとまっているが、
 // 前の年度の図面のとおり、北側に左右に分かれた小さな練習室が2つある（あいだは通路）
-export const ROOM_EDITS = [{ name: "音楽室", floor: 2, set: { r0: 13 } }];
+export const ROOM_EDITS = [
+  { name: "音楽室", floor: 2, set: { r0: 13 } },
+  // 正面玄関は、2号館の階段のすぐとなりまで広い空間になっている
+  { name: "正面玄関", floor: 1, set: { c0: 60 } },
+];
 export const EXTRA_ROOMS = [
   { id: "F2-PR1", name: "練習室", floor: 2, c0: 33, r0: 11, c1: 35, r1: 12 },
   { id: "F2-PR2", name: "練習室", floor: 2, c0: 37, r0: 11, c1: 39, r1: 12 },

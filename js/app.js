@@ -1130,8 +1130,8 @@ scene.add(outdoor);
     for (const m of [pole, head, capT]) { m.castShadow = true; outdoor.add(m); }
   }
   rounded(11.5, 20.6, 4.8, 7.6);    // 南西：2号館ぞいの生け垣
-  // 2号館の南（保健室の前）と、3号館の北の壁ぞいの、丸く刈った低木の列（航空写真）
-  for (const [x0, x1, z, step] of [[-16, 3, 33.9, 1.9]]) {
+  // 3号館の北の壁の外ぞいの、丸く刈った低木の列（廊下に入らないよう壁の外へ）
+  for (const [x0, x1, z, step] of [[-16, 3, 31.9, 1.9]]) {
     for (let x = x0; x <= x1; x += step) {
       const b = new THREE.Mesh(new THREE.IcosahedronGeometry(0.85, 2), matHedge);
       b.scale.set(1, 0.75, 1); b.position.set(x, 0.45, z);

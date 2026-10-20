@@ -778,27 +778,8 @@ function mainGate({ x, z, rot = 0, w = 10, name = "" }) {
   top.position.set(-0.3, 1.4, -w / 2 + 1.15);
   gate.add(top);
   g.add(gate);
-  // 道路へ下りる幅の広い階段（写真：正門の前は道路より一段高い広場で、階段で下りる）
-  const a = THREE.MathUtils.degToRad(rot), ox = Math.cos(a), oz = -Math.sin(a);
-  const drop = Math.max(0, -terrainH(x + ox * 2, z + oz * 2) - 0.2);
-  if (drop > 0.1) {
-    const n = Math.max(2, Math.round(drop / 0.16)), run = 0.32;
-    const stone = M(0xc9c4b8, { roughness: 1 });
-    for (let i = 0; i < n; i++) {
-      const top = -drop * (i + 1) / n; // 一段ずつ下がる
-      const st = new THREE.Mesh(new THREE.BoxGeometry(run, drop + top + 0.3, w + 1.6), stone);
-      st.position.set(0.2 + run * (i + 0.5), (top + (-drop - 0.3)) / 2, 0);
-      st.receiveShadow = true;
-      g.add(st);
-    }
-    // 両わきの石積みの袖壁
-    for (const sd of [-1, 1]) {
-      const wl = new THREE.Mesh(new THREE.BoxGeometry(run * n + 0.4, drop + 0.6, 0.4), stone);
-      wl.position.set(0.2 + run * n / 2, -drop / 2 + 0.1, sd * (w / 2 + 1));
-      wl.castShadow = true;
-      g.add(wl);
-    }
-  }
+  // 正門は道路と同じ高さ（階段なし）
+  const a = THREE.MathUtils.degToRad(rot);
   g.position.set(x, -0.2, z);
   g.rotation.y = a;
   return g;

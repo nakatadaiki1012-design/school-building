@@ -46,7 +46,7 @@ function fenceRect(group, x0, z0, x1, z1, h) {
 }
 
 // ---------- グラウンド（航空写真の形どおり。野球とサッカー） ----------
-function polyBounds(poly) {
+export function polyBounds(poly) {
   const xs = poly.map((p) => p[0]), zs = poly.map((p) => p[1]);
   return { x0: Math.min(...xs), x1: Math.max(...xs), z0: Math.min(...zs), z1: Math.max(...zs) };
 }
@@ -60,7 +60,7 @@ export function inPoly(x, z, poly) {
 }
 
 // 多角形の平らな面（地面の上に置く）。tex はワールド座標の範囲 bb に合わせて描いた画像
-function flatPoly(poly, mat, y, bb) {
+export function flatPoly(poly, mat, y, bb) {
   const shape = new THREE.Shape(poly.map(([x, z]) => new THREE.Vector2(x, -z)));
   const geo = new THREE.ShapeGeometry(shape);
   geo.rotateX(-Math.PI / 2);
@@ -304,7 +304,7 @@ function buildShed({ x0, x1, z0, z1, h = 3.2, color = 0xa8473d }) {
   return g;
 }
 
-function distSeg(x, z, ax, az, bx, bz) {
+export function distSeg(x, z, ax, az, bx, bz) {
   const dx = bx - ax, dz = bz - az;
   const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz)));
   return Math.hypot(x - ax - t * dx, z - az - t * dz);
@@ -364,6 +364,71 @@ function buildRoad({ w, pts }) {
   return m;
 }
 
+// ---------- まわりの住宅地（道路ぞいに家をならべる。位置は雰囲気を出すためのもの） ----------
+const unitBox = new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
+const unitGable = (() => {
+  // x: -0.5〜0.5, y: 0〜1, z: -0.5〜0.5。棟は z 方向
+  const v = [[-0.5, 0, -0.5], [0.5, 0, -0.5], [0, 1, -0.5], [-0.5, 0, 0.5], [0.5, 0, 0.5], [0, 1, 0.5]];
+  const tri = [[0, 2, 1], [3, 4, 5], [0, 3, 5], [0, 5, 2], [1, 2, 5], [1, 5, 4], [0, 1, 4], [0, 4, 3]];
+  const pos = [];
+  for (const t of tri) for (const i of t) pos.push(...v[i]);
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.computeVertexNormals();
+  return g;
+})();
+function buildHouses(SITE) {
+  const road = SITE.roads[0];
+  const spots = [];
+  const others = SITE.roads;
+  let seed = 3;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const nearBoundary = (x, z) => {
+    const b = SITE.boundary;
+    if (inPoly(x, z, b)) return true;
+    for (let i = 0; i < b.length; i++) {
+      const [ax, az] = b[i], [bx, bz] = b[(i + 1) % b.length];
+      if (distSeg(x, z, ax, az, bx, bz) < 7) return true;
+    }
+    return false;
+  };
+  for (let i = 0; i + 1 < road.pts.length; i++) {
+    const [ax, az] = road.pts[i], [bx, bz] = road.pts[i + 1];
+    const L = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / L, uz = (bz - az) / L;
+    for (let t = 5; t < L; t += 11) {
+      for (const side of [-1, 1]) for (const row of [0, 1]) {
+        const off = road.w / 2 + 8 + row * 13 + rnd() * 2;
+        const x = ax + ux * t - uz * side * off, z = az + uz * t + ux * side * off;
+        if (nearBoundary(x, z)) continue;
+        if (x > 85 && z > -75 && z < 45) continue; // 東どなりは小学校
+        if (others.some((r) => r.pts.some((p, k) => k + 1 < r.pts.length && distSeg(x, z, p[0], p[1], r.pts[k + 1][0], r.pts[k + 1][1]) < r.w / 2 + 5))) continue;
+        if (spots.some((p) => Math.hypot(p.x - x, p.z - z) < 10.5)) continue;
+        spots.push({ x, z, ang: Math.atan2(ux, uz), w: 7 + rnd() * 3, d: 7 + rnd() * 2.5, h: 5.2 + rnd() * 1.2 });
+      }
+    }
+  }
+  const wallColors = [0xf2efe8, 0xe8e2d4, 0xd9d6cf, 0xeae6dc, 0xc9c4b8];
+  const roofColors = [0x4a5260, 0x5b6676, 0x3f4650, 0x7a4a45, 0x8a5048, 0x56607a, 0x6d6f73, 0x8c6f5a];
+  const body = new THREE.InstancedMesh(unitBox, new THREE.MeshStandardMaterial({ roughness: 0.85 }), spots.length);
+  const roof = new THREE.InstancedMesh(unitGable, new THREE.MeshStandardMaterial({ roughness: 0.7, side: THREE.DoubleSide }), spots.length);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0);
+  spots.forEach((h, i) => {
+    q.setFromAxisAngle(up, h.ang);
+    m4.compose(new THREE.Vector3(h.x, -0.2, h.z), q, new THREE.Vector3(h.w, h.h, h.d));
+    body.setMatrixAt(i, m4);
+    body.setColorAt(i, new THREE.Color(wallColors[i % wallColors.length]));
+    m4.compose(new THREE.Vector3(h.x, h.h - 0.2, h.z), q, new THREE.Vector3(h.w + 0.8, 2.2, h.d + 0.8));
+    roof.setMatrixAt(i, m4);
+    roof.setColorAt(i, new THREE.Color(roofColors[Math.floor(rnd() * roofColors.length)]));
+  });
+  body.castShadow = roof.castShadow = true;
+  body.receiveShadow = true;
+  const g = new THREE.Group();
+  g.add(body, roof);
+  g.userData.spots = spots;
+  return g;
+}
+
 // 配置。x, z はメートル（校舎の中心が 0、図面の上＝北が -z）、rot は度
 export function buildSite(scene, SITE) {
   const group = new THREE.Group();
@@ -407,11 +472,13 @@ export function buildSite(scene, SITE) {
     group.add(buildRoad(r));
     for (let i = 0; i + 1 < r.pts.length; i++) roadSegs.push([...r.pts[i], ...r.pts[i + 1], r.w / 2 + 2]);
   }
+  const houses = SITE.roads && SITE.boundary ? buildHouses(SITE) : null;
+  if (houses) group.add(houses);
   group.traverse((o) => { if (o.isMesh) o.receiveShadow = true; });
   scene.add(group);
   return {
     group,
-    isFree: (x, z) => roadSegs.every(([ax, az, bx, bz, r]) => distSeg(x, z, ax, az, bx, bz) > r) && rects.every(([x0, x1, z0, z1]) => x < x0 || x > x1 || z < z0 || z > z1) &&
+    isFree: (x, z) => (!houses || houses.userData.spots.every((h) => Math.hypot(h.x - x, h.z - z) > 7)) && roadSegs.every(([ax, az, bx, bz, r]) => distSeg(x, z, ax, az, bx, bz) > r) && rects.every(([x0, x1, z0, z1]) => x < x0 || x > x1 || z < z0 || z > z1) &&
       polys.every((p) => !inPoly(x, z, p) && !inPoly(x + 4, z, p) && !inPoly(x - 4, z, p) && !inPoly(x, z + 4, p) && !inPoly(x, z - 4, p)),
   };
 }

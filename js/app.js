@@ -5,7 +5,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ROOMS_RAW } from "./data.js";
 import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
-import { buildSite, createAerial } from "./site.js";
+import { buildSite, createAerial, flatPoly, polyBounds, inPoly } from "./site.js";
 
 // ---------- 寸法（メートル） ----------
 const CW = 1.5;   // 図面の1列の幅
@@ -405,6 +405,43 @@ const matParapet = new THREE.MeshStandardMaterial({ color: 0xd9d3c5, roughness: 
 const matRoof = new THREE.MeshStandardMaterial({ map: texRoofTop, color: 0xffffff, roughness: 0.95 });
 const matRoofDark = new THREE.MeshStandardMaterial({ map: texRoofTop, color: 0x5a5d60, roughness: 0.9 });
 
+// 白い壁の柱と庇。柱は窓の区切りごと、庇は各階の上の端
+const matRelief = new THREE.MeshStandardMaterial({ color: 0xf4f2ec, roughness: 0.85 });
+function wallRelief(segs, f) {
+  const geos = [];
+  const box = (w, h, d, x, y, z) => { const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z); geos.push(g); };
+  for (const sg of segs) {
+    if (sg.style === "brick") continue;
+    const gym = sg.style.startsWith("gym");
+    const alongX = sg.n[1] !== 0; // 北・南向きの面は x 方向にのびる
+    const len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az);
+    if (len < 2) continue;
+    const [nx, nz] = sg.n;
+    const y0 = base(f);
+    // 柱（たて）
+    const step = gym ? 6 : alongX ? 4.5 : 3.75;
+    const n = Math.max(1, Math.round(len / step));
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      const x = sg.ax + (sg.bx - sg.ax) * t + nx * 0.2, z = sg.az + (sg.bz - sg.az) * t + nz * 0.2;
+      box(alongX ? 0.45 : 0.4, FH, alongX ? 0.4 : 0.45, x, y0 + FH / 2, z);
+    }
+    // 庇（よこ）。教室棟は奥行きを深めにして影ができるように
+    const dep = gym ? 0.35 : 0.7;
+    const cx = (sg.ax + sg.bx) / 2 + nx * dep / 2, cz = (sg.az + sg.bz) / 2 + nz * dep / 2;
+    if (alongX) box(len + 0.4, 0.2, dep, cx, y0 + FH - 0.1, cz);
+    else box(dep, 0.2, len + 0.4, cx, y0 + FH - 0.1, cz);
+    // 1階の足もと（基礎の帯）
+    if (f === 1) {
+      const bx = (sg.ax + sg.bx) / 2 + nx * 0.1, bz = (sg.az + sg.bz) / 2 + nz * 0.1;
+      if (alongX) box(len, 0.5, 0.2, bx, 0.05, bz); else box(0.2, 0.5, len, bx, 0.05, bz);
+    }
+  }
+  const m = new THREE.Mesh(geos.length ? mergeGeometries(geos) : new THREE.BufferGeometry(), matRelief);
+  m.castShadow = m.receiveShadow = true;
+  return m;
+}
+
 // 太陽光パネル（屋上の長方形の中に、南向きに少し傾けてならべる）
 const texSolar = canvasTex(64, 96, (g, w, h) => {
   g.fillStyle = "#1d2f5c"; g.fillRect(0, 0, w, h);
@@ -462,6 +499,8 @@ for (const f of [1, 2, 3]) {
   const ext = new THREE.Group();
   const byStyle = {};
   for (const s of segs) (byStyle[s.style] ||= []).push(s);
+  // 白い壁の立体感：窓のあいだの柱と、各階の床の位置の庇（ひさし）
+  ext.add(wallRelief(segs, f));
   // 白い丸い階段塔
   for (const t of FACADE.roundStairs) {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(t.r, t.r, FH, 28), t.tower ? matTower : matStack);
@@ -631,6 +670,57 @@ const gymRoof = (() => {
 })();
 buildingGroup.add(gymRoof);
 
+// 体育館の外まわり：西側の通路（手すり壁つき）と北の端の外階段、南側の2階のテラスと外階段、1階の柱
+{
+  const white = matRelief;
+  const geos1 = [], geos2 = [];
+  const box = (list, w, h, d, x, y, z) => { const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z); list.push(g); };
+  // 階段（段を積む）。(x0,z0) が下、(x1,z1) が上
+  const stair = (list, x0, z0, x1, z1, y0, y1, width) => {
+    const n = Math.max(4, Math.round((y1 - y0) / 0.18));
+    const dx = (x1 - x0) / n, dz = (z1 - z0) / n, rise = (y1 - y0) / n;
+    const alongX = Math.abs(x1 - x0) > Math.abs(z1 - z0);
+    for (let i = 0; i < n; i++) {
+      const cx = x0 + dx * (i + 0.5), cz = z0 + dz * (i + 0.5), top = y0 + rise * (i + 1);
+      if (alongX) box(list, Math.abs(dx) + 0.02, top, width, cx, top / 2, cz);
+      else box(list, width, top, Math.abs(dz) + 0.02, cx, top / 2, cz);
+    }
+    // 手すり壁（両側。段にそって傾けた細い板）
+    const L = Math.hypot(x1 - x0, z1 - z0), S = Math.hypot(L, y1 - y0);
+    const ang = Math.atan2(y1 - y0, L) * (alongX ? Math.sign(x1 - x0) : -Math.sign(z1 - z0));
+    for (const s of [-1, 1]) {
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(alongX ? S : 0.15, 1.0, alongX ? 0.15 : S), white);
+      rail.position.set((x0 + x1) / 2 + (alongX ? 0 : s * width / 2), (y0 + y1) / 2 + 0.6, (z0 + z1) / 2 + (alongX ? s * width / 2 : 0));
+      if (alongX) rail.rotation.z = ang; else rail.rotation.x = ang;
+      rail.castShadow = true;
+      gymExtras.add(rail);
+    }
+  };
+  const gymExtras = new THREE.Group();
+  const gx = X(7), gz0 = Z(1), gz1 = Z(39), gxe = X(27);
+  // 西側の通路（高さ1.8m、幅2.6m）
+  const wy = 1.8, ww = 2.6;
+  box(geos1, ww, 0.3, gz1 - gz0 - 6, gx - ww / 2, wy - 0.15, (gz0 + 6 + gz1) / 2);
+  box(geos1, 0.18, 1.1, gz1 - gz0 - 6, gx - ww, wy + 0.4, (gz0 + 6 + gz1) / 2);
+  for (let z = gz0 + 6; z <= gz1; z += 4) box(geos1, 0.3, wy, 0.3, gx - ww + 0.3, wy / 2 - 0.15, z);
+  // 北の端の外階段（通路から北へ下りる）
+  stair(geos1, gx - ww / 2, gz0 - 4.5, gx - ww / 2, gz0 + 6, -0.2, wy, ww - 0.2);
+  // 南側の2階のテラスと、西から上がる外階段
+  const ty = FH, tw = 2.4;
+  box(geos2, gxe - gx - 8, 0.3, tw, (gx + 8 + gxe) / 2, ty - 0.15, gz1 + tw / 2);
+  box(geos2, gxe - gx - 8, 1.1, 0.18, (gx + 8 + gxe) / 2, ty + 0.4, gz1 + tw);
+  for (let x = gx + 8; x <= gxe; x += 4) box(geos2, 0.3, ty, 0.3, x, ty / 2 - 0.15, gz1 + tw - 0.3);
+  stair(geos2, gx - 1, gz1 + tw / 2, gx + 8, gz1 + tw / 2, -0.2, ty, tw - 0.2);
+  // 1階の南側の柱（柱が並ぶ吹きさらしの部分）
+  for (let x = gx + 9; x < gxe; x += 4.2) box(geos2, 0.5, FH, 0.5, x, FH / 2 - 0.2, gz1 + 0.3);
+  for (const [list, layer] of [[geos1, 1], [geos2, 1]]) {
+    const m = new THREE.Mesh(mergeGeometries(list), white);
+    m.castShadow = m.receiveShadow = true;
+    layers.exterior[layer].add(m);
+  }
+  layers.exterior[1].add(gymExtras);
+}
+
 // ---------- 地面・植栽 ----------
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(800, 800), new THREE.MeshStandardMaterial({ map: texGrass, roughness: 1 }));
 ground.rotation.x = -Math.PI / 2;
@@ -639,11 +729,16 @@ ground.receiveShadow = true;
 scene.add(ground);
 
 // 学校の敷地（アスファルト）
-const bb = { x0: -78, x1: 62, z0: -50, z1: 56 };
+// 学校の敷地（芝生・植え込み）と、舗装している範囲（アスファルト）
+const siteBB = polyBounds(SITE.boundary);
+const siteGrassTex = texGrass.clone(); siteGrassTex.needsUpdate = true;
+siteGrassTex.repeat.set((siteBB.x1 - siteBB.x0) / 6, (siteBB.z1 - siteBB.z0) / 6);
+const siteGround = flatPoly(SITE.boundary, new THREE.MeshStandardMaterial({ map: siteGrassTex, color: 0xd6e6c4, roughness: 1 }), -0.23, siteBB);
+scene.add(siteGround);
+const bb = polyBounds(SITE.paved);
 texPaving.repeat.set((bb.x1 - bb.x0) / 4, (bb.z1 - bb.z0) / 4);
-const paving = new THREE.Mesh(new THREE.PlaneGeometry(bb.x1 - bb.x0, bb.z1 - bb.z0), new THREE.MeshStandardMaterial({ map: texPaving, color: 0xa9a7a1, roughness: 1 }));
-paving.rotation.x = -Math.PI / 2;
-paving.position.set((bb.x0 + bb.x1) / 2, -0.2, (bb.z0 + bb.z1) / 2);
+const paving = flatPoly(SITE.paved, new THREE.MeshStandardMaterial({ map: texPaving, color: 0xa9a7a1, roughness: 1 }), 0, bb);
+paving.position.y = -0.2;
 paving.receiveShadow = true;
 scene.add(paving);
 
@@ -723,13 +818,11 @@ scene.add(trees);
     }
     return site.isFree(x, z);
   };
-  for (let i = 0, added = 0; i < 600 && added < 90; i++) {
-    const side = Math.floor(rnd() * 4);
-    let x, z;
-    if (side === 0) { x = bb.x0 + rnd() * (bb.x1 - bb.x0); z = bb.z0 - 4 - rnd() * 14; }
-    else if (side === 1) { x = bb.x0 + rnd() * (bb.x1 - bb.x0); z = bb.z1 + 4 + rnd() * 14; }
-    else if (side === 2) { x = bb.x0 - 4 - rnd() * 14; z = bb.z0 + rnd() * (bb.z1 - bb.z0); }
-    else { x = bb.x1 + 4 + rnd() * 14; z = bb.z0 + rnd() * (bb.z1 - bb.z0); }
+  // 敷地の中の、舗装していない場所（のり面・植え込み）に木を植える
+  for (let i = 0, added = 0; i < 4000 && added < 170; i++) {
+    const x = siteBB.x0 + rnd() * (siteBB.x1 - siteBB.x0), z = siteBB.z0 + rnd() * (siteBB.z1 - siteBB.z0);
+    if (!inPoly(x, z, SITE.boundary) || inPoly(x, z, SITE.paved)) continue;
+    if (spots.some(([px, pz]) => Math.hypot(px - x, pz - z) < 4)) continue;
     if (ok(x, z)) { spots.push([x, z, 0.8 + rnd() * 0.6]); added++; }
   }
   // 中庭の木
@@ -1141,7 +1234,7 @@ const alignPanel = document.getElementById("align-panel");
 const aerialMsg = document.getElementById("aerial-msg");
 function setAerial(on) {
   aerial.holder.visible = on;
-  ground.visible = paving.visible = trees.visible = site.group.visible = outdoor.visible = !on;
+  ground.visible = paving.visible = trees.visible = site.group.visible = outdoor.visible = siteGround.visible = !on;
   aerialBtn.classList.toggle("active", on);
   document.body.classList.toggle("aerial-on", on);
   document.getElementById("aerial-credit").hidden = !on;

@@ -489,7 +489,21 @@ function cellsToRects(set) {
 const matPlain = new THREE.MeshStandardMaterial({ color: 0xece6d8, roughness: 0.9, side: THREE.DoubleSide });
 const matParapet = new THREE.MeshStandardMaterial({ color: 0xd9d3c5, roughness: 0.9, side: THREE.DoubleSide });
 const matRoof = new THREE.MeshStandardMaterial({ map: texRoofTop, color: 0xffffff, roughness: 0.95 });
-const matRoofDark = new THREE.MeshStandardMaterial({ map: texRoofTop, color: 0x5a5d60, roughness: 0.9 });
+// 中央棟の北の屋根：屋根いっぱいに古い太陽光パネル（黒っぽい板が格子にならぶ）
+const texPanelRoof = (() => {
+  const cv = document.createElement("canvas"); cv.width = cv.height = 128;
+  const c = cv.getContext("2d");
+  c.fillStyle = "#9a9a96"; c.fillRect(0, 0, 128, 128);
+  for (let y = 0; y < 128; y += 16) for (let x = 0; x < 128; x += 32) {
+    const v = Math.random() * 12;
+    c.fillStyle = `rgb(${38 + v},${44 + v},${56 + v})`; c.fillRect(x + 1, y + 1, 30, 14);
+    c.strokeStyle = "rgba(160,170,185,0.25)"; c.lineWidth = 0.6;
+    for (let k = 1; k < 4; k++) { c.beginPath(); c.moveTo(x + 1 + k * 7.5, y + 1); c.lineTo(x + 1 + k * 7.5, y + 15); c.stroke(); }
+  }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+})();
+const matRoofDark = new THREE.MeshStandardMaterial({ map: texPanelRoof, color: 0xffffff, roughness: 0.4, metalness: 0.3 });
 
 // 白い壁の柱と庇。柱は窓の区切りごと、庇は各階の上の端
 const matRelief = new THREE.MeshStandardMaterial({ color: 0xf4f2ec, roughness: 0.85 });
@@ -728,7 +742,12 @@ for (const f of [1, 2, 3]) {
       g.translate((rc.x0 + rc.x1) / 2, base(f) + FH + 0.15, (rc.z0 + rc.z1) / 2);
       return g;
     });
-    const rm = new THREE.Mesh(mergeGeometries(geos), kind === "dark" ? matRoofDark : matRoof);
+    const mg = mergeGeometries(geos);
+    if (kind === "dark") { // パネルの模様を、屋根の大きさに合わせてくり返す（4mで1枚の模様）
+      const p = mg.attributes.position, uv = mg.attributes.uv;
+      for (let i = 0; i < p.count; i++) uv.setXY(i, p.getX(i) / 4, p.getZ(i) / 4);
+    }
+    const rm = new THREE.Mesh(mg, kind === "dark" ? matRoofDark : matRoof);
     rm.receiveShadow = true; rm.castShadow = true;
     holder.add(rm);
     // 1号館・2号館・3号館の屋上には太陽光パネルがある
@@ -1898,3 +1917,6 @@ const m = location.hash.match(/room=([\w-]+)/);
 if (m && ROOM_BY_ID[m[1]]) selectRoom(ROOM_BY_ID[m[1]]);
 requestAnimationFrame(tick);
 document.getElementById("loading").remove();
+window.__flyTo = (p, t) => flyTo(new THREE.Vector3(...p), new THREE.Vector3(...t), 10);
+window.__R = ROOMS;
+window.__perf = () => { renderer.info.autoReset = true; const t0 = performance.now(); let n = 0; for (let i = 0; i < 10; i++) { renderer.render(scene, persp); n++; } const dt = (performance.now() - t0) / n; return { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, ms: Math.round(dt), geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }; };

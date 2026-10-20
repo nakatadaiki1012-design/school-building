@@ -19,7 +19,7 @@ const M = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughne
 let SLOPE = { zZero: -35, perMeter: 0.045 };
 export function setSlope(s) { if (s) SLOPE = s; }
 // 北が高く（-z）、西と南が低い。perMeterX は東へ行くほど高くなる割合
-export const terrainH = (x, z) => -(z - SLOPE.zZero) * SLOPE.perMeter + (x - (SLOPE.xZero ?? 0)) * (SLOPE.perMeterX ?? 0);
+export const terrainH = (x, z) => -(z - SLOPE.zZero) * SLOPE.perMeter + (x - (SLOPE.xZero ?? 0)) * (SLOPE.perMeterX ?? 0) + (SLOPE.base ?? 0);
 
 // フェンス（緑色の網＋支柱＋上の手すり）
 const netMat = new THREE.MeshStandardMaterial({ color: 0x3f7a5c, transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide, roughness: 0.9 });
@@ -605,6 +605,7 @@ export function buildRetaining(boundary, gates = []) {
       const [ox0, oz0] = lerp(A2, B2, t0), [ox1, oz1] = lerp(A2, B2, t1); // 外の土地のふち（高さ H）
       const h0 = terrainH(ox0, oz0) - 0.25, h1 = terrainH(ox1, oz1) - 0.25;
       const gate = inGate((ix0 + ix1) / 2, (iz0 + iz1) / 2);
+      if (gate && gate.main) continue; // 正門のところは階段（mainGate で作る）
       const T = gate ? ramps : walls;
       const j = T.pos.length / 3;
       T.pos.push(ix0, -0.2, iz0, ix1, -0.2, iz1, ox1, h1, oz1, ox0, h0, oz0);
@@ -671,7 +672,50 @@ function mainGate({ x, z, rot = 0, w = 10, name = "" }) {
   top.position.set(-0.3, 1.4, -w / 2 + 1.15);
   gate.add(top);
   g.add(gate);
+  // 道路へ下りる幅の広い階段（写真：正門の前は道路より一段高い広場で、階段で下りる）
+  const a = THREE.MathUtils.degToRad(rot), ox = Math.cos(a), oz = -Math.sin(a);
+  const drop = Math.max(0, -terrainH(x + ox * 2, z + oz * 2) - 0.2);
+  if (drop > 0.1) {
+    const n = Math.max(2, Math.round(drop / 0.16)), run = 0.32;
+    const stone = M(0xc9c4b8, { roughness: 1 });
+    for (let i = 0; i < n; i++) {
+      const top = -drop * (i + 1) / n; // 一段ずつ下がる
+      const st = new THREE.Mesh(new THREE.BoxGeometry(run, drop + top + 0.3, w + 1.6), stone);
+      st.position.set(0.2 + run * (i + 0.5), (top + (-drop - 0.3)) / 2, 0);
+      st.receiveShadow = true;
+      g.add(st);
+    }
+    // 両わきの石積みの袖壁
+    for (const sd of [-1, 1]) {
+      const wl = new THREE.Mesh(new THREE.BoxGeometry(run * n + 0.4, drop + 0.6, 0.4), stone);
+      wl.position.set(0.2 + run * n / 2, -drop / 2 + 0.1, sd * (w / 2 + 1));
+      wl.castShadow = true;
+      g.add(wl);
+    }
+  }
   g.position.set(x, -0.2, z);
+  g.rotation.y = a;
+  return g;
+}
+
+// となりの金程小学校（東の道路の向かい。かんたんな形）
+export function buildNeighborSchool({ x0, x1, z0, z1, h = 13, rot = 0 }) {
+  const g = new THREE.Group();
+  const w = x1 - x0, d = z1 - z0;
+  const body = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), M(0xe8e4dc));
+  body.position.y = h / 2;
+  const band = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, 0.8, d + 0.2), M(0xa86650));
+  band.position.y = h - 0.3;
+  const roofG = new THREE.Mesh(new THREE.BoxGeometry(w * 0.5, 0.3, d * 0.5), M(0x7f9a55)); // 屋上の芝生
+  roofG.position.y = h + 0.15;
+  for (const m of [body, band, roofG]) { m.castShadow = m.receiveShadow = true; g.add(m); }
+  for (let y = 1.2; y < h - 1; y += 3.4) {
+    const win = new THREE.Mesh(new THREE.BoxGeometry(w + 0.05, 1.4, d + 0.05), M(0x5d7184, { roughness: 0.4 }));
+    win.position.y = y + 0.9; win.scale.set(0.98, 1, 1);
+    g.add(win);
+  }
+  const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+  g.position.set(cx, terrainH(cx, cz) - 0.25, cz);
   g.rotation.y = THREE.MathUtils.degToRad(rot);
   return g;
 }
@@ -744,6 +788,7 @@ export function buildSite(scene, SITE) {
     group.add(m);
   }
   if (SITE.boundary) group.add(buildRetaining(SITE.boundary, SITE.gates || []));
+  if (SITE.neighborSchool) group.add(buildNeighborSchool(SITE.neighborSchool));
   const houses = SITE.roads && SITE.boundary ? buildHouses(SITE) : null;
   if (houses) group.add(houses);
   group.traverse((o) => { if (o.isMesh) o.receiveShadow = true; });

@@ -241,7 +241,10 @@ export const SITE = {
   treeRow: { from: [-26, -134], to: [109, -91], offsets: [-9.5], step: 5, columnar: true },
   // 斜面：まわりの土地の高さ ＝ -(z - zZero) × perMeter（北が高く南が低い）。敷地の中は平ら
   // 3D写真より：北の道路は敷地より高い（内側に石積み）、西と南は敷地のほうが高い（外側に石積みのり面）。東の正門はほぼ同じ高さ
-  slope: { zZero: 0, perMeter: 0.03, xZero: 77, perMeterX: 0.025 },
+  // 東の正門の前の道路は敷地より約1.5m低い（階段で下りる）
+  slope: { zZero: 0, perMeter: 0.04, xZero: 77, perMeterX: 0.025, base: -1.5 },
+  // 東の道路の向かいの、川崎市立金程小学校（3D写真より。かんたんな形）
+  neighborSchool: { x0: 96, x1: 130, z0: -30, z1: 22, h: 13, rot: -17 },
 };
 
 export const SITE_INFO = [

@@ -258,6 +258,14 @@ function makeSchoolTex(p) {
     // 窓（写真では、床から約1.2mまでは白い腰壁で、窓はその上だけ）
     const x = 0.3 * PX, w = 2.4 * PX, y = yFromFloor(2.9), h = 1.65 * PX;
     glass(g, x, y, w, h);
+    // 窓の内側の、両はしにまとめたクリーム色のカーテン（ひだ）。ところどころ少し引き出してある
+    for (const [cx0, cw] of [[x + 4, 0.28 * PX], [x + w - 4 - 0.22 * PX, 0.22 * PX]]) {
+      for (let i = 0; i < cw; i++) {
+        const v = 200 + Math.sin(i / 2.2) * 22;
+        g.fillStyle = `rgba(${v},${v - 6},${v - 28},0.85)`;
+        g.fillRect(cx0 + i, y + 3, 1, h - 6);
+      }
+    }
     g.fillStyle = "#c3c8cc";
     g.fillRect(x + w / 2 - 2, y, 4, h);           // 縦の桟
     g.fillRect(x, yFromFloor(2.35), w, 4);         // 欄間
@@ -266,6 +274,12 @@ function makeSchoolTex(p) {
     frame(g, x, y, w, h, 5);
     // 窓台の影
     g.fillStyle = "rgba(0,0,0,0.18)"; g.fillRect(x, y + h + 2, w, 4);
+    // 窓台の両はしから下へのびる、うすい雨だれのよごれ
+    for (const sx of [x + 6, x + w * 0.5, x + w - 10]) {
+      const gr = g.createLinearGradient(0, y + h + 6, 0, y + h + 6 + 0.9 * PX);
+      gr.addColorStop(0, "rgba(90,85,75,0.10)"); gr.addColorStop(1, "rgba(90,85,75,0)");
+      g.fillStyle = gr; g.fillRect(sx, y + h + 6, 5 + Math.random() * 4, 0.9 * PX);
+    }
     // 柱
     g.fillStyle = "rgba(0,0,0,0.05)"; g.fillRect(0, 0, 6, H); g.fillRect(W - 6, 0, 6, H);
   });

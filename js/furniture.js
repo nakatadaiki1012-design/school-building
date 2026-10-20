@@ -688,9 +688,11 @@ function reception(out, R) {
 
 function principal(out, R) {
   const { x0, x1, z0, z1 } = R;
-  out.push({ t: "teacherDesk", x: (x0 + x1) / 2, z: z1 - 0.9, rot: Math.PI / 2 });
-  out.push({ t: "officeChair", x: (x0 + x1) / 2, z: z1 - 0.3, rot: -Math.PI / 2 });
-  reception(out, { x0, x1, z0, z1: z1 - 1.8 });
+  // 校長の机は東の壁ぎわで、西を向いて座る。応接セットは西側
+  const cz = (z0 + z1) / 2;
+  out.push({ t: "teacherDesk", x: x1 - 1.3, z: cz, rot: Math.PI }, { t: "monitor", x: x1 - 1.2, z: cz + 0.3, rot: 0, y: 0.03 });
+  out.push({ t: "officeChair", x: x1 - 0.55, z: cz, rot: 0 });
+  reception(out, { x0, x1: x1 - 2.2, z0, z1 });
 }
 
 function entrance(out, R) {

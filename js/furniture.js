@@ -252,6 +252,10 @@ const SHAPES = {
   monitor: [[MAT.black, merge([b(0.04, 0.32, 0.5, 0, 0.78), b(0.15, 0.05, 0.15, 0.05, 0.73)])]],
   pc: [[MAT.black, merge([b(0.04, 0.3, 0.45, 0, 0.75), b(0.2, 0.02, 0.4, -0.15, 0.73)])]],
   shelf: [[MAT.books, merge([b(0.35, 1.8, 0.9)])]],
+  // 自習用の机（前と左右に白い仕切り板がある。STUDY HALL の写真より）
+  carrel: [
+    [MAT.white, merge([b(0.6, 0.03, 0.9, 0, 0.72), b(0.03, 1.25, 0.9, -0.3, 0), b(0.6, 1.25, 0.03, 0, 0, -0.45), b(0.6, 1.25, 0.03, 0, 0, 0.45)])],
+  ],
   lowShelf: [[MAT.books, merge([b(0.35, 1.2, 0.9)])]],
   table: [
     [MAT.wood, merge([b(0.9, 0.04, 1.8, 0, 0.7)])],
@@ -298,7 +302,8 @@ const SHAPES = {
     [MAT.black, merge([b(0.1, 1.03, 1.7, 0, 0.81), b(0.08, 0.85, 0.08, 0, 0, -0.45), b(0.08, 0.85, 0.08, 0, 0, 0.45), b(0.6, 0.06, 1.1, 0, 0.05)])],
   ],
   // 引き戸（壁の両側に見えるよう壁より厚め）と、まわりの枠、上の欄間のガラス
-  door: [[MAT.door, merge([b(0.9, 1.95, 0.2)])], [MAT.darkWood, merge([b(1.06, 0.07, 0.24, 0, 1.95), b(0.07, 2.02, 0.24, -0.5), b(0.07, 2.02, 0.24, 0.5)])], [MAT.transom, merge([b(0.9, 0.35, 0.17, 0, 2.03)])]],
+  // 壁より厚くして、教室の中からも廊下からも見えるようにする
+  door: [[MAT.door, merge([b(0.9, 1.95, 0.3)])], [MAT.darkWood, merge([b(1.06, 0.07, 0.34, 0, 1.95), b(0.07, 2.02, 0.34, -0.5), b(0.07, 2.02, 0.34, 0.5)])], [MAT.transom, merge([b(0.9, 0.35, 0.26, 0, 2.03)])]],
   curtainPanel: [[MAT.curtain, merge([b(0.7, 2.05, 0.05, 0, 0.3)])]],
   cleanLocker: [[MAT.gray, merge([b(0.45, 1.8, 0.6)])]],
   bag: [[MAT.bag, merge([b(0.1, 0.3, 0.34, 0, 0.32)])]],
@@ -349,8 +354,8 @@ function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back
   out.push({ t: "bulletin", x: x1 + 0.12, z: (z0 + z1) / 2, rot: 0 });
   out.push({ t: "laptop", x: x0 + 1.35, z: (z0 + z1) / 2 + 0.2, rot: 0, y: 0.18 });
   // 廊下側（北）の前と後ろの引き戸
-  out.push({ t: "door", x: x0 + 1.0, z: z0 - 0.17, rot: 0 });
-  out.push({ t: "door", x: x1 - 1.0, z: z0 - 0.17, rot: 0 });
+  out.push({ t: "door", x: x0 + 1.0, z: z0 - 0.2, rot: 0 }); // 壁のまんなか
+  out.push({ t: "door", x: x1 - 1.0, z: z0 - 0.2, rot: 0 });
   // 窓側（南）のカーテン（柱のところにまとめてある）
   for (let x = x0 + 0.5; x < x1 - 0.3; x += 2.25) out.push({ t: "curtainPanel", x, z: z1 + 0.1, rot: 0 });
   const dx0 = x0 + 2.2, dx1 = x1 - 1.3 - (x1 - x0) * back;
@@ -411,13 +416,27 @@ function office(out, R, perIsland = 6) {
   }
 }
 
-// 職員室：北から「通路・ロッカー・机・椅子・通路・椅子・机・机・椅子・通路」の列が東西にのびる
+// 職員室：西側は、北から「通路・ロッカー・机・椅子・通路・椅子・机・机・椅子・通路」の列が東西にのびる（4つずつ3まとまり）
+// 東側は「椅子・机・机・椅子」が南北にならぶ列が2本（東の列は北のL字の部分から続く）。西の列の南のはしは、東西にならぶ机4つ
+const PAIR_W = 2.9; // 「椅子・机・机・椅子」1列の幅
+function pairColumn(out, cx, za, zb, step = 1.1) {
+  for (let z = za; z <= zb + 0.01; z += step) {
+    out.push({ t: "officeDesk", x: cx - 0.35, z, rot: 0 }, { t: "laptop", x: cx - 0.35, z, rot: Math.PI, y: 0 });
+    out.push({ t: "officeDesk", x: cx + 0.35, z, rot: Math.PI }, { t: "laptop", x: cx + 0.35, z, rot: 0, y: 0 });
+    out.push({ t: "officeChair", x: cx - 1.05, z, rot: Math.PI }, { t: "officeChair", x: cx + 1.05, z, rot: 0 });
+  }
+}
 function staffRoom(out, R) {
   const { x0, x1, z0, z1 } = R;
   const k = Math.min(1, (z1 - z0) / 7.2), z = (d) => z0 + d * k;
   const N = -Math.PI / 2, S = Math.PI / 2; // 椅子が北／南を向く
-  for (let x = x0 + 0.6; x < x1 - 0.5; x += 0.95) out.push({ t: "locker", x, z: z(1.12), rot: S });
-  for (let x = x0 + 0.8; x < x1 - 0.6; x += 1.15) {
+  const xe = x1 - 2 * PAIR_W - 0.3;        // ここから東は、南北の列
+  // 西側：4つずつ3まとまり（まとまりのあいだは通路）
+  const step = 1.0, gap = ((xe - x0 - 0.4) - 12 * step) / 3;
+  const xs = [];
+  for (let g = 0; g < 3; g++) for (let i = 0; i < 4; i++) xs.push(x0 + 0.2 + gap / 2 + g * (4 * step + gap) + (i + 0.5) * step);
+  for (let x = x0 + 0.6; x < xe - 0.5; x += 0.95) out.push({ t: "locker", x, z: z(1.12), rot: S });
+  for (const x of xs) {
     out.push({ t: "officeDesk", x, z: z(1.8), rot: S }, { t: "laptop", x, z: z(1.8), rot: N, y: 0 });
     out.push({ t: "officeChair", x, z: z(2.5), rot: N });
     out.push({ t: "officeChair", x, z: z(4.0), rot: S });
@@ -425,15 +444,35 @@ function staffRoom(out, R) {
     out.push({ t: "officeDesk", x, z: z(5.35), rot: S }, { t: "laptop", x, z: z(5.35), rot: N });
     out.push({ t: "officeChair", x, z: z(6.05), rot: N });
   }
+  // 東側の2本の列
+  const cxL = xe + 0.15 + PAIR_W / 2, cxR = x1 - PAIR_W / 2;
+  pairColumn(out, cxR, z0 + 0.6, z(2.6));            // 東の列：北の部分（L字の部分から続く）
+  pairColumn(out, cxR, z(3.75), z1 - 0.7);           // 通路をはさんで南の部分
+  pairColumn(out, cxL, z(3.75), z(4.75), 1.0);       // 西の列
+  for (let i = 0; i < 4; i++) {                       // 西の列の南のはし：東西にならぶ机4つ
+    const x = cxL - 1.2 + i * 0.8;
+    out.push({ t: "officeDesk", x, z: z(5.35), rot: S }, { t: "laptop", x, z: z(5.35), rot: N });
+    out.push({ t: "officeChair", x, z: z(6.05), rot: N });
+  }
 }
-// 職員室の東のはしで北へ折れるL字の部分：机が南北にならぶ
+// 職員室の東のはしで北へ折れるL字の部分：職員室の東の列（椅子・机・机・椅子）が北へ続く
 function staffRoomL(out, R) {
   const { x0, x1, z0, z1 } = R;
-  const cx = (x0 + x1) / 2;
-  for (let z = z0 + 0.6; z < z1 - 0.4; z += 1.15) {
-    out.push({ t: "officeDesk", x: cx - 0.35, z, rot: 0 }, { t: "officeDesk", x: cx + 0.35, z, rot: Math.PI });
-    out.push({ t: "officeChair", x: cx - 1.05, z, rot: Math.PI }, { t: "officeChair", x: cx + 1.05, z, rot: 0 });
+  pairColumn(out, x1 - PAIR_W / 2, z0 + 0.6, z1 - 0.5);
+}
+
+// STUDY HALL：仕切り板のついた自習用の机が、背中合わせに南北に2列ならぶ。木の椅子。階段側（南）の壁に本棚
+function studyHall(out, R) {
+  const { x0, x1, z0, z1 } = R;
+  const w = x1 - x0;
+  for (const f of [0.27, 0.73]) {
+    const xc = x0 + w * f;
+    for (let z = z0 + 0.9; z < z1 - 1.5; z += 0.95) {
+      out.push({ t: "carrel", x: xc + 0.31, z, rot: 0 }, { t: "chair", x: xc + 0.85, z, rot: 0 });
+      out.push({ t: "carrel", x: xc - 0.31, z, rot: Math.PI }, { t: "chair", x: xc - 0.85, z, rot: Math.PI });
+    }
   }
+  for (let x = x0 + 0.8; x < x1 - 0.6; x += 0.95) out.push({ t: "shelf", x, z: z1 - 0.25, rot: Math.PI / 2 });
 }
 
 // 会議室：長い机が2列（部屋の長い方向にのびる）。机の両側に椅子
@@ -656,7 +695,7 @@ const LAYOUTS = [
   [/選択第１教室|選択第1教室/, (o, R) => classroom(o, R, { cols: 6, rows: 5, seats: 30, eboard: false, back: 0.12 })],
   [/社会科教室/, (o, R) => classroom(o, R, { cols: 6, rows: 7, seats: 42, eboard: false, back: 0.33 })],
   [/選択|オーラル/, (o, R) => classroom(o, R, { cols: 5, rows: 6, seats: 30, eboard: false })],
-  [/STUDY HALL/, (o, R) => grid(o, "bigTable", R.x0 + 1.4, R.x1 - 1.4, R.z0 + 1.5, R.z1 - 1.5, 2, 2)],
+  [/STUDY HALL/, studyHall],
   [/化学実験室|物理実験室|生物実験室/, (o, R) => lab(o, R)],
   [/調理室/, (o, R) => lab(o, R, "cookBench", true)],
   [/被服室/, sewing],
@@ -695,7 +734,7 @@ const LAYOUTS = [
 ];
 
 // 黒板・教卓を北側に置く特別教室（普通教室は図面の左＝西側が前）
-const NORTH_FRONT = /選択|オーラル|社会科教室|視聴覚|音楽室|美術教室|工芸教室|STUDY HALL/;
+const NORTH_FRONT = /選択|オーラル|社会科教室|視聴覚|音楽室|美術教室|工芸教室/;
 // 先生の机・黒板が南側にある特別教室
 const SOUTH_FRONT = /選択第２教室|選択第2教室/;
 // 東側を向いて授業を受ける部屋（被服室は西向きなので、ふつうの教室と同じ）

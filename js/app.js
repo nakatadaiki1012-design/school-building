@@ -98,8 +98,10 @@ ROOMS.forEach((r) => {
   const ccx = (r.c0 + r.c1) / 2, ccr = (r.r0 + r.r1) / 2;
   // 航空写真に合わせたあとの位置と大きさ。2つの棟にまたがる部屋は、角ごとにその棟の位置を使う
   r.block = blockAtCell(Math.floor(ccx), Math.floor(ccr));
-  const [wx0, wz0] = toWorld(rc.x0, rc.z0, blockAtCell(r.c0, r.r0));
-  const [wx1, wz1] = toWorld(rc.x1, rc.z1, blockAtCell(r.c1, r.r1));
+  let [wx0, wz0] = toWorld(rc.x0, rc.z0, blockAtCell(r.c0, r.r0));
+  let [wx1, wz1] = toWorld(rc.x1, rc.z1, blockAtCell(r.c1, r.r1));
+  // xBlock：東西の位置と幅は、この棟に合わせる（棟にまたがって細くなりすぎる部屋のため）
+  if (r.xBlock) { const b = blockById(r.xBlock); wx0 = toWorld(rc.x0, 0, b)[0]; wx1 = toWorld(rc.x1, 0, b)[0]; }
   r.wx = (wx0 + wx1) / 2; r.wz = (wz0 + wz1) / 2; r.ww = wx1 - wx0; r.wd = wz1 - wz0;
   // 部屋の板・壁は r.block の中に置くので、その棟の図面の座標に戻しておく
   r.cx = (r.wx - r.block.ox) / r.block.sx; r.cz = (r.wz - r.block.oz) / r.block.sz;
@@ -1331,7 +1333,7 @@ const matStairs = new THREE.MeshStandardMaterial({ color: 0xd9d6cf, roughness: 0
 const matPartition = new THREE.MeshStandardMaterial({ color: 0xfaf8f3, roughness: 0.9 });
 // ガラス張りの仕切り（STUDY HALL など）
 const matGlassWall = new THREE.MeshStandardMaterial({ color: 0x9cc4dc, roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
-const matGlassFrame = new THREE.MeshStandardMaterial({ color: 0x8a9096, roughness: 0.5, metalness: 0.5 });
+const matGlassFrame = new THREE.MeshStandardMaterial({ color: 0x26282b, roughness: 0.5, metalness: 0.4 }); // 黒い枠（写真より）
 for (const f of [1, 2, 3]) {
   const grp = new THREE.Group();
   const lbl = new THREE.Group();

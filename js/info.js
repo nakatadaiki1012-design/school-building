@@ -401,6 +401,10 @@ export const ROOM_EDITS = [
   { name: "女子トイレ", floor: 1, at: 48, set: { c0: 47, c1: 49 } },
   { name: "電気室", floor: 1, at: 51, set: { c0: 50, c1: 51 } },
   { name: "化学実験室", floor: 1, set: { c0: 52 } },
+  // 3号館の西のはしの男子トイレ（美術・図書館棟と3号館にまたがる）は、東西の幅を美術・図書館棟に合わせる（細くなりすぎないように）
+  { name: "男子トイレ", floor: 1, at: 13, set: { xBlock: "art" } },
+  { name: "男子トイレ", floor: 2, at: 13, set: { xBlock: "art" } },
+  { name: "男子トイレ", floor: 3, at: 13, set: { xBlock: "art" } },
   // STUDY HALL は、吹き抜け側（北）と階段側（南）にもう少し広い
   { name: "STUDY HALL", floor: 2, set: { r0: 50, r1: 56 } },
   // 体育館の2階の玄関は、階段から器具庫の手前まで広い
@@ -424,6 +428,7 @@ export const ROOM_STYLE = [
   { name: "ステージ", floor: 2, open: ["s"] },
   // ラウンジはみんなが使うコモンスペース：廊下側（南）は壁なしで、入り口をふさがない
   { name: "ラウンジ", floor: 2, open: ["s"] },
+  { name: "ラウンジ", floor: 3, open: ["s"] }, // 3階にも同じラウンジがある
   // STUDY HALL：階段側（南）以外はガラス張り
   { name: "STUDY HALL", floor: 2, glass: ["n", "e", "w"] },
   { name: "ホール", floor: 1, open: ["n", "s", "e", "w"], vending: "w" }, // 南の昇降口のとなりのホール：壁なし、西の壁ぎわに自販機

@@ -288,12 +288,13 @@ const texSchool = makeSchoolTex(PALETTE.white);
 
 // 茶色いレンガタイルの壁（端の壁。窓はほとんどない）
 const texBrick = canvasTex(W, H, (g) => {
-  g.fillStyle = "#7e4535"; g.fillRect(0, 0, W, H);
+  // 写真のレンガ：明るめの赤茶色で、1枚ずつ色が少しちがう。目地はうすい灰色
+  g.fillStyle = "#b39a8c"; g.fillRect(0, 0, W, H);
   const bh = 0.12 * PX, bw = 0.3 * PX;
   for (let row = 0, y = 0; y < H; y += bh, row++) {
     for (let x = -(row % 2) * bw / 2; x < W; x += bw) {
-      const v = Math.random() * 18 - 9;
-      g.fillStyle = `rgb(${126 + v},${69 + v * 0.6},${53 + v * 0.5})`;
+      const v = Math.random() * 44 - 22;
+      g.fillStyle = `rgb(${168 + v},${84 + v * 0.7},${64 + v * 0.5})`;
       g.fillRect(x + 1, y + 1, bw - 2, bh - 2);
     }
   }
@@ -773,6 +774,39 @@ for (const f of [1, 2, 3]) {
   // 白い丸い階段塔（位置は実際のメートル）
   // 半円のバルコニー（東の壁から半円に出る）と、音楽室の横の半円の塔（北の壁から出る）
   for (const t of FACADE.roundStairs) {
+    if (!t.tower && t.strip) {
+      // 白いたての帯（レンガの壁の上に少し出る）と、両はしの柱
+      const band = new THREE.Mesh(new THREE.BoxGeometry(0.16, FH, t.strip), matRelief);
+      band.position.set(t.x + 0.08, base(f) + FH / 2, t.z);
+      ext.add(band);
+      for (const s of [-1, 1]) { const col = new THREE.Mesh(new THREE.BoxGeometry(0.45, FH, 0.4), matRelief); col.position.set(t.x + 0.22, base(f) + FH / 2, t.z + s * (t.strip / 2 + 0.2)); col.castShadow = true; ext.add(col); }
+      if (f === 1 && t.noDoor) {
+        const w1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.6, 0.9), matGlassDoor);
+        w1.position.set(t.x + 0.2, 1.6, t.z);
+        ext.add(w1);
+      } else if (f === 1) {
+        // 1階は出入口（ガラス戸）と小さな段
+        const door = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.2, 1.0), matGlassDoor);
+        door.position.set(t.x + 0.18, 1.0, t.z);
+        const step = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.3, 1.8), matRelief);
+        step.position.set(t.x + 0.6, -0.05, t.z);
+        ext.add(door, step);
+      }
+      if (!t.floors.includes(f)) continue;
+      // 半円のバルコニー（下は丸い腰壁で囲まれた形）
+      const slab = new THREE.Mesh(new THREE.CylinderGeometry(t.r, t.r, 0.22, 24, 1, false, 0, Math.PI), matRelief);
+      slab.position.set(t.x + 0.16, base(f), t.z);
+      const rail = new THREE.Mesh(new THREE.CylinderGeometry(t.r, t.r, 1.1, 24, 1, false, 0, Math.PI), matStackSide);
+      rail.position.set(t.x + 0.16, base(f) + 0.55, t.z);
+      for (const m of [slab, rail]) { m.castShadow = m.receiveShadow = true; ext.add(m); }
+      // バルコニーの上の窓と、バルコニーの下の小さな窓
+      const win = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.3, 0.8), matGlassDoor);
+      win.position.set(t.x + 0.2, base(f) + 1.9, t.z);
+      const win2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.9, 0.7), matGlassDoor);
+      win2.position.set(t.x + 0.2, base(f) - 1.3, t.z);
+      ext.add(win, win2);
+      continue;
+    }
     if (!t.tower) {
       // 床（半円の板）と、手すり壁（半円の輪）。東向きの半分＝theta 0〜π
       const slab = new THREE.Mesh(new THREE.CylinderGeometry(t.r, t.r, 0.22, 24, 1, false, 0, Math.PI), matRelief);
@@ -1279,28 +1313,45 @@ scene.add(outdoor);
   }
 }
 
-// 職員玄関（2号館の東の正面玄関）：ガラスの扉、白いひさし、2段の段差、両わきの植え込み
+// 正面玄関（2号館の東）：写真では張り出した庇はなく、レンガの壁にアーチの入口。奥にガラスの扉。前はレンガタイルのテラス
 {
-  const wx = 49.8, cz = 12.2, w = 6;
+  const wx = 49.8, cz = 12.2;
   const glassM = new THREE.MeshStandardMaterial({ color: 0x3e5a74, roughness: 0.15, metalness: 0.3 });
   const parts = [];
-  const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; parts.push(m); };
-  add(new THREE.BoxGeometry(0.1, 2.4, w - 1.2), glassM, wx + 0.06, 1.0, cz);                 // ガラスの扉
-  for (const dz of [-(w - 1.2) / 2, 0, (w - 1.2) / 2]) add(new THREE.BoxGeometry(0.16, 2.5, 0.12), matRelief, wx + 0.08, 1.05, cz + dz); // 扉の枠
-  add(new THREE.BoxGeometry(3.2, 0.3, w + 1), matRelief, wx + 1.6, 2.85, cz);               // ひさし
-  for (const dz of [-1, 1]) add(new THREE.BoxGeometry(0.3, 3.0, 0.3), matRelief, wx + 3.0, 1.3, cz + dz * (w / 2 + 0.2)); // ひさしの柱
-  add(new THREE.BoxGeometry(3.2, 0.16, w + 1), new THREE.MeshStandardMaterial({ color: 0xc9c4b8, roughness: 1 }), wx + 1.6, -0.12, cz); // 段
-  add(new THREE.BoxGeometry(2.6, 0.16, w + 0.4), new THREE.MeshStandardMaterial({ color: 0xd6d1c6, roughness: 1 }), wx + 1.3, 0.04, cz);
-  const sign = (() => { const cv = document.createElement("canvas"); cv.width = 256; cv.height = 48; const c = cv.getContext("2d"); c.fillStyle = "#f4f1ea"; c.fillRect(0, 0, 256, 48); c.fillStyle = "#333"; c.font = "bold 28px sans-serif"; c.textAlign = "center"; c.fillText("職員・来客玄関", 128, 34); const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t; })();
-  const sg = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.5), new THREE.MeshStandardMaterial({ map: sign }));
-  sg.position.set(wx + 3.22, 2.85, cz); sg.rotation.y = Math.PI / 2;
-  parts.push(sg);
-  for (const p of parts) outdoor.add(p);
-  for (const dz of [-1]) { // 北どなりは半円のバルコニーなので、南だけ
-    const h = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.8, 1.6), matHedge);
-    h.position.set(wx + 0.7, 0.2, cz + dz * (w / 2 + 1.4));
-    h.castShadow = true; outdoor.add(h);
+  const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; parts.push(m); return m; };
+  // レンガのアーチの枠（壁から1.2m 前に出して、入口がくぼんで見えるようにする）
+  const ow = 5.4, oh = 3.9, aw = 3.6, spring = 1.7, D = 0.7;
+  const sh = new THREE.Shape();
+  // 下のふちから入口の形（アーチ）を切りこんだ1本の輪郭
+  sh.moveTo(-ow / 2, 0); sh.lineTo(-aw / 2, 0); sh.lineTo(-aw / 2, spring);
+  sh.absarc(0, spring, aw / 2, Math.PI, 0, true);
+  sh.lineTo(aw / 2, 0); sh.lineTo(ow / 2, 0); sh.lineTo(ow / 2, oh); sh.lineTo(-ow / 2, oh); sh.lineTo(-ow / 2, 0);
+  const ag = new THREE.ExtrudeGeometry(sh, { depth: D, bevelEnabled: false, curveSegments: 20 });
+  const bt = texBrick.clone(); bt.needsUpdate = true; bt.repeat.set(1 / BAY, 1 / FH);
+  const arch = add(ag, new THREE.MeshStandardMaterial({ map: bt, roughness: 0.85 }), wx, -0.2, cz);
+  arch.rotation.y = Math.PI / 2; // 押し出しの向きを東（+x）に
+  arch.position.x = wx + D;
+  // アーチの内側の天井と横の壁（少し暗い）、奥のガラスの扉
+  const inner = new THREE.MeshStandardMaterial({ color: 0x5a3a30, roughness: 0.9, side: THREE.DoubleSide });
+  add(new THREE.BoxGeometry(0.06, 2.4, 3.2), glassM, wx + 0.05, 1.0, cz);
+  for (const dz of [-1.6, -0.55, 0.55, 1.6]) add(new THREE.BoxGeometry(0.1, 2.45, 0.08), matRelief, wx + 0.08, 1.02, cz + dz);
+  add(new THREE.BoxGeometry(0.06, spring + aw / 2 - 2.4, aw), inner, wx + 0.04, 2.2 + (spring + aw / 2 - 2.4) / 2, cz);
+  // 学校名の銘板（入口の北のわき）
+  const plateTex = (() => { const cv = document.createElement("canvas"); cv.width = 48; cv.height = 256; const c = cv.getContext("2d"); c.fillStyle = "#3b3b38"; c.fillRect(0, 0, 48, 256); c.fillStyle = "#e9e4d6"; c.font = "bold 26px serif"; c.textAlign = "center"; [..."神奈川県立麻生高等学校"].forEach((ch, i) => c.fillText(ch, 24, 26 + i * 22.5)); const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+  const pl = add(new THREE.PlaneGeometry(0.35, 1.7), new THREE.MeshStandardMaterial({ map: plateTex }), wx + D + 0.02, 1.4, cz - ow / 2 + 0.45);
+  pl.rotation.y = Math.PI / 2;
+  // レンガタイルのテラスと、北の花壇（レンガのふち）
+  const tt = texBrickFloor.clone(); tt.needsUpdate = true; tt.repeat.set(1.6, 2.4);
+  add(new THREE.BoxGeometry(4.2, 0.1, 8.5), new THREE.MeshStandardMaterial({ map: tt, color: 0xf0c8a8, roughness: 0.95 }), wx + 2.1, -0.16, cz + 0.6);
+  add(new THREE.BoxGeometry(1.6, 0.45, 3.2), new THREE.MeshStandardMaterial({ map: bt, roughness: 0.85 }), wx + 1.0, 0.0, cz - ow / 2 - 1.7);
+  const fl = add(new THREE.BoxGeometry(1.4, 0.5, 3.0), matHedge, wx + 1.0, 0.25, cz - ow / 2 - 1.7);
+  // テラスの植木鉢
+  const pot = new THREE.MeshStandardMaterial({ color: 0xc0704c, roughness: 0.8 });
+  for (const [dx, dz] of [[1.8, -1.9], [1.8, 2.1]]) {
+    add(new THREE.CylinderGeometry(0.3, 0.22, 0.5, 12), pot, wx + D + dx - 1.2, 0.05, cz + dz);
+    add(new THREE.SphereGeometry(0.45, 8, 6), matHedge, wx + D + dx - 1.2, 0.85, cz + dz);
   }
+  for (const p of parts) outdoor.add(p);
 }
 
 // 2つの昇降口のあいだのレンガ敷きの屋外（上に2・3階がのっている）

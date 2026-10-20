@@ -623,18 +623,18 @@ function computers(out, R) {
   }
 }
 
-// 美術教室・工芸教室：前に黒板。机は2列×6（前から後ろへ6つ）で、机のまわりに椅子を4つ（長い辺に2つずつ）
+// 美術教室・工芸教室：前に黒板。黒板に対して横長の大きい机に、2人ずつ向かい合って座る（4人）。その机が横2列×縦3列
 function artroom(out, R, kiln = false) {
   const { x0, x1, z0, z1 } = R;
   out.push({ t: "blackboard", x: x0 + 0.12, z: (z0 + z1) / 2, rot: 0 });
   out.push({ t: "teacherDesk", x: x0 + 1.0, z: (z0 + z1) / 2, rot: 0 });
-  const xa = x0 + 2.4, xb = x1 - (kiln ? 2.2 : 1.1), w = z1 - z0;
-  for (let i = 0; i < 6; i++) {
-    const x = xa + ((xb - xa) * (i + 0.5)) / 6;
-    for (const f of [0.28, 0.72]) {
+  const xa = x0 + 2.2, xb = x1 - (kiln ? 2.2 : 1.1), w = z1 - z0;
+  for (let i = 0; i < 3; i++) {
+    const x = xa + ((xb - xa) * (i + 0.5)) / 3;
+    for (const f of [0.27, 0.73]) {
       const z = z0 + w * f;
-      out.push({ t: "table", x, z, rot: 0 });
-      for (const s of [-1, 1]) for (const k of [-0.45, 0.45]) out.push({ t: "stool", x: x + s * 0.72, z: z + k, rot: 0 });
+      out.push({ t: "bigTable", x, z, rot: 0 });
+      for (const s of [-1, 1]) for (const k of [-0.6, 0.6]) out.push({ t: "stool", x: x + s * 0.9, z: z + k, rot: 0 });
     }
   }
   along(out, "cabinet", x1 - 0.3, z0 + (kiln ? 2.8 : 0.5), z1 - 0.5, 0.95, Math.PI);

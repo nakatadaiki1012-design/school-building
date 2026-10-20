@@ -442,6 +442,24 @@ function office(out, R, perIsland = 6) {
   }
 }
 
+// 事務室：南側に6人がけの島が1つ（南北に長い）。島の西に、東を向いた事務長席
+function jimu(out, R) {
+  const { x0, x1, z0, z1 } = R;
+  const cx = (x0 + x1) / 2 + 0.6, cz = z1 - 2.3;
+  for (let k = 0; k < 3; k++) {
+    const z = cz - 1.1 + k * 1.1;
+    for (const s of [-1, 1]) {
+      out.push({ t: "officeDesk", x: cx + s * 0.36, z, rot: s > 0 ? Math.PI : 0 });
+      out.push({ t: "monitor", x: cx + s * 0.2, z, rot: s > 0 ? 0 : Math.PI });
+      out.push({ t: "officeChair", x: cx + s * 1.15, z, rot: s > 0 ? 0 : Math.PI });
+    }
+  }
+  // 事務長席：島の西で、島のほう（東）を向く
+  const xc = cx - 3.2;
+  out.push({ t: "officeDesk", x: xc, z: cz, rot: Math.PI }, { t: "monitor", x: xc + 0.15, z: cz, rot: 0 });
+  out.push({ t: "officeChair", x: xc - 0.8, z: cz, rot: Math.PI });
+}
+
 // 職員室：西側は、北から「通路・ロッカー・机・椅子・通路・椅子・机・机・椅子・通路」の列が東西にのびる（4つずつ3まとまり）
 // 東側は「椅子・机・机・椅子」が南北にならぶ列が2本（東の列は北のL字の部分から続く）。西の列の南のはしは、東西にならぶ机4つ
 const PAIR_W = 2.9; // 「椅子・机・机・椅子」1列の幅
@@ -748,6 +766,7 @@ const LAYOUTS = [
   }],
   [/^職員室$/, staffRoom],
   [/^職員室（L字）$/, staffRoomL],
+  [/^事務室$/, jimu],
   [/職員室|事務室/, (o, R) => office(o, R)],
   [/会議室/, meeting],
   [/校長室/, principal],

@@ -600,7 +600,8 @@ for (const f of [1, 2, 3]) {
   // 外壁の色分け（info.js の FACADE で設定）。棟の境目で壁を分けるため、棟の名前もつけておく
   const facade = (c, r, d, style) => {
     const b = blockAtCell(c, r).id;
-    if (WALL_OPENINGS.some(([ff, ...rc]) => ff === f && inCells(c, r, rc))) return "open|" + b;
+    const side = d.dr < 0 ? "n" : d.dr > 0 ? "s" : d.dc < 0 ? "w" : "e";
+    if (WALL_OPENINGS.some(([ff, c0, r0, c1, r1, dir]) => ff === f && inCells(c, r, [c0, r0, c1, r1]) && (!dir || dir === side))) return "open|" + b;
     if (style === "gym") return "gym" + f + "|" + b;
     if (style === "high") return "high|" + b;
     if (OPEN_COURTS.some((rc) => inCells(c + d.dc, r + d.dr, rc))) return "school|" + b; // 光庭のまわりは白
@@ -1328,6 +1329,9 @@ const WALL_H = 2.45;
 const pickables = [];
 const matStairs = new THREE.MeshStandardMaterial({ color: 0xd9d6cf, roughness: 0.9 });
 const matPartition = new THREE.MeshStandardMaterial({ color: 0xfaf8f3, roughness: 0.9 });
+// ガラス張りの仕切り（STUDY HALL など）
+const matGlassWall = new THREE.MeshStandardMaterial({ color: 0x9cc4dc, roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
+const matGlassFrame = new THREE.MeshStandardMaterial({ color: 0x8a9096, roughness: 0.5, metalness: 0.5 });
 for (const f of [1, 2, 3]) {
   const grp = new THREE.Group();
   const lbl = new THREE.Group();
@@ -1400,6 +1404,24 @@ for (const f of [1, 2, 3]) {
         [t, r.d, rc.x0, r.cz, "w"], [t, r.d, rc.x1, r.cz, "e"],
       ]) {
         if (sty?.open?.includes(side)) continue;
+        if (sty?.glass?.includes(side)) {
+          // 床から天井近くまでのガラスと、細い枠（たての枠は約1.5mおき）
+          const along = side === "n" || side === "s", L = along ? w : d, H = WALL_H + 0.4;
+          const pane = new THREE.Mesh(new THREE.BoxGeometry(along ? L : 0.03, H, along ? 0.03 : L), matGlassWall);
+          pane.position.set(x, y + H / 2, z);
+          inBlock(grp, r.block).add(pane);
+          const fr = [];
+          for (const [yy, hh] of [[0.05, 0.1], [H - 0.04, 0.08]]) { const b = new THREE.BoxGeometry(along ? L : 0.08, hh, along ? 0.08 : L); b.translate(x, y + yy, z); fr.push(b); }
+          const n = Math.max(1, Math.round(L / 1.5));
+          for (let i = 0; i <= n; i++) {
+            const o = -L / 2 + (L * i) / n, b = new THREE.BoxGeometry(0.07, H, 0.07);
+            b.translate(along ? x + o : x, y + H / 2, along ? z : z + o);
+            fr.push(b);
+          }
+          const fm = new THREE.Mesh(mergeGeometries(fr), matGlassFrame);
+          inBlock(grp, r.block).add(fm);
+          continue;
+        }
         const g = new THREE.BoxGeometry(w, h, d);
         g.translate(x, y + h / 2, z);
         (walls[r.block.id] ||= []).push(g);

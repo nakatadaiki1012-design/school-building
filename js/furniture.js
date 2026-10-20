@@ -136,22 +136,26 @@ export const FLOOR_TEX = {
       g.fillStyle = `rgba(120,80,30,${0.04 + Math.random() * 0.06})`;
       g.fillRect(0, i * 8, w, 8);
     }
-    // バスケットボールのコート
-    g.strokeStyle = "#ffffff"; g.lineWidth = 4;
-    const m = 40;
-    g.strokeRect(m, m, w - 2 * m, h - 2 * m);
-    g.beginPath(); g.moveTo(w / 2, m); g.lineTo(w / 2, h - m); g.stroke();
-    g.beginPath(); g.arc(w / 2, h / 2, 60, 0, Math.PI * 2); g.stroke();
-    for (const side of [0, 1]) {
-      const x = side ? w - m : m, dir = side ? -1 : 1;
-      g.strokeRect(side ? x - 190 : x, h / 2 - 80, 190, 160);
-      g.beginPath(); g.arc(x, h / 2, 230, -Math.PI / 2 * dir + (side ? Math.PI : 0), Math.PI / 2 * dir + (side ? Math.PI : 0), side === 1); g.stroke();
+    // バスケットボールのコート：横向きに2面（ゴールは東と西の壁ぎわに2つずつ）
+    // 模様の横（w）が体育館の南北 約35m、たて（h）が東西 約30m
+    g.save();
+    g.scale(w / 35, h / 30);
+    g.strokeStyle = "#ffffff"; g.lineWidth = 0.1;
+    for (const cx of [9, 26]) {
+      const x0 = cx - 7.5, y0 = 1, y1 = 29, cy = 15;
+      g.strokeRect(x0, y0, 15, 28);
+      g.beginPath(); g.moveTo(x0, cy); g.lineTo(x0 + 15, cy); g.stroke();
+      g.beginPath(); g.arc(cx, cy, 1.8, 0, Math.PI * 2); g.stroke();
+      for (const [yb, dir] of [[y0, 1], [y1, -1]]) {
+        g.strokeRect(cx - 2.45, dir > 0 ? yb : yb - 5.8, 4.9, 5.8);
+        g.beginPath(); g.arc(cx, yb + dir * 5.8, 1.8, 0, Math.PI * 2); g.stroke();
+        g.beginPath(); g.arc(cx, yb + dir * 1.575, 6.75, dir > 0 ? 0 : Math.PI, dir > 0 ? Math.PI : Math.PI * 2); g.stroke();
+      }
     }
-    // バレーボールのライン
-    g.strokeStyle = "#e8d14a"; g.lineWidth = 3;
-    g.strokeRect(w / 2 - 230, h / 2 - 115, 460, 230);
-    g.strokeStyle = "#4a8ee8";
-    g.strokeRect(120, 70, 300, h - 140); g.strokeRect(w - 420, 70, 300, h - 140);
+    // バレーボールのライン（まんなかに1面）
+    g.strokeStyle = "#e8d14a"; g.lineWidth = 0.08;
+    g.strokeRect(17.5 - 4.5, 15 - 9, 9, 18);
+    g.restore();
   }, 1, 1),
   tatami: canvasTex(256, 256, (g, w, h) => {
     g.fillStyle = "#b9c27a"; g.fillRect(0, 0, w, h);
@@ -637,9 +641,12 @@ function sewing(out, R) {
 
 function gym(out, R) {
   const { x0, x1, z0, z1 } = R;
-  const cx = (x0 + x1) / 2;
-  out.push({ t: "hoop", x: cx, z: z0 + 1.3, rot: -Math.PI / 2 });
-  out.push({ t: "hoop", x: cx, z: z1 - 1.3, rot: Math.PI / 2 });
+  // 横向きのコート2面：東と西の壁ぎわに、ゴールが2つずつ
+  for (const k of [9 / 35, 26 / 35]) {
+    const z = z0 + (z1 - z0) * k;
+    out.push({ t: "hoop", x: x0 + 1.3, z, rot: 0 });
+    out.push({ t: "hoop", x: x1 - 1.3, z, rot: Math.PI });
+  }
 }
 
 // 部屋の名前 → 置き方
@@ -688,11 +695,11 @@ const LAYOUTS = [
 ];
 
 // 黒板・教卓を北側に置く特別教室（普通教室は図面の左＝西側が前）
-const NORTH_FRONT = /選択|オーラル|社会科教室|実験室|視聴覚|音楽室|美術教室|工芸教室|STUDY HALL/;
+const NORTH_FRONT = /選択|オーラル|社会科教室|視聴覚|音楽室|美術教室|工芸教室|STUDY HALL/;
 // 先生の机・黒板が南側にある特別教室
 const SOUTH_FRONT = /選択第２教室|選択第2教室/;
 // 東側を向いて授業を受ける部屋（被服室は西向きなので、ふつうの教室と同じ）
-const EAST_FRONT = /調理室|コンピューター/;
+const EAST_FRONT = /調理室|コンピューター|実験室/; // 物理・化学・生物の実験室も、教卓は東側
 
 // 床の模様
 export function floorStyle(name) {

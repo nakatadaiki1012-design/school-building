@@ -1,7 +1,7 @@
 // 校舎のまわり（グラウンド・テニスコート・駐輪場）と、航空写真の重ね表示
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { hedgeBox, hedgeMass } from "./nature.js";
+import { hedgeBox, hedgeMass, buildTrees } from "./nature.js";
 
 function canvasTex(w, h, draw) {
   const cv = document.createElement("canvas");
@@ -479,6 +479,75 @@ function buildRoad({ w, pts: raw }) {
   return g;
 }
 
+// 道路ぞいの帯（歩道など）。道路の中心線から o0〜o1 m 横（+ は進む向きの右）を、坂にそってはる
+function roadStrip(raw, o0, o1, mat, dy) {
+  const pts = [];
+  for (let i = 0; i + 1 < raw.length; i++) {
+    const [ax, az] = raw[i], [bx, bz] = raw[i + 1];
+    const k = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / 3));
+    for (let j = 0; j < k; j++) pts.push([ax + ((bx - ax) * j) / k, az + ((bz - az) * j) / k]);
+  }
+  pts.push(raw[raw.length - 1]);
+  const pos = [], idx = [];
+  pts.forEach(([x, z], i) => {
+    const [px, pz] = pts[Math.max(0, i - 1)], [nx, nz] = pts[Math.min(pts.length - 1, i + 1)];
+    const L = Math.hypot(nx - px, nz - pz), rx = -(nz - pz) / L, rz = (nx - px) / L;
+    for (const o of [o0, o1]) pos.push(x + rx * o, terrainH(x + rx * o, z + rz * o) + dy, z + rz * o);
+    if (i > 0) { const k = i * 2; idx.push(k - 2, k - 1, k, k - 1, k + 1, k); }
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  const m = new THREE.Mesh(geo, mat);
+  m.receiveShadow = true;
+  return m;
+}
+
+// 道路ぞいの歩道・植え込み・若い並木（ストリートビューの写真より）
+// 両側に、縁石の内側に低い植え込みの帯と、細い木が並び、その外が歩道
+function buildStreetscape({ pts, w, gaps = [], treeStep = 9 }) {
+  const g = new THREE.Group();
+  const walk = M(0x8a8a86, { roughness: 1, side: THREE.DoubleSide });
+  const curb = M(0xb4b2ab, { roughness: 1, side: THREE.DoubleSide });
+  const hw = w / 2;
+  for (const s of [-1, 1]) {
+    const a = s * (hw - 0.05), b = s * (hw + 2.4);
+    g.add(roadStrip(pts, Math.min(a, b), Math.max(a, b), walk, -0.17));
+  }
+  const inGap = (x, z) => gaps.some(([gx, gz, r]) => Math.hypot(x - gx, z - gz) < r);
+  const trees = [];
+  let along = 0;
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
+    const L = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / L, uz = (bz - az) / L, rx = -uz, rz = ux;
+    const n = Math.max(1, Math.round(L / 3));
+    for (let k = 0; k < n; k++) {
+      const t = (k + 0.5) * L / n;
+      for (const s of [-1, 1]) {
+        const o = s * (hw - 0.55);
+        const x = ax + ux * t + rx * o, z = az + uz * t + rz * o;
+        if (inGap(x, z)) continue;
+        const y = terrainH(x, z) - 0.2;
+        // 縁石＋植え込み
+        const c = new THREE.Mesh(new THREE.BoxGeometry(L / n, 0.2, 0.9), curb);
+        const h = hedgeBox(L / n - 0.3, 0.45, 0.6);
+        const pitch = Math.atan2(terrainH(x + ux, z + uz) - terrainH(x - ux, z - uz), 2);
+        for (const [m, dy] of [[c, 0.1], [h, 0.15]]) {
+          m.rotation.order = "YZX";
+          m.rotation.set(0, -Math.atan2(uz, ux), pitch);
+          m.position.set(x, y + dy, z);
+          g.add(m);
+        }
+        if (Math.floor((along + t) / treeStep) !== Math.floor((along + t - L / n) / treeStep)) trees.push([x, y + 0.3, z, 0.4]);
+      }
+    }
+    along += L;
+  }
+  if (trees.length) g.add(buildTrees(trees));
+  return g;
+}
+
 // 横断歩道（しま模様）。x, z は中心、rot は道路の向き（度）
 function crosswalk({ x, z, rot = 0, len = 8, red = false }) {
   const g = new THREE.Group();
@@ -614,7 +683,7 @@ export function buildNeighborJHS({ ground, building }) {
 // ---------- まわりの土地（斜面）。敷地の形に穴をあけた大きな面を、斜面の高さに合わせる ----------
 // 擁壁は斜めの石積み（のり面）。敷地のふち（高さ 0）から、外の土地の高さ H まで、
 // 外側に |H| × SLOPE_RUN だけ水平にはみ出す。北は外が高いので上り、南は外が低いので下り
-const SLOPE_RUN = 0.6;
+const SLOPE_RUN = 0.3; // 写真では、ほぼ垂直に近い急な石積み
 // 敷地の各頂点を、外向きに斜面の幅だけずらした点（まわりの土地の穴のふちになる）
 export function offsetBoundary(boundary) {
   const n = boundary.length;
@@ -658,16 +727,23 @@ export function buildTerrain(boundary, material, roads = []) {
   return m;
 }
 
-// 石積みの模様（間知石を斜めに積んだ形）
+// 石積みの模様（ストリートビューの写真より：濃い灰色の四角いブロックを横に積み、水抜きの丸い穴がある）
+// 1枚の模様が 4m × 4m。ブロックは 長さ約1m × 高さ約0.37m
 const texWall = (() => {
   const t = canvasTex(256, 256, (c, W, H) => {
-    c.fillStyle = "#a9a59b"; c.fillRect(0, 0, W, H);
-    const s = 32;
-    for (let y = -s; y < H + s; y += s / 2) for (let x = ((y / (s / 2)) % 2) * s / 2 - s; x < W + s; x += s) {
-      const v = Math.random() * 30 - 15;
-      c.fillStyle = `rgb(${170 + v},${166 + v},${156 + v})`;
-      c.beginPath(); c.moveTo(x, y + s / 4); c.lineTo(x + s / 2, y - s / 4 + s / 4 - s / 4); c.lineTo(x + s, y + s / 4); c.lineTo(x + s / 2, y + s * 0.75 - s / 4); c.closePath(); c.fill();
-      c.strokeStyle = "rgba(60,58,52,0.55)"; c.lineWidth = 2; c.stroke();
+    c.fillStyle = "#4a4c50"; c.fillRect(0, 0, W, H);
+    const bw = 64, bh = 24;
+    for (let row = 0, y = 0; y < H; row++, y += bh) for (let x = (row % 2) * bw / 2 - bw; x < W; x += bw) {
+      const v = Math.random() * 16 - 8;
+      c.fillStyle = `rgb(${104 + v},${106 + v},${110 + v})`;
+      c.fillRect(x + 1.5, y + 1.5, bw - 3, bh - 3);
+      // ざらざらした表面
+      for (let k = 0; k < 18; k++) { c.fillStyle = `rgba(${Math.random() < 0.5 ? "255,255,255" : "0,0,0"},0.07)`; c.fillRect(x + Math.random() * bw, y + Math.random() * bh, 2, 2); }
+    }
+    // 水抜きの穴（約2mおき、互いちがい）
+    c.fillStyle = "#1b1c1e";
+    for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) {
+      c.beginPath(); c.arc(32 + i * 128 + j * 64, 64 + j * 128, 4, 0, Math.PI * 2); c.fill();
     }
   });
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
@@ -711,7 +787,7 @@ export function buildRetaining(boundary, gates = []) {
       const [ox0, oz0] = lerp(A2, B2, t0), [ox1, oz1] = lerp(A2, B2, t1); // 外の土地のふち（高さ H）
       const h0 = terrainH(ox0, oz0) - 0.25, h1 = terrainH(ox1, oz1) - 0.25;
       const gate = inGate((ix0 + ix1) / 2, (iz0 + iz1) / 2);
-      if (gate && gate.main) continue; // 正門のところは階段（mainGate で作る）
+      if (gate && gate.main) continue; // 正門のところは開けておく（mainGate で作る）
       const T = gate ? ramps : walls;
       const j = T.pos.length / 3;
       T.pos.push(ix0, -0.2, iz0, ix1, -0.2, iz1, ox1, h1, oz1, ox0, h0, oz0);
@@ -719,7 +795,8 @@ export function buildRetaining(boundary, gates = []) {
       T.uv.push(u0, 0, u1, 0, u1, Math.abs(h1) / 4 + 0.3, u0, Math.abs(h0) / 4 + 0.3);
       T.idx.push(j, j + 1, j + 2, j, j + 2, j + 3);
       // 柵は、高いほうのふちの上（門のところは開けておく）
-      if (!gate) {
+      const nearMain = gates.some((gt) => gt.main && Math.hypot((ix0 + ix1) / 2 - gt.x, (iz0 + iz1) / 2 - gt.z) < gt.w / 2 + (gt.wing || 0));
+      if (!gate && !nearMain) {
         const hi = (h0 + h1) / 2 > -0.2;
         if (hi) railing(g, ox0, oz0, h0 + 0.25, ox1, oz1, h1 + 0.25, 1.4);
         else railing(g, ix0, iz0, -0.2, ix1, iz1, -0.2, 1.4);
@@ -742,18 +819,41 @@ export function buildRetaining(boundary, gates = []) {
   return g;
 }
 
+// 御影石を積んだ模様
+const texGranite = (() => {
+  const t = canvasTex(128, 128, (c, W, H) => {
+    c.fillStyle = "#8e8b84"; c.fillRect(0, 0, W, H);
+    for (let row = 0, y = 0; y < H; row++) {
+      const bh = 22 + Math.random() * 14;
+      for (let x = -Math.random() * 30; x < W; ) {
+        const bw = 26 + Math.random() * 30, v = Math.random() * 20 - 10;
+        c.fillStyle = `rgb(${205 + v},${202 + v},${194 + v})`;
+        c.fillRect(x + 1.5, y + 1.5, bw - 3, bh - 3);
+        x += bw;
+      }
+      y += bh;
+    }
+  });
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return t;
+})();
+
 // 正門。x, z は門のまんなか、rot は道路に向かう向き（度）、w は幅
-function mainGate({ x, z, rot = 0, w = 10, name = "" }) {
+function mainGate({ x, z, rot = 0, w = 10, name = "", wing = 0 }) {
   const g = new THREE.Group();
-  const pillar = M(0xb9a48a, { roughness: 0.9 });
+  // 門柱と、道路ぞいの低い袖の壁：白っぽい御影石を積んだもの（ストリートビューの写真より）
+  const pillar = new THREE.MeshStandardMaterial({ map: texGranite, roughness: 0.9 });
   for (const s of [-1, 1]) {
-    const p = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2.2, 0.8), pillar);
-    p.position.set(0, 1.0, s * (w / 2 + 0.4));
+    const p = new THREE.Mesh(new THREE.BoxGeometry(1.1, 1.8, 1.3), pillar);
+    p.position.set(0, 0.8, s * (w / 2 + 0.65));
     p.castShadow = true;
     g.add(p);
-    const cap = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.15, 1.0), M(0x8d7c66));
-    cap.position.set(0, 2.15, s * (w / 2 + 0.4));
-    g.add(cap);
+    if (wing > 0) {
+      const ww = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.25, wing), pillar);
+      ww.position.set(0, 0.52, s * (w / 2 + 1.3 + wing / 2));
+      ww.castShadow = true;
+      g.add(ww);
+    }
   }
   // 学校名の表札
   if (name) {
@@ -764,7 +864,7 @@ function mainGate({ x, z, rot = 0, w = 10, name = "" }) {
     [...name].forEach((ch, i) => c.fillText(ch, 32, 46 + i * (460 / name.length)));
     const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
     const plate = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 1.6), new THREE.MeshStandardMaterial({ map: t }));
-    plate.position.set(0.41, 1.05, w / 2 + 0.4); plate.rotation.y = Math.PI / 2;
+    plate.position.set(0.56, 0.9, w / 2 + 0.65); plate.rotation.y = Math.PI / 2;
     g.add(plate);
   }
   // 開いた引き戸（柱の内側にたたんである）
@@ -857,6 +957,7 @@ export function buildSite(scene, SITE) {
     for (let i = 0; i + 1 < r.pts.length; i++) roadSegs.push([...r.pts[i], ...r.pts[i + 1], r.w / 2 + 2]);
   }
   for (const c of SITE.crosswalks || []) group.add(crosswalk(c));
+  for (const st of SITE.streetscape || []) group.add(buildStreetscape(st));
   // 正門から中庭までの通路（中庭から東へ出て、少し南へ折れて正門へ）と、門の手前の半円の広場
   if (SITE.approach) {
     const a = SITE.approach, pave = M(0xe6e2d8, { roughness: 1 });

@@ -182,3 +182,17 @@ export function buildColumnTrees(spots) {
   g.add(tr, cr);
   return g;
 }
+
+// 形がでこぼこの植え込み（丸い葉のかたまりをいくつも重ねる）。blobs: [x, z, 半径]、h: 高さ
+export function hedgeMass(blobs, h = 1.6) {
+  const geos = [];
+  blobs.forEach(([x, z, r], i) => {
+    const g = lumpy(1, 2, i * 2.7 + x * 0.3, 0.18);
+    g.scale(r, h * 0.6, r);
+    g.translate(x, h * 0.45, z);
+    geos.push(g);
+  });
+  const m = new THREE.Mesh(mergeGeometries(geos), matHedge);
+  m.castShadow = m.receiveShadow = true;
+  return m;
+}

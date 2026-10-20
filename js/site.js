@@ -1,7 +1,7 @@
 // 校舎のまわり（グラウンド・テニスコート・駐輪場）と、航空写真の重ね表示
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { hedgeBox } from "./nature.js";
+import { hedgeBox, hedgeMass } from "./nature.js";
 
 function canvasTex(w, h, draw) {
   const cv = document.createElement("canvas");
@@ -915,6 +915,13 @@ export function buildSite(scene, SITE) {
       group.add(seg);
       for (let t = 0; t <= L; t += 3) rects.push([ax + (bx - ax) * t / L - 3.5, ax + (bx - ax) * t / L + 3.5, az + (bz - az) * t / L - 3.5, az + (bz - az) * t / L + 3.5]);
     }
+  }
+  // でこぼこの植え込み（写真の形をなぞったもの）
+  for (const hm of SITE.hedgeMasses || []) {
+    const m = hedgeMass(hm.blobs, hm.h);
+    m.position.y = -0.2;
+    group.add(m);
+    for (const [x, z, r] of hm.blobs) rects.push([x - r - 0.5, x + r + 0.5, z - r - 0.5, z + r + 0.5]);
   }
   // 植え込み
   for (const [x0, x1, z0, z1, h] of SITE.hedges || []) {

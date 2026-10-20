@@ -334,17 +334,22 @@ function buildBikes2({ x0, x1, z0, z1, roof = 0x9ea3a6 }) {
   return g;
 }
 
-function buildBikes({ len = 30, depth = 4.6, roof: roofColor = 0x9ea3a6 }) {
+function buildBikes({ len = 30, depth = 4.6, roof: roofColor = 0x9ea3a6, backWall = true }) {
   const g = new THREE.Group();
   const roof = new THREE.Mesh(new THREE.BoxGeometry(len, 0.15, depth + 0.6), M(roofColor, { roughness: 0.6 }));
   roof.position.set(0, 2.6, 0);
   roof.rotation.x = 0.05;
   roof.castShadow = true;
   g.add(roof);
-  const back = new THREE.Mesh(new THREE.BoxGeometry(len, 2.5, 0.1), M(0xd9d4c8));
-  back.position.set(0, 1.25, -depth / 2);
-  back.castShadow = true;
-  g.add(back);
+  if (backWall) {
+    const back = new THREE.Mesh(new THREE.BoxGeometry(len, 2.5, 0.1), M(0xd9d4c8));
+    back.position.set(0, 1.25, -depth / 2);
+    back.castShadow = true;
+    g.add(back);
+  } else {
+    // うしろの壁がないので、うしろ側にも柱
+    for (let x = -len / 2; x <= len / 2 + 0.01; x += 4) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.5, 0.1), M(0x8c949b, { metalness: 0.4 })); p.position.set(x, 1.25, -depth / 2); g.add(p); }
+  }
   const postMat = M(0x8c949b, { metalness: 0.4 });
   for (let x = -len / 2; x <= len / 2 + 0.01; x += 4) {
     const p = new THREE.Mesh(new THREE.BoxGeometry(0.1, 2.6, 0.1), postMat);
@@ -578,24 +583,29 @@ export function buildNeighborJHS({ ground, building }) {
   // 斜面でも地面に埋もれないよう、四すみでいちばん高い所に合わせて平らな箱にする
   const a = THREE.MathUtils.degToRad(rot);
   const hs = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([i, j]) => terrainH(gx + (i * gw / 2) * Math.cos(a) + (j * gd / 2) * Math.sin(a), gz - (i * gw / 2) * Math.sin(a) + (j * gd / 2) * Math.cos(a)));
-  const top = Math.max(...hs) - 0.15, bot = Math.min(...hs) - 1;
+  // 中学校は道路よりさらに高いところにあり、道路側は石積みの壁
+  const lift = 4.5;
+  const top = Math.max(...hs) + lift, bot = Math.min(...hs) - 1;
   gm.position.set(gx, top, gz);
-  const pad = new THREE.Mesh(new THREE.BoxGeometry(gw, top - bot, gd), M(0x9a9a8e, { roughness: 1 }));
-  pad.position.set(gx, (top + bot) / 2 - 0.02, gz); pad.rotation.y = a;
+  const padTex = texWall.clone(); padTex.needsUpdate = true; padTex.repeat.set(gw / 4, (top - bot) / 4);
+  const pad = new THREE.Mesh(new THREE.BoxGeometry(gw, top - bot, gd + 30), new THREE.MeshStandardMaterial({ map: padTex, roughness: 0.95 }));
+  // 台は北の校舎の下までのばす（南の面が道路ぞいの石積みの壁になる）
+  pad.position.set(gx - 15 * Math.sin(a), (top + bot) / 2 - 0.02, gz - 15 * Math.cos(a)); pad.rotation.y = a;
   g.add(pad);
   g.add(gm);
   const [bx, bz, bw, bd, h, brot] = building;
   const body = new THREE.Mesh(new THREE.BoxGeometry(bw, h, bd), M(0xeeebe4));
-  body.position.set(bx, terrainH(bx, bz) - 0.25 + h / 2, bz);
+  const by = top + 0.1;
+  body.position.set(bx, by + h / 2, bz);
   body.rotation.y = THREE.MathUtils.degToRad(brot);
   const cap = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.4, 0.6, bd + 0.4), M(0x9aa0a4));
-  cap.position.set(bx, terrainH(bx, bz) - 0.25 + h, bz);
+  cap.position.set(bx, by + h, bz);
   cap.rotation.y = body.rotation.y;
   for (const m of [body, cap]) { m.castShadow = m.receiveShadow = true; g.add(m); }
   // 窓の帯（4階分）
   for (let k = 0; k < 4; k++) {
     const w = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.06, 1.2, bd + 0.06), M(0x5d7184, { roughness: 0.4 }));
-    w.position.set(bx, terrainH(bx, bz) - 0.25 + 1.6 + k * 3.1, bz); w.rotation.y = body.rotation.y; w.scale.x = 0.96;
+    w.position.set(bx, by + 1.6 + k * 3.1, bz); w.rotation.y = body.rotation.y; w.scale.x = 0.96;
     g.add(w);
   }
   return g;
@@ -845,7 +855,7 @@ export function buildSite(scene, SITE) {
     const b = SITE.bikes;
     const len = b.x1 - b.x0, depth = b.z1 - b.z0;
     // 開いている側（open）がグラウンド側の北なら、うしろの壁は南
-    placed(buildBikes({ len, depth: depth - 0.6, roof: b.roof }), (b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2, b.open === "north" ? 180 : 0);
+    placed(buildBikes({ len, depth: depth - 0.6, roof: b.roof, backWall: !b.noWall }), (b.x0 + b.x1) / 2, (b.z0 + b.z1) / 2, b.open === "north" ? 180 : 0);
     rects.push([b.x0 - 3, b.x1 + 3, b.z0 - 3, b.z1 + 3]);
   }
   if (SITE.bikes2) {

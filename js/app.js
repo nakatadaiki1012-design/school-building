@@ -3,7 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ROOMS_RAW } from "./data.js";
-import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY, ROOM_EDITS, EXTRA_ROOMS } from "./info.js";
+import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY, ROOM_EDITS, EXTRA_ROOMS, ROOM_SPLITS } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
 import { buildTrees, buildColumnTrees, hedgeBox, matHedge, bakeStatic } from "./nature.js";
 import { buildSite, createAerial, flatPoly, polyBounds, inPoly, buildTerrain, setSlope } from "./site.js";
@@ -54,7 +54,14 @@ function inBlock(parent, b) {
 }
 
 // ---------- 部屋データ ----------
-const ROOMS = [...ROOMS_RAW, ...EXTRA_ROOMS].map((r) => {
+// 分ける部屋を、横にならんだ小さな部屋にする
+const splitRooms = ROOMS_RAW.flatMap((r) => {
+  const sp = ROOM_SPLITS.find((x) => x.name === r.name && x.floor === r.floor && x.r0 === r.r0);
+  if (!sp) return [r];
+  const w = (r.c1 - r.c0 + 1) / sp.n;
+  return Array.from({ length: sp.n }, (_, i) => ({ ...r, id: `${r.id}-${i + 1}`, name: `${r.name}${i + 1}`, c0: r.c0 + w * i, c1: r.c0 + w * (i + 1) - 1 }));
+});
+const ROOMS = [...splitRooms, ...EXTRA_ROOMS].map((r) => {
   const ed = ROOM_EDITS.find((e) => e.name === r.name && e.floor === r.floor);
   if (ed) r = { ...r, ...ed.set };
   const d = describe(r.name);
@@ -562,6 +569,7 @@ function solarPanels(rects, y) {
 const matSlab = new THREE.MeshStandardMaterial({ color: 0xeeebe4, roughness: 0.95 });
 const wallMat = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.82, metalness: 0.0 });
 const matStack = new THREE.MeshStandardMaterial({ map: texStack, roughness: 0.8 });
+const matGlassDoor = new THREE.MeshStandardMaterial({ color: 0x3e5a74, roughness: 0.15, metalness: 0.3 });
 const matStackSide = new THREE.MeshStandardMaterial({ color: 0xf2efe8, roughness: 0.85, side: THREE.DoubleSide });
 const cutMats = {};
 function cutMat(style) {
@@ -613,13 +621,28 @@ for (const f of [1, 2, 3]) {
     const holder = inBlock(ext, b);
     const byStyle = {};
     for (const sg of list) (byStyle[sg.style] ||= []).push(sg);
-    for (const [st, l2] of Object.entries(byStyle)) {
-      const m = new THREE.Mesh(wallGeometry(l2, base(f), FH), MAT_WALL[st] || MAT_WALL.school);
+    if (bid === "bridge") {
+      // 渡り廊下：下半分だけの腰壁で、上半分は開いている（柱が屋根を支える）
+      const m = new THREE.Mesh(wallGeometry(list, base(f), 1.2), matRelief);
       m.castShadow = true; m.receiveShadow = true;
       holder.add(m);
+      for (const sg of list) {
+        const len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az), n = Math.max(1, Math.round(len / 3));
+        for (let i = 0; i <= n; i++) {
+          const p = new THREE.Mesh(new THREE.BoxGeometry(0.25, FH - 1.2, 0.25), matRelief);
+          p.position.set(sg.ax + ((sg.bx - sg.ax) * i) / n, base(f) + 1.2 + (FH - 1.2) / 2, sg.az + ((sg.bz - sg.az) * i) / n);
+          holder.add(p);
+        }
+      }
+    } else {
+      for (const [st, l2] of Object.entries(byStyle)) {
+        const m = new THREE.Mesh(wallGeometry(l2, base(f), FH), MAT_WALL[st] || MAT_WALL.school);
+        m.castShadow = true; m.receiveShadow = true;
+        holder.add(m);
+      }
+      // 白い壁の立体感：窓のあいだの柱と、各階の床の位置の庇（ひさし）
+      holder.add(wallRelief(list, f));
     }
-    // 白い壁の立体感：窓のあいだの柱と、各階の床の位置の庇（ひさし）
-    holder.add(wallRelief(list, f));
     // 切断した壁（フロア表示用）
     // 外の壁は窓の下の部分まで見えるように、外壁の模様の下の方を使う
     for (const [st, l2] of Object.entries(byStyle)) {
@@ -638,6 +661,12 @@ for (const f of [1, 2, 3]) {
       const rail = new THREE.Mesh(new THREE.CylinderGeometry(t.r, t.r, 1.1, 24, 1, true, 0, Math.PI), matStackSide);
       rail.position.set(t.x, base(f) + 0.65, t.z);
       for (const m of [slab, rail]) { m.castShadow = m.receiveShadow = true; ext.add(m); }
+      // バルコニーに出る窓（ガラス戸と白い枠）を、うしろの壁につける
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.5, 2.2), matRelief);
+      frame.position.set(t.x + 0.04, base(f) + 1.3, t.z);
+      const pane = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.2, 1.9), matGlassDoor);
+      pane.position.set(t.x + 0.1, base(f) + 1.25, t.z);
+      ext.add(frame, pane);
       continue;
     }
     // 北向きの半分＝theta π/2〜3π/2
@@ -851,6 +880,12 @@ function rustTex() {
   m.position.set((rc.x0 + rc.x1) / 2, 2 * FH + 0.2, (rc.z0 + rc.z1) / 2);
   m.castShadow = true;
   inBlock(layers.roofs[2], blockById("bridge")).add(m);
+  // 屋根は体育館の壁にくっつくまでのびている（体育館東の外廊下の上）
+  const gw = blockById("gym").world, bw = blockById("bridge").world;
+  const ext = new THREE.Mesh(new THREE.BoxGeometry(bw[0] - gw[2] + 0.2, 0.35, bw[3] - bw[1]), m.material);
+  ext.position.set((gw[2] + bw[0]) / 2, 2 * FH + 0.2, (bw[1] + bw[3]) / 2);
+  ext.castShadow = true;
+  layers.roofs[2].add(ext);
 }
 
 // 体育館の外まわり：西側の通路（手すり壁つき）と北の端の外階段、南側の2階のテラスと外階段、1階の柱

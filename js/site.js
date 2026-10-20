@@ -843,6 +843,36 @@ export function buildSite(scene, SITE) {
       rects.push([a.plaza.x - a.plaza.r, a.plaza.x + a.plaza.r, a.plaza.z - a.plaza.r, a.plaza.z + a.plaza.r]);
     }
   }
+  // 半円の広場から北への通路
+  if (SITE.approachBranch) {
+    const b = SITE.approachBranch, pave = M(0xe6e2d8, { roughness: 1 });
+    const [[ax, az], [bx, bz]] = b.pts, L = Math.hypot(bx - ax, bz - az);
+    const seg = new THREE.Mesh(new THREE.PlaneGeometry(b.w, L), pave);
+    seg.rotation.order = "YXZ"; seg.rotation.set(-Math.PI / 2, Math.atan2(bx - ax, bz - az), 0);
+    seg.position.set((ax + bx) / 2, -0.176, (az + bz) / 2);
+    group.add(seg);
+    for (let t = 0; t <= L; t += 3) rects.push([ax + (bx - ax) * t / L - 2.5, ax + (bx - ax) * t / L + 2.5, az + (bz - az) * t / L - 2.5, az + (bz - az) * t / L + 2.5]);
+  }
+  // 土の広場（木は植えない）
+  if (SITE.dirt) {
+    const bb = polyBounds(SITE.dirt);
+    group.add(flatPoly(SITE.dirt, M(0x9c8f7c, { roughness: 1 }), -0.19, bb));
+    polys.push(SITE.dirt);
+  }
+  // 構内の車路
+  if (SITE.driveway) {
+    const dw = SITE.driveway, asph = M(0x6e7073, { roughness: 1 });
+    for (let i = 0; i + 1 < dw.pts.length; i++) {
+      const [ax, az] = dw.pts[i], [bx, bz] = dw.pts[i + 1];
+      const L = Math.hypot(bx - ax, bz - az);
+      const seg = new THREE.Mesh(new THREE.PlaneGeometry(dw.w, L + dw.w * 0.6), asph);
+      seg.rotation.order = "YXZ"; seg.rotation.set(-Math.PI / 2, Math.atan2(bx - ax, bz - az), 0);
+      seg.position.set((ax + bx) / 2, -0.185 + i * 0.001, (az + bz) / 2);
+      seg.receiveShadow = true;
+      group.add(seg);
+      for (let t = 0; t <= L; t += 3) rects.push([ax + (bx - ax) * t / L - 3.5, ax + (bx - ax) * t / L + 3.5, az + (bz - az) * t / L - 3.5, az + (bz - az) * t / L + 3.5]);
+    }
+  }
   // ごみ捨て場（コンクリートの床、緑の網のかこい、屋根）
   if (SITE.garbage) {
     const gb = SITE.garbage, gg = new THREE.Group();

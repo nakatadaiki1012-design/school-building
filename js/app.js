@@ -800,10 +800,18 @@ const gymRoof = (() => {
     m.position.set((rc.x0 + rc.x1) / 2, y0 + 0.15, (rc.z0 + rc.z1) / 2);
     m.castShadow = m.receiveShadow = true;
     g.add(m);
-    return rc;
+    return { ...rc, mat: m.material };
   };
-  flat(1, 5, 0xb97a45);
-  g.add(solarPanels([flat(32, 38, 0x8c8f92)], y0 + 0.3));
+  // 北の端：さびたオレンジ色の平らな屋根。南の端：黒っぽい金属板にさびが出た屋根（太陽光パネルではない）
+  flat(1, 5, 0xb97a45).mat.map = rustTex();
+  const south = flat(32, 38, 0x6a6c6c);
+  south.mat.map = canvasTex(256, 128, (c, W2, H2) => {
+    c.fillStyle = "#7a7c7b"; c.fillRect(0, 0, W2, H2);
+    c.fillStyle = "#4e5152";
+    for (let y = 6; y < H2; y += 16) for (let x = (y % 32 ? 0 : 20); x < W2; x += 44) c.fillRect(x, y, 38, 9); // 継ぎ目のある板
+    c.fillStyle = "rgba(170,100,45,0.55)"; c.fillRect(0, 0, W2, 6); c.fillRect(0, H2 - 8, W2, 8); c.fillRect(0, 0, 6, H2);  // ふちのさび
+    for (let i = 0; i < 60; i++) { c.fillStyle = `rgba(160,95,45,${Math.random() * 0.35})`; c.fillRect(Math.random() * W2, Math.random() * H2, 4 + Math.random() * 10, 2); }
+  });
   return g;
 })();
 inBlock(buildingGroup, blockById("gym")).add(gymRoof);

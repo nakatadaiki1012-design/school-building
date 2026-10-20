@@ -18,6 +18,8 @@ const Z = (r) => (r - R_MID) * RH;
 const base = (f) => (f - 1) * FH;
 const rectOf = (o) => ({ x0: X(o.c0), x1: X(o.c1 + 1), z0: Z(o.r0), z1: Z(o.r1 + 1) });
 const key = (c, r) => c + "," + r;
+// 棟の範囲（いくつかの長方形）
+const areasOf = (w) => w.areas || [w.area];
 const inCells = (c, r, [c0, r0, c1, r1]) => c >= c0 && c <= c1 && r >= r0 && r <= r1;
 
 // ---------- 航空写真のトレース（棟ごとの位置合わせ） ----------
@@ -92,7 +94,7 @@ ROOMS.forEach((r) => {
   // 部屋の板・壁は r.block の中に置くので、その棟の図面の座標に戻しておく
   r.cx = (r.wx - r.block.ox) / r.block.sx; r.cz = (r.wz - r.block.oz) / r.block.sz;
   r.w = r.ww / r.block.sx; r.d = r.wd / r.block.sz;
-  r.wing = WINGS.find((w) => ccx >= w.area[0] && ccx <= w.area[2] + 1 && ccr >= w.area[1] && ccr <= w.area[3] + 1);
+  r.wing = WINGS.find((w) => areasOf(w).some((a) => ccx >= a[0] && ccx <= a[2] + 1 && ccr >= a[1] && ccr <= a[3] + 1));
 });
 const ROOM_BY_ID = Object.fromEntries(ROOMS.map((r) => [r.id, r]));
 
@@ -1178,24 +1180,29 @@ for (const f of [1, 2, 3]) {
     pickables.push(tile);
 
     // 建物の中の階段：上の階へ上がる折り返し階段（行きの段・踊り場・帰りの段）
+    // 上り始めの向き dir（0=東, 90=南, 180=西, 270=北）。上り口から見て、右側が上り、左側が下り（左側通行で下り）
     if (r.kind === "stairs" && r.upTo) {
       const list = [];
-      const alongX = r.w >= r.d, L = alongX ? r.w : r.d, Wd = alongX ? r.d : r.w;
+      const st = STAIRS.find((x) => x.name === r.name);
+      const A = THREE.MathUtils.degToRad(st && st.dir !== undefined ? st.dir : r.w >= r.d ? 0 : 90);
+      const ca = Math.round(Math.cos(A)), sa = Math.round(Math.sin(A)); // 90度ごと
+      const L = ca !== 0 ? r.w : r.d, Wd = ca !== 0 ? r.d : r.w;
+      // 部屋の中の座標 (u: 上る向き, v: 上る向きの右) から、図面の座標へ
       const add = (u0, u1, v0, v1, y0, y1) => {
-        const g = new THREE.BoxGeometry(alongX ? u1 - u0 : v1 - v0, y1 - y0, alongX ? v1 - v0 : u1 - u0);
-        const cu = (u0 + u1) / 2, cv = (v0 + v1) / 2;
-        g.translate(alongX ? r.cx + cu : r.cx + cv, (y0 + y1) / 2, alongX ? r.cz + cv : r.cz + cu);
+        const su = u1 - u0, sv = v1 - v0, cu = (u0 + u1) / 2, cv = (v0 + v1) / 2;
+        const g = new THREE.BoxGeometry(Math.abs(ca) * su + Math.abs(sa) * sv, y1 - y0, Math.abs(sa) * su + Math.abs(ca) * sv);
+        g.translate(r.cx + cu * ca - cv * sa, (y0 + y1) / 2, r.cz + cu * sa + cv * ca);
         list.push(g);
       };
       const n = 11, land = Math.min(1.6, L * 0.28), run = L - land - 0.2, tread = run / n, rise = FH / 2 / n;
       const a0 = -L / 2 + 0.1, landU = L / 2 - 0.1 - land;
       for (let i = 0; i < n; i++) {
-        add(a0 + i * tread, a0 + (i + 1) * tread, -Wd / 2 + 0.1, -0.06, y, y + rise * (i + 1));            // 行き（下の段は床まで）
+        add(a0 + i * tread, a0 + (i + 1) * tread, 0.06, Wd / 2 - 0.1, y, y + rise * (i + 1));               // 上り（右側）
         const top = y + FH / 2 + rise * (i + 1);
-        add(landU - (i + 1) * tread, landU - i * tread, 0.06, Wd / 2 - 0.1, top - 0.35, top);              // 帰り
+        add(landU - (i + 1) * tread, landU - i * tread, -Wd / 2 + 0.1, -0.06, top - 0.35, top);              // 踊り場から上の階へ（左側。上の階から見ると下り）
       }
-      add(landU, L / 2 - 0.1, -Wd / 2 + 0.1, Wd / 2 - 0.1, y + FH / 2 - 0.25, y + FH / 2);                // 踊り場
-      add(a0, landU, -0.06, 0.06, y, y + FH);                                                            // まんなかの壁
+      add(landU, L / 2 - 0.1, -Wd / 2 + 0.1, Wd / 2 - 0.1, y + FH / 2 - 0.25, y + FH / 2);                  // 踊り場
+      add(a0, landU, -0.06, 0.06, y, y + FH);                                                              // まんなかの壁
       const m = new THREE.Mesh(mergeGeometries(list), matStairs);
       m.castShadow = m.receiveShadow = true;
       inBlock(grp, r.block).add(m);
@@ -1265,7 +1272,7 @@ for (const w of WINGS) {
   div.addEventListener("pointerdown", (e) => e.stopPropagation());
   div.addEventListener("click", (e) => { e.stopPropagation(); showWing(w); });
   const obj = new CSS2DObject(div);
-  const [c0, r0, c1, r1] = w.area;
+  const [c0, r0, c1, r1] = areasOf(w)[0];
   const top = w.id === "wg" ? 3 * FH + 4 : 3 * FH + 2.5;
   const [wx, wz] = toWorld((X(c0) + X(c1 + 1)) / 2, (Z(r0) + Z(r1 + 1)) / 2);
   obj.position.set(wx, top, wz);
@@ -1438,7 +1445,7 @@ function showWing(w) {
     ${byFloor}
   `;
   openPanel();
-  const [c0, r0, c1, r1] = w.area;
+  const [c0, r0, c1, r1] = areasOf(w)[0];
   const [cx, cz] = toWorld((X(c0) + X(c1 + 1)) / 2, (Z(r0) + Z(r1 + 1)) / 2);
   flyTo(new THREE.Vector3(cx + 30, 45, cz + 45), new THREE.Vector3(cx, 5, cz));
 }
@@ -1494,7 +1501,7 @@ labelRenderer.domElement.addEventListener("pointerup", (e) => {
       const p = hit.point;
       const [dx, dz] = toDrawing(p.x, p.z);
       const c = dx / CW + C_MID, r = dz / RH + R_MID;
-      const w = WINGS.find((w) => c >= w.area[0] - 0.5 && c <= w.area[2] + 1.5 && r >= w.area[1] - 0.5 && r <= w.area[3] + 1.5);
+      const w = WINGS.find((w) => areasOf(w).some((a) => c >= a[0] - 0.5 && c <= a[2] + 1.5 && r >= a[1] - 0.5 && r <= a[3] + 1.5));
       if (w) showWing(w);
     }
     return;
@@ -1597,6 +1604,8 @@ document.getElementById("align-reset").addEventListener("click", () => {
 showAlign();
 
 // 凡例
+// 縦が短い画面では、色の見かたを最初は閉じておく
+if (window.innerHeight < 760) document.querySelector(".legend").removeAttribute("open");
 document.getElementById("legend-list").innerHTML = Object.values(CATEGORIES)
   .map((c) => `<li><span class="dot" style="background:${c.color}"></span>${c.label}</li>`).join("");
 

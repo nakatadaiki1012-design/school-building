@@ -879,12 +879,19 @@ export function buildSite(scene, SITE) {
     const base = new THREE.Mesh(new THREE.BoxGeometry(gb.w, 0.15, gb.d), M(0xbdbab2)); base.position.y = -0.12;
     const roof = new THREE.Mesh(new THREE.BoxGeometry(gb.w + 0.4, 0.1, gb.d + 0.4), M(0x7f8a86, { metalness: 0.3 })); roof.position.y = 2.2;
     gg.add(base, roof);
-    for (const [x0, z0, x1, z1] of [[-1, -1, 1, -1], [1, -1, 1, 1], [-1, 1, 1, 1]]) fenceLine(gg, x0 * gb.w / 2, z0 * gb.d / 2, x1 * gb.w / 2, z1 * gb.d / 2, 2.2);
+    // まわりを生け垣でかこむ（片側のまんなかに入口のすきま）
+    const hedge = M(0x4a7a36, { roughness: 1 });
+    const hw = 0.9, hh = 1.6, W2 = gb.w / 2 + hw, D2 = gb.d / 2 + hw;
+    const gap = 1.6, half = (gb.d + 2 * hw - gap) / 2; // 入口のすきま（片側の端）
+    for (const [w, d, x, z] of [[gb.w + 2 * hw * 2, hw, 0, -D2], [gb.w + 2 * hw * 2, hw, 0, D2], [hw, gb.d + 2 * hw, W2, 0],
+      [hw, half, -W2, -(gap + half) / 2], [hw, half, -W2, (gap + half) / 2]]) {
+      const h = new THREE.Mesh(new THREE.BoxGeometry(w, hh, d), hedge); h.position.set(x, hh / 2 - 0.2, z); gg.add(h);
+    }
     for (let i = 0; i < 4; i++) { const bin = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.28, 0.75, 12), M([0x2f5fa8, 0x3a8a4f, 0xd8d4c8, 0x2f5fa8][i])); bin.position.set(-gb.w / 2 + 0.6 + i * 0.75, 0.35, 0); gg.add(bin); }
     gg.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     gg.position.set(gb.x, 0, gb.z); gg.rotation.y = THREE.MathUtils.degToRad(gb.rot || 0);
     group.add(gg);
-    rects.push([gb.x - 4, gb.x + 4, gb.z - 4, gb.z + 4]);
+    rects.push([gb.x - 5, gb.x + 5, gb.z - 5, gb.z + 5]);
   }
   // テニスコートのそばの小屋と青いシート
   for (const p of SITE.props || []) {

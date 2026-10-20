@@ -596,7 +596,7 @@ const LAYOUTS = [
   [/卓球場/, pingpong],
   [/ウエイトルーム/, weights],
   [/^体育館$/, gym],
-  [/武道場/, (o, R) => grid(o, "mat", R.x0 + 2, R.x1 - 2, R.z1 - 0.8, R.z1 - 0.8, 6, 1, Math.PI / 2, 0)],
+  [/受付カウンター/, shop],
 ];
 
 // 黒板・教卓を北側に置く特別教室（普通教室は図面の左＝西側が前）
@@ -607,7 +607,8 @@ const SOUTH_FRONT = /調理室|コンピューター/;
 // 床の模様
 export function floorStyle(name) {
   if (/^体育館$/.test(name)) return "gym";
-  if (/武道場|作法室/.test(name)) return "tatami";
+  if (/武道場/.test(name)) return "flooring";
+  if (/作法室/.test(name)) return "tatami";
   if (/トイレ|シャワー|調理室|実験室|昇降口|玄関|ホール/.test(name)) return "tile";
   return "wood";
 }

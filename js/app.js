@@ -3,7 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ROOMS_RAW } from "./data.js";
-import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS } from "./info.js";
+import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
 import { buildSite, createAerial, flatPoly, polyBounds, inPoly } from "./site.js";
 
@@ -64,6 +64,14 @@ STAIRS.forEach((s, i) => {
     });
   });
 });
+// 図面で名前のない区画を、となりの部屋の一部としてつける（事務室のL字など）
+for (const p of ROOM_PARTS) {
+  const parent = ROOMS.find((r) => r.name === p.name && r.floor === p.floor && r.kind === "room");
+  if (!parent) continue;
+  const part = { ...p, id: parent.id + "-P" + ((parent.parts ||= []).length), cat: parent.cat, kind: "part", parent };
+  parent.parts.push(part);
+  ROOMS.push(part);
+}
 ROOMS.forEach((r) => {
   const rc = rectOf(r);
   r.cx = (rc.x0 + rc.x1) / 2;
@@ -318,6 +326,22 @@ const texPaving = canvasTex(256, 256, (g, w, h) => {
     g.beginPath(); g.moveTo(0, i * 64); g.lineTo(w, i * 64); g.stroke();
   }
 });
+
+// 外のレンガ敷き（昇降口のあいだ・体育館のまわりの広場で同じものを使う）
+function makeBrickFloorTex() {
+  return canvasTex(256, 256, (g, W2, H2) => {
+    g.fillStyle = "#8e4f3a"; g.fillRect(0, 0, W2, H2);
+    const bh = 16, bw = 32;
+    for (let row = 0, y = 0; y < H2; y += bh, row++) {
+      for (let x = -(row % 2) * bw / 2; x < W2; x += bw) {
+        const v = Math.random() * 26 - 13;
+        g.fillStyle = `rgb(${150 + v},${80 + v * 0.6},${60 + v * 0.5})`;
+        g.fillRect(x + 1, y + 1, bw - 2, bh - 2);
+      }
+    }
+  });
+}
+const texBrickFloor = makeBrickFloorTex();
 
 const texStairs = canvasTex(64, 64, (g, w, h) => {
   g.fillStyle = "#9aa0a8"; g.fillRect(0, 0, w, h);
@@ -593,7 +617,7 @@ for (const f of [1, 2, 3]) {
   const roofCells = new Set();
   for (const [k, st] of OCC[f]) {
     if (st === "gym" && f === 3) continue;
-    if (f === 3 && st === "high") continue; // 図書室の棟は寄棟の屋根（別に作る）
+    if (f === 3 && (st === "high" || blockAtCell(...k.split(",").map(Number)).id === "art")) continue; // 図書室の棟は寄棟の屋根（別に作る）
     if (f === 3 || !OCC[f + 1].has(k)) roofCells.add(k);
   }
   const roof = new THREE.Group();
@@ -665,7 +689,7 @@ for (const f of [1, 2, 3]) {
 
 // 図書室の棟のピンク色の寄棟屋根
 {
-  const rc = rectOf({ c0: 9, r0: 44, c1: 22, r1: 56 });
+  const rc = rectOf({ c0: 9, r0: 44, c1: 22, r1: 62 });
   const ov = 0.5, y = 3 * FH, rise = 3.2;
   const x0 = rc.x0 - ov, x1 = rc.x1 + ov, z0 = rc.z0 - ov, z1 = rc.z1 + ov;
   const h = (z1 - z0) / 2, zc = (z0 + z1) / 2;
@@ -828,13 +852,14 @@ scene.add(outdoor);
     m.receiveShadow = true;
     outdoor.add(m);
   };
-  const pinkTex = texPaving.clone(); pinkTex.needsUpdate = true; pinkTex.repeat.set(8, 8);
-  const pink = new THREE.MeshStandardMaterial({ map: pinkTex, color: 0xe2a993, roughness: 1 });
+  // 体育館のまわりの広場は、昇降口のあいだと同じ茶色いレンガ敷き
+  const pinkTex = texBrickFloor.clone(); pinkTex.needsUpdate = true; pinkTex.repeat.set(10, 10);
+  const pink = new THREE.MeshStandardMaterial({ map: pinkTex, roughness: 0.95 });
   // 体育館と中央棟のあいだ、体育館の南、図書室の棟と中央棟のあいだ
   // （位置は航空写真で測った実際のメートル）
   flatRect(-13.4, -4.95, -14.9, 10.1, pink, -0.19);
-  flatRect(-43.5, -4.95, 2.7, 10.1, pink, -0.19);
-  flatRect(-16, -4.95, 10.1, 30.1, pink, -0.19);
+  flatRect(-43.5, -4.95, 2.7, 10.4, pink, -0.19);
+  flatRect(-16.3, -4.95, 10.1, 33.0, pink, -0.19);
   const planter = new THREE.MeshStandardMaterial({ color: 0x4f7d3a, roughness: 1 });
   for (const [x, z] of [[-8.6, 20.5], [-7.8, 27]]) {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.8, 0.6, 20), planter);
@@ -872,17 +897,8 @@ scene.add(outdoor);
   const rc = rectOf({ c0: PILOTIS.cells[0], r0: PILOTIS.cells[1], c1: PILOTIS.cells[2], r1: PILOTIS.cells[3] });
   const b = blockAtCell(PILOTIS.cells[0], PILOTIS.cells[1]);
   const w = rc.x1 - rc.x0, d = rc.z1 - rc.z0;
-  const brickTex = canvasTex(256, 256, (g, W2, H2) => {
-    g.fillStyle = "#8e4f3a"; g.fillRect(0, 0, W2, H2);
-    const bh = 16, bw = 32;
-    for (let row = 0, y = 0; y < H2; y += bh, row++) {
-      for (let x = -(row % 2) * bw / 2; x < W2; x += bw) {
-        const v = Math.random() * 26 - 13;
-        g.fillStyle = `rgb(${150 + v},${80 + v * 0.6},${60 + v * 0.5})`;
-        g.fillRect(x + 1, y + 1, bw - 2, bh - 2);
-      }
-    }
-  });
+  const brickTex = texBrickFloor.clone();
+  brickTex.needsUpdate = true;
   brickTex.repeat.set(w / 4, d / 4);
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: brickTex, roughness: 0.95 }));
   floor.rotation.x = -Math.PI / 2;
@@ -972,14 +988,15 @@ for (const f of [1, 2, 3]) {
     let tint = color;
     if (!isOpen && r.kind !== "stairs") {
       const st = floorStyle(r.name);
-      map = FLOOR_TEX[st].clone();
+      map = FLOOR_TEX[st === "flooring" ? "wood" : st].clone();
       map.needsUpdate = true;
       if (st === "gym") { map.center.set(0.5, 0.5); map.rotation = Math.PI / 2; tint = new THREE.Color(0xffffff); }
       else if (st === "tatami") { map.repeat.set(r.w / 3.6, r.d / 3.6); tint = new THREE.Color(0xffffff); }
+      else if (st === "flooring") { map.repeat.set(r.w / 3, r.d / 3); tint = new THREE.Color(0xd9b07a); } // 武道場の木の床
       else if (st === "tile") map.repeat.set(r.w / 1.2, r.d / 1.2);
       else map.repeat.set(r.w / 4, r.d / 4);
     }
-    const mat = new THREE.MeshStandardMaterial({
+    const mat = r.kind === "part" ? r.parent.mesh.material : new THREE.MeshStandardMaterial({
       color: tint, roughness: 0.85,
       map,
       transparent: isOpen, opacity: isCourt ? 0.0 : isOpen ? 0.35 : 1,
@@ -989,13 +1006,23 @@ for (const f of [1, 2, 3]) {
     const tile = new THREE.Mesh(new THREE.BoxGeometry(r.w - 0.14, th, r.d - 0.14), mat);
     tile.position.set(r.cx, y + 0.01 + th / 2, r.cz);
     tile.receiveShadow = true;
-    tile.userData.room = r;
+    tile.userData.room = r.kind === "part" ? r.parent : r;
     r.mesh = tile;
     r.baseColor = color.clone();
     inBlock(grp, r.block).add(tile);
     pickables.push(tile);
 
-    if (!isCourt && r.kind !== "stairs") {
+    if (r.parts) {
+      // L字などの部屋は、つながった形のまわりにだけ壁を立てる
+      const cells = new Map();
+      for (const q of [r, ...r.parts]) for (let c = q.c0; c <= q.c1; c++) for (let rr = q.r0; rr <= q.r1; rr++) cells.set(key(c, rr), "p");
+      for (const sg of boundarySegments(cells)) {
+        const len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az), t = 0.14, h = 1.25;
+        const g = new THREE.BoxGeometry(sg.n[1] !== 0 ? len : t, h, sg.n[1] !== 0 ? t : len);
+        g.translate((sg.ax + sg.bx) / 2, y + h / 2, (sg.az + sg.bz) / 2);
+        (walls[r.block.id] ||= []).push(g);
+      }
+    } else if (!isCourt && r.kind !== "stairs" && r.kind !== "part") {
       const t = 0.14, h = isOpen ? 1.0 : 1.25;
       const rc = rectOf(r);
       for (const [w, d, x, z] of [
@@ -1008,6 +1035,7 @@ for (const f of [1, 2, 3]) {
       }
     }
 
+    if (r.kind === "part") continue; // ラベルは元の部屋だけ
     // ラベル
     const div = document.createElement("div");
     const small = r.w < 4.2 || r.d < 3;
@@ -1028,7 +1056,8 @@ for (const f of [1, 2, 3]) {
   }
   // 家具（伸び縮みさせず、航空写真に合わせたあとの部屋の大きさで置く）
   const furn = buildFurniture(
-    ROOMS.filter((x) => x.floor === f && x.kind === "room").map((x) => ({ name: x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd })),
+    ROOMS.filter((x) => x.floor === f && (x.kind === "room" || x.kind === "part"))
+      .map((x) => ({ name: x.kind === "part" ? "受付カウンター" : x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd })),
     y0OfFloor(f),
   );
   layers.furniture[f] = furn;

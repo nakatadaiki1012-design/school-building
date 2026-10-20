@@ -823,19 +823,38 @@ export function buildSite(scene, SITE) {
     for (let i = 0; i + 1 < r.pts.length; i++) roadSegs.push([...r.pts[i], ...r.pts[i + 1], r.w / 2 + 2]);
   }
   for (const c of SITE.crosswalks || []) group.add(crosswalk(c));
-  // 正門から中庭までの通路と、門の手前の半円の広場
+  // 正門から中庭までの通路（中庭から東へ出て、少し南へ折れて正門へ）と、門の手前の半円の広場
   if (SITE.approach) {
     const a = SITE.approach, pave = M(0xe6e2d8, { roughness: 1 });
-    const path = new THREE.Mesh(new THREE.PlaneGeometry(a.x1 - a.x0, a.z1 - a.z0), pave);
-    path.rotation.x = -Math.PI / 2; path.position.set((a.x0 + a.x1) / 2, -0.175, (a.z0 + a.z1) / 2);
-    group.add(path);
+    for (let i = 0; i + 1 < a.pts.length; i++) {
+      const [ax, az] = a.pts[i], [bx, bz] = a.pts[i + 1];
+      const L = Math.hypot(bx - ax, bz - az);
+      const seg = new THREE.Mesh(new THREE.PlaneGeometry(a.w, L + a.w), pave);
+      seg.rotation.order = "YXZ"; seg.rotation.set(-Math.PI / 2, Math.atan2(bx - ax, bz - az), 0);
+      seg.position.set((ax + bx) / 2, -0.175 + i * 0.002, (az + bz) / 2);
+      group.add(seg);
+      for (let t = 0; t <= L; t += 3) rects.push([ax + (bx - ax) * t / L - 3, ax + (bx - ax) * t / L + 3, az + (bz - az) * t / L - 3, az + (bz - az) * t / L + 3]);
+    }
     if (a.plaza) {
       const pl = new THREE.Mesh(new THREE.CircleGeometry(a.plaza.r, 40, -Math.PI / 2, Math.PI), pave);
-      pl.rotation.x = -Math.PI / 2; pl.position.set(a.plaza.x, -0.18, a.plaza.z);
+      pl.rotation.order = "YXZ"; pl.rotation.set(-Math.PI / 2, THREE.MathUtils.degToRad(a.plaza.rot || 0), 0);
+      pl.position.set(a.plaza.x, -0.18, a.plaza.z);
       group.add(pl);
       rects.push([a.plaza.x - a.plaza.r, a.plaza.x + a.plaza.r, a.plaza.z - a.plaza.r, a.plaza.z + a.plaza.r]);
     }
-    rects.push([a.x0, a.x1, a.z0 - 2, a.z1 + 2]);
+  }
+  // ごみ捨て場（コンクリートの床、緑の網のかこい、屋根）
+  if (SITE.garbage) {
+    const gb = SITE.garbage, gg = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.BoxGeometry(gb.w, 0.15, gb.d), M(0xbdbab2)); base.position.y = -0.12;
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(gb.w + 0.4, 0.1, gb.d + 0.4), M(0x7f8a86, { metalness: 0.3 })); roof.position.y = 2.2;
+    gg.add(base, roof);
+    for (const [x0, z0, x1, z1] of [[-1, -1, 1, -1], [1, -1, 1, 1], [-1, 1, 1, 1]]) fenceLine(gg, x0 * gb.w / 2, z0 * gb.d / 2, x1 * gb.w / 2, z1 * gb.d / 2, 2.2);
+    for (let i = 0; i < 4; i++) { const bin = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.28, 0.75, 12), M([0x2f5fa8, 0x3a8a4f, 0xd8d4c8, 0x2f5fa8][i])); bin.position.set(-gb.w / 2 + 0.6 + i * 0.75, 0.35, 0); gg.add(bin); }
+    gg.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    gg.position.set(gb.x, 0, gb.z); gg.rotation.y = THREE.MathUtils.degToRad(gb.rot || 0);
+    group.add(gg);
+    rects.push([gb.x - 4, gb.x + 4, gb.z - 4, gb.z + 4]);
   }
   // テニスコートのそばの小屋と青いシート
   for (const p of SITE.props || []) {

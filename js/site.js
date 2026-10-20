@@ -13,7 +13,7 @@ function canvasTex(w, h, draw) {
 const M = (color, extra = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.8, ...extra });
 
 // フェンス（緑色の網＋支柱＋上の手すり）
-const netMat = new THREE.MeshStandardMaterial({ color: 0x2f5a45, transparent: true, opacity: 0.32, depthWrite: false, side: THREE.DoubleSide, roughness: 0.9 });
+const netMat = new THREE.MeshStandardMaterial({ color: 0x3f7a5c, transparent: true, opacity: 0.4, depthWrite: false, side: THREE.DoubleSide, roughness: 0.9 });
 const postMat = new THREE.MeshStandardMaterial({ color: 0x46604f, roughness: 0.6, metalness: 0.3 });
 
 // 1本の直線のフェンス
@@ -80,7 +80,7 @@ function buildGround(cfg) {
   const S = 6; // 1m = 6px
   const P = (x, z) => [(x - bb.x0) * S, (z - bb.z0) * S];
   const tex = canvasTex(Math.ceil((bb.x1 - bb.x0) * S), Math.ceil((bb.z1 - bb.z0) * S), (c, W, H) => {
-    c.fillStyle = "#a29d93"; c.fillRect(0, 0, W, H);
+    c.fillStyle = "#b8b4ab"; c.fillRect(0, 0, W, H); // 写真では白っぽい灰色の土
     for (let i = 0; i < 30000; i++) {
       c.fillStyle = `rgba(${Math.random() > 0.5 ? "255,255,255" : "60,50,40"},${Math.random() * 0.07})`;
       c.fillRect(Math.random() * W, Math.random() * H, 2, 2);
@@ -95,8 +95,11 @@ function buildGround(cfg) {
     // 野球の内野（茶色い土）
     const b = cfg.baseball;
     const [bx, bz] = P(b.x, b.z);
-    c.fillStyle = "#7b5a40";
-    c.beginPath(); c.arc(bx, bz, b.r * S, 0, Math.PI * 2); c.fill();
+    // 写真では内野の土が大きくぼんやり茶色い（ふちをぼかす）
+    const gr = c.createRadialGradient(bx, bz, b.r * S * 0.3, bx, bz, b.r * S * 1.25);
+    gr.addColorStop(0, "rgba(96,72,52,0.95)"); gr.addColorStop(0.7, "rgba(110,84,60,0.75)"); gr.addColorStop(1, "rgba(110,84,60,0)");
+    c.fillStyle = gr;
+    c.beginPath(); c.arc(bx, bz, b.r * S * 1.25, 0, Math.PI * 2); c.fill();
     // ダイヤモンドとファウルライン
     const [hx, hz] = P(b.home[0], b.home[1]);
     const dx = bx - hx, dz = bz - hz, L = Math.hypot(dx, dz);
@@ -104,7 +107,7 @@ function buildGround(cfg) {
     const rot = (a) => [ux * Math.cos(a) - uz * Math.sin(a), ux * Math.sin(a) + uz * Math.cos(a)];
     const side = 27.4 * S;
     const [ax, az] = rot(-Math.PI / 4), [cx2, cz2] = rot(Math.PI / 4);
-    c.strokeStyle = "rgba(255,255,255,0.9)"; c.lineWidth = 2;
+    c.strokeStyle = "rgba(255,255,255,0.45)"; c.lineWidth = 1.5;
     c.beginPath();
     c.moveTo(hx, hz); c.lineTo(hx + ax * side, hz + az * side);
     c.lineTo(hx + ux * side * Math.SQRT2, hz + uz * side * Math.SQRT2);
@@ -119,7 +122,7 @@ function buildGround(cfg) {
     const [sx, sz] = P(sc.x, sc.z);
     c.save();
     c.translate(sx, sz); c.rotate((-(sc.rot || 0) * Math.PI) / 180);
-    c.strokeStyle = "rgba(255,255,255,0.85)"; c.lineWidth = 2;
+    c.strokeStyle = "rgba(255,255,255,0.55)"; c.lineWidth = 1.5;
     const w = sc.w * S, d = sc.d * S;
     c.strokeRect(-w / 2, -d / 2, w, d);
     c.beginPath(); c.moveTo(0, -d / 2); c.lineTo(0, d / 2); c.stroke();
@@ -162,7 +165,41 @@ function buildGround(cfg) {
     const [x0, z0] = cfg.poly[i], [x1, z1] = cfg.poly[(i + 1) % cfg.poly.length];
     fenceLine(g, x0, z0, x1, z1, (cfg.fence && cfg.fence[i]) || 3);
   }
+  // 白いテント、物置、ベンチ（写真に写っている小物。位置はおおよそ）
+  for (const t of cfg.tents || []) g.add(tent(t));
+  for (const [x, z, rot] of cfg.benches || []) {
+    const bn = new THREE.Mesh(new THREE.BoxGeometry(3, 0.45, 0.4), M(0x5a6b7a));
+    bn.position.set(x, 0.05, z); bn.rotation.y = THREE.MathUtils.degToRad(rot || 0);
+    bn.castShadow = true;
+    g.add(bn);
+  }
+  // 端によせたサッカーゴール（予備）
+  const white2 = M(0xffffff);
+  for (const [x, z, rot] of cfg.spareGoals || []) {
+    const goal = new THREE.Group();
+    const bar = (bw, bh, bd, px, py, pz) => { const m = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), white2); m.position.set(px, py, pz); m.castShadow = true; goal.add(m); };
+    bar(0.12, 2.4, 0.12, 0, 1.2, -3.66); bar(0.12, 2.4, 0.12, 0, 1.2, 3.66); bar(0.12, 0.12, 7.4, 0, 2.4, 0);
+    goal.position.set(x, 0, z); goal.rotation.y = THREE.MathUtils.degToRad(rot || 0);
+    g.add(goal);
+  }
   return g;
+}
+
+// 白いテント（運動会などで使う、屋根だけのテント）
+function tent({ x, z, rot = 0, w = 5.4, d = 3.6 }) {
+  const t = new THREE.Group();
+  const roof = new THREE.Mesh(new THREE.BoxGeometry(w, 0.25, d), M(0xf6f6f2));
+  roof.position.y = 2.4;
+  roof.castShadow = true;
+  t.add(roof);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 2.4, 6), M(0xb0b4b8, { metalness: 0.5 }));
+    p.position.set(sx * (w / 2 - 0.1), 1.1, sz * (d / 2 - 0.1));
+    t.add(p);
+  }
+  t.position.set(x, -0.15, z);
+  t.rotation.y = THREE.MathUtils.degToRad(rot);
+  return t;
 }
 
 // ---------- テニスコート（砂のコート。1区画に2面） ----------
@@ -359,9 +396,46 @@ function buildRoad({ w, pts }) {
   geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
   geo.setIndex(idx);
   geo.computeVertexNormals();
+  const g = new THREE.Group();
   const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x5d6063, roughness: 1, side: THREE.DoubleSide }));
   m.position.y = -0.22;
-  return m;
+  g.add(m);
+  // センターライン（白い破線）と、ふちの白線
+  const dash = new THREE.MeshStandardMaterial({ color: 0xf0f0ea, roughness: 0.9 });
+  for (let i = 0; i + 1 < pts.length; i++) {
+    const [ax, az] = pts[i], [bx, bz] = pts[i + 1];
+    const L = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / L, uz = (bz - az) / L, ang = Math.atan2(ux, uz);
+    for (let t = 2; t < L - 2; t += 8) {
+      const d = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.02, 4), dash);
+      d.position.set(ax + ux * (t + 2), -0.2, az + uz * (t + 2)); d.rotation.y = ang;
+      g.add(d);
+    }
+    for (const s of [-1, 1]) {
+      const e = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.02, L), dash);
+      e.position.set((ax + bx) / 2 - uz * s * (w / 2 - 0.4), -0.2, (az + bz) / 2 + ux * s * (w / 2 - 0.4)); e.rotation.y = ang;
+      g.add(e);
+    }
+  }
+  return g;
+}
+
+// 横断歩道（しま模様）。x, z は中心、rot は道路の向き（度）
+function crosswalk({ x, z, rot = 0, len = 8, red = false }) {
+  const g = new THREE.Group();
+  if (red) {
+    const r = new THREE.Mesh(new THREE.BoxGeometry(len + 2, 0.02, 6), M(0xa8483e, { roughness: 1 }));
+    r.position.y = -0.205;
+    g.add(r);
+  }
+  const white = M(0xf4f4ee, { roughness: 0.9 });
+  for (let i = -len / 2 + 0.25; i < len / 2; i += 0.9) {
+    const st = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.025, 3.5), white);
+    st.position.set(i, -0.19, 0);
+    g.add(st);
+  }
+  g.position.set(x, 0, z);
+  g.rotation.y = THREE.MathUtils.degToRad(rot);
+  return g;
 }
 
 // ---------- まわりの住宅地（道路ぞいに家をならべる。位置は雰囲気を出すためのもの） ----------
@@ -403,7 +477,9 @@ function buildHouses(SITE) {
         if (x > 85 && z > -75 && z < 45) continue; // 東どなりは小学校
         if (others.some((r) => r.pts.some((p, k) => k + 1 < r.pts.length && distSeg(x, z, p[0], p[1], r.pts[k + 1][0], r.pts[k + 1][1]) < r.w / 2 + 5))) continue;
         if (spots.some((p) => Math.hypot(p.x - x, p.z - z) < 10.5)) continue;
-        spots.push({ x, z, ang: Math.atan2(ux, uz), w: 7 + rnd() * 3, d: 7 + rnd() * 2.5, h: 5.2 + rnd() * 1.2 });
+        if (rnd() < 0.12) continue; // ところどころ空き地や駐車場
+        // 家の向き・大きさをばらばらに（写真の住宅地のように）
+        spots.push({ x: x + (rnd() - 0.5) * 2, z: z + (rnd() - 0.5) * 2, ang: Math.atan2(ux, uz) + (rnd() < 0.3 ? Math.PI / 2 : 0) + (rnd() - 0.5) * 0.2, w: 6 + rnd() * 5, d: 6.5 + rnd() * 4, h: 4.8 + rnd() * 2 });
       }
     }
   }
@@ -471,6 +547,15 @@ export function buildSite(scene, SITE) {
   for (const r of SITE.roads || []) {
     group.add(buildRoad(r));
     for (let i = 0; i + 1 < r.pts.length; i++) roadSegs.push([...r.pts[i], ...r.pts[i + 1], r.w / 2 + 2]);
+  }
+  for (const c of SITE.crosswalks || []) group.add(crosswalk(c));
+  // テニスコートのそばの小屋と青いシート
+  for (const p of SITE.props || []) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(p.w, p.h, p.d), M(p.color, { roughness: 0.9 }));
+    m.position.set(p.x, p.h / 2 - 0.17, p.z);
+    m.rotation.y = THREE.MathUtils.degToRad(p.rot || 0);
+    m.castShadow = m.receiveShadow = true;
+    group.add(m);
   }
   const houses = SITE.roads && SITE.boundary ? buildHouses(SITE) : null;
   if (houses) group.add(houses);

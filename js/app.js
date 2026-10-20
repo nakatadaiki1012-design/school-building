@@ -120,7 +120,7 @@ for (const f of [1, 2, 3]) {
 // ---------- three.js の準備 ----------
 const app = document.getElementById("viewer");
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, Math.min(window.innerWidth, window.innerHeight) < 700 ? 1.5 : 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -162,7 +162,9 @@ scene.add(new THREE.HemisphereLight(0xdcebff, 0xa49c86, 1.0));
 const sun = new THREE.DirectionalLight(0xfff4e0, 2.2);
 sun.position.set(70, 110, 55);
 sun.castShadow = true;
-sun.shadow.mapSize.set(4096, 4096);
+// スマホなど小さい画面では影を軽くする
+const isSmall = Math.min(window.innerWidth, window.innerHeight) < 700 || /Android|iPhone|iPad/.test(navigator.userAgent);
+sun.shadow.mapSize.set(isSmall ? 2048 : 4096, isSmall ? 2048 : 4096);
 Object.assign(sun.shadow.camera, { left: -140, right: 140, top: 140, bottom: -140, near: 10, far: 400 });
 sun.shadow.bias = -0.0005;
 sun.shadow.normalBias = 0.04;
@@ -522,7 +524,12 @@ function solarPanels(rects, y) {
     const w = rc.x1 - rc.x0, d = rc.z1 - rc.z0;
     if (w < 6 || d < 4.5) continue;
     for (let z = rc.z0 + 1.6; z <= rc.z1 - 1.6; z += 2.2) {
-      for (let x = rc.x0 + 1.2; x <= rc.x1 - 1.2; x += 1.05) spots.push([x, z]);
+      for (let x = rc.x0 + 1.2; x <= rc.x1 - 1.2; x += 1.05) {
+        // 写真のように、ところどころ設備の白い四角があってパネルがない
+        const k = Math.sin(Math.round(x / 3.2) * 12.99 + Math.round(z / 4.4) * 78.23) * 43758.55;
+        if (k - Math.floor(k) < 0.12) continue;
+        spots.push([x, z]);
+      }
     }
   }
   const im = new THREE.InstancedMesh(panelGeo, panelMat, Math.max(1, spots.length));
@@ -773,6 +780,23 @@ const gymRoof = (() => {
 })();
 inBlock(buildingGroup, blockById("gym")).add(gymRoof);
 
+// さびた金属の屋根の模様
+function rustTex() {
+  return canvasTex(128, 128, (c, W2, H2) => {
+    c.fillStyle = "#a0623a"; c.fillRect(0, 0, W2, H2);
+    for (let i = 0; i < 400; i++) { c.fillStyle = `rgba(${90 + Math.random() * 80},${50 + Math.random() * 30},30,${Math.random() * 0.4})`; c.fillRect(Math.random() * W2, Math.random() * H2, 3 + Math.random() * 8, 2); }
+    c.fillStyle = "rgba(0,0,0,0.15)"; for (let x = 0; x < W2; x += 8) c.fillRect(x, 0, 2, H2);
+  });
+}
+// 渡り廊下の屋根は、さびたオレンジ色の平らな屋根
+{
+  const rc = rectOf({ c0: 27, r0: 19, c1: 32, r1: 21 });
+  const m = new THREE.Mesh(new THREE.BoxGeometry(rc.x1 - rc.x0, 0.35, rc.z1 - rc.z0), new THREE.MeshStandardMaterial({ map: rustTex(), roughness: 0.8 }));
+  m.position.set((rc.x0 + rc.x1) / 2, 2 * FH + 0.2, (rc.z0 + rc.z1) / 2);
+  m.castShadow = true;
+  inBlock(layers.roofs[2], blockById("bridge")).add(m);
+}
+
 // 体育館の外まわり：西側の通路（手すり壁つき）と北の端の外階段、南側の2階のテラスと外階段、1階の柱
 {
   const white = matRelief;
@@ -818,6 +842,14 @@ inBlock(buildingGroup, blockById("gym")).add(gymRoof);
   // 外廊下を支える柱
   for (let z = zTop; z <= zBot; z += 4.5) { box(geos2, 0.35, ty, 0.35, gx - dw + 0.3, ty / 2 - 0.15, z); box(geos2, 0.35, ty, 0.35, gxe + dw - 0.3, ty / 2 - 0.15, z); }
   for (let x = gx - dw; x <= gxe + dw; x += 4.5) box(geos2, 0.35, ty, 0.35, x, ty / 2 - 0.15, zBot - 0.3);
+  // 西側の外廊下の上の、さびた茶色の細長い屋根（写真で体育館の長さいっぱいに見える）
+  {
+    const rr = new THREE.Mesh(new THREE.BoxGeometry(dw + 0.6, 0.2, gz1 - zTop + 1), new THREE.MeshStandardMaterial({ map: rustTex(), roughness: 0.8, metalness: 0.2 }));
+    rr.position.set(gx - dw / 2, ty + 2.8, (zTop + gz1) / 2);
+    rr.castShadow = true;
+    gymExtras.add(rr);
+    for (let z = zTop; z <= gz1; z += 4.5) box(geos2, 0.2, 2.8, 0.2, gx - dw + 0.2, ty + 1.4, z);
+  }
   // 外階段：西側の北の端から北へ下りる階段と、南側の外から上がる階段
   stair(geos1, gx - dw / 2, zTop - 6.5, gx - dw / 2, zTop, -0.2, ty, dw - 0.2);
   stair(geos1, gx + 2, zBot + 1.25, gx + 9, zBot + 1.25, -0.2, ty, 2.3);
@@ -977,6 +1009,7 @@ scene.add(trees);
   let seed = 7;
   const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
   const spots = [];
+  const columnar = [];
   const ok = (x, z) => {
     // 建物（航空写真で測った各棟の範囲）のそばには植えない
     if (BLOCK_LIST.some((b) => x > b.world[0] - 3 && x < b.world[2] + 3 && z > b.world[1] - 3 && z < b.world[3] + 3)) return false;
@@ -996,10 +1029,22 @@ scene.add(trees);
     const { from: [ax, az], to: [bx2, bz2], offsets, step } = SITE.treeRow;
     const L = Math.hypot(bx2 - ax, bz2 - az), ux = (bx2 - ax) / L, uz = (bz2 - az) / L;
     const nx = uz, nz = -ux;
-    for (const off of offsets) for (let t = 0; t < L; t += step) spots.push([ax + ux * t + nx * off, az + uz * t + nz * off, 0.7]);
+    for (const off of offsets) for (let t = 0; t < L; t += step) columnar.push([ax + ux * t + nx * off, az + uz * t + nz * off, 0.9 + ((t * 7) % 3) * 0.08]);
   }
   // 体育館と校舎のあいだの広場の丸い植え込みの木
   spots.push([-8.6, 20.5, 0.75], [-7.8, 27, 0.75]);
+  // 並木の細長い木（円すい形）
+  {
+    const cm = new THREE.InstancedMesh(new THREE.ConeGeometry(1.6, 9, 8), new THREE.MeshStandardMaterial({ color: 0x4a7a3a, roughness: 1, flatShading: true }), columnar.length);
+    const tm = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.15, 0.22, 2, 6), new THREE.MeshStandardMaterial({ color: 0x6b4f35 }), columnar.length);
+    const mm = new THREE.Matrix4();
+    columnar.forEach(([x, z, sc], i) => {
+      mm.compose(new THREE.Vector3(x, 0.8, z), new THREE.Quaternion(), new THREE.Vector3(1, 1, 1)); tm.setMatrixAt(i, mm);
+      mm.compose(new THREE.Vector3(x, 1.5 + 4.5 * sc, z), new THREE.Quaternion(), new THREE.Vector3(sc, sc, sc)); cm.setMatrixAt(i, mm);
+    });
+    cm.castShadow = tm.castShadow = true;
+    trees.add(cm, tm);
+  }
   const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.18, 0.25, 2.4, 6), new THREE.MeshStandardMaterial({ color: 0x6b4f35 }), spots.length);
   const crown = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(2.2, 1), new THREE.MeshStandardMaterial({ color: 0x4f7d3a, roughness: 1, flatShading: true }), spots.length);
   const m4 = new THREE.Matrix4();

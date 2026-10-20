@@ -667,11 +667,11 @@ function stage(out, R) {
 
 function infirmary(out, R) {
   const { x0, x1, z0, z1 } = R;
-  const n = Math.min(3, Math.floor((x1 - x0 - 1) / 1.4));
-  for (let i = 0; i < n; i++) {
-    const x = x1 - 0.8 - i * 1.4;
-    out.push({ t: "bed", x, z: z0 + 1.1, rot: Math.PI / 2 });
-    out.push({ t: "curtain", x: x - 0.7, z: z0 + 1.1, rot: 0 });
+  // ベッドは2床：東西に長い向きで、頭を東の壁にくっつけて南北にならべる（あいだと南にカーテン）
+  for (let i = 0; i < 2; i++) {
+    const z = z0 + 0.75 + i * 1.35;
+    out.push({ t: "bed", x: x1 - 1.0, z, rot: Math.PI });
+    out.push({ t: "curtain", x: x1 - 1.0, z: z + 0.67, rot: Math.PI / 2 });
   }
   out.push({ t: "officeDesk", x: x0 + 0.6, z: z1 - 1.0, rot: 0 });
   out.push({ t: "officeChair", x: x0 + 1.3, z: z1 - 1.0, rot: 0 });

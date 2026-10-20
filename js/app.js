@@ -355,6 +355,34 @@ function cellsToRects(set) {
 const matPlain = new THREE.MeshStandardMaterial({ color: 0xece6d8, roughness: 0.9, side: THREE.DoubleSide });
 const matParapet = new THREE.MeshStandardMaterial({ color: 0xd9d3c5, roughness: 0.9, side: THREE.DoubleSide });
 const matRoof = new THREE.MeshStandardMaterial({ map: texRoofTop, color: 0xffffff, roughness: 0.95 });
+const matRoofDark = new THREE.MeshStandardMaterial({ map: texRoofTop, color: 0x5a5d60, roughness: 0.9 });
+
+// 太陽光パネル（屋上の長方形の中に、南向きに少し傾けてならべる）
+const texSolar = canvasTex(64, 96, (g, w, h) => {
+  g.fillStyle = "#1d2f5c"; g.fillRect(0, 0, w, h);
+  g.strokeStyle = "#7f93b8"; g.lineWidth = 1;
+  for (let x = 0; x <= w; x += 16) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+  for (let y = 0; y <= h; y += 16) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+  g.strokeStyle = "#c9ced6"; g.lineWidth = 3; g.strokeRect(0, 0, w, h);
+}, false);
+const panelGeo = new THREE.BoxGeometry(1.0, 0.05, 1.6);
+const panelMat = new THREE.MeshStandardMaterial({ map: texSolar, roughness: 0.35, metalness: 0.4 });
+function solarPanels(rects, y) {
+  const spots = [];
+  for (const rc of rects) {
+    const w = rc.x1 - rc.x0, d = rc.z1 - rc.z0;
+    if (w < 6 || d < 4.5) continue;
+    for (let z = rc.z0 + 1.6; z <= rc.z1 - 1.6; z += 2.2) {
+      for (let x = rc.x0 + 1.2; x <= rc.x1 - 1.2; x += 1.05) spots.push([x, z]);
+    }
+  }
+  const im = new THREE.InstancedMesh(panelGeo, panelMat, Math.max(1, spots.length));
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.17, 0, 0));
+  spots.forEach(([x, z], i) => { m4.compose(new THREE.Vector3(x, y + 0.35, z), q, new THREE.Vector3(1, 1, 1)); im.setMatrixAt(i, m4); });
+  im.count = spots.length;
+  im.castShadow = true;
+  return im;
+}
 const matSlab = new THREE.MeshStandardMaterial({ color: 0xeeebe4, roughness: 0.95 });
 const wallMat = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.82, metalness: 0.0 });
 const MAT_WALL = {
@@ -398,16 +426,30 @@ for (const f of [1, 2, 3]) {
     if (f === 3 || !OCC[f + 1].has(k)) roofCells.add(k);
   }
   const roof = new THREE.Group();
-  const roofGeos = cellsToRects(roofCells).map((r) => {
-    const rc = rectOf(r);
-    const g = new THREE.BoxGeometry(rc.x1 - rc.x0, 0.3, rc.z1 - rc.z0);
-    g.translate((rc.x0 + rc.x1) / 2, base(f) + FH + 0.15, (rc.z0 + rc.z1) / 2);
-    return g;
-  });
-  if (roofGeos.length) {
-    const rm = new THREE.Mesh(mergeGeometries(roofGeos), matRoof);
+  // 屋根の種類：中央棟は黒っぽい屋根、図書室の棟は寄棟の屋根（別に作る）、ほかは明るい灰色
+  const byKind = { dark: new Set(), light: new Set() };
+  for (const k of [...roofCells]) {
+    const [c, r] = k.split(",").map(Number);
+    if (f === 3 && OCC[f].get(k) === "high") { roofCells.delete(k); continue; }
+    // 航空写真では中央棟の北半分だけが黒っぽい屋根
+    byKind[c >= 33 && c <= 41 && r <= 26 ? "dark" : "light"].add(k);
+  }
+  for (const [kind, set] of Object.entries(byKind)) {
+    const rects = cellsToRects(set);
+    if (!rects.length) continue;
+    const geos = rects.map((r) => {
+      const rc = rectOf(r);
+      const g = new THREE.BoxGeometry(rc.x1 - rc.x0, 0.3, rc.z1 - rc.z0);
+      g.translate((rc.x0 + rc.x1) / 2, base(f) + FH + 0.15, (rc.z0 + rc.z1) / 2);
+      return g;
+    });
+    const rm = new THREE.Mesh(mergeGeometries(geos), kind === "dark" ? matRoofDark : matRoof);
     rm.receiveShadow = true; rm.castShadow = true;
     roof.add(rm);
+    // 1号館・2号館・3号館の屋上には太陽光パネルがある
+    if (f === 3 && kind === "light") roof.add(solarPanels(rects.map(rectOf), base(f) + FH + 0.3));
+  }
+  if (roofCells.size) {
     // パラペット（屋上のふち）
     const roofMap = new Map([...roofCells].map((k) => [k, "p"]));
     const psegs = boundarySegments(roofMap).filter((s) => {
@@ -438,26 +480,58 @@ for (const f of [1, 2, 3]) {
   buildingGroup.add(slab);
 }
 
-// 3階にある卓球場・放送ブースの床だけは追加
-// 体育館の屋根（切妻）
-const gymRect = rectOf({ c0: 7, r0: 1, c1: 26, r1: 38 });
+// 図書室の棟のピンク色の寄棟屋根
+{
+  const rc = rectOf({ c0: 9, r0: 44, c1: 22, r1: 56 });
+  const ov = 0.5, y = 3 * FH, rise = 3.2;
+  const x0 = rc.x0 - ov, x1 = rc.x1 + ov, z0 = rc.z0 - ov, z1 = rc.z1 + ov;
+  const h = (z1 - z0) / 2, zc = (z0 + z1) / 2;
+  const v = [
+    [x0, y, z0], [x1, y, z0], [x1, y, z1], [x0, y, z1],
+    [x0 + h, y + rise, zc], [x1 - h, y + rise, zc],
+  ];
+  const faces = [[0, 4, 5], [0, 5, 1], [1, 5, 2], [2, 5, 4], [2, 4, 3], [3, 4, 0]];
+  const pos = [];
+  for (const fc of faces) for (const i of fc) pos.push(...v[i]);
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  geo.computeVertexNormals();
+  const hip = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xd4917e, roughness: 0.75, side: THREE.DoubleSide }));
+  hip.castShadow = hip.receiveShadow = true;
+  layers.roofs[3].add(hip);
+}
+
+// 中央棟の屋上の設備（白い箱）
+for (const [c, r] of [[36, 15], [36, 30]]) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(3, 1.6, 3), new THREE.MeshStandardMaterial({ color: 0xf2f2ee }));
+  m.position.set(X(c), 3 * FH + 1.1, Z(r));
+  m.castShadow = true;
+  layers.roofs[3].add(m);
+}
+
+// 体育館の屋根：真ん中は茶色い金属の切妻屋根、北の端（ステージ側）と南の端（卓球場の上）は平らな屋根
+const gymRect = rectOf({ c0: 7, r0: 6, c1: 26, r1: 31 });
 const gymRoof = (() => {
   const g = new THREE.Group();
-  const y0 = 3 * FH, rise = 2.6, ov = 0.6;
+  const y0 = 3 * FH, rise = 1.8, ov = 0.6;
   const w = gymRect.x1 - gymRect.x0, d = gymRect.z1 - gymRect.z0;
   const cx = (gymRect.x0 + gymRect.x1) / 2, cz = (gymRect.z0 + gymRect.z1) / 2;
   const half = w / 2 + ov;
   const slope = Math.hypot(half, rise);
   const ang = Math.atan2(rise, half);
-  const roofMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, metalness: 0.2 });
-  const ribTex = canvasTex(64, 64, (c, W2, H2) => {
-    c.fillStyle = "#9fb0bc"; c.fillRect(0, 0, W2, H2);
-    c.fillStyle = "#7f909c"; for (let i = 0; i < 4; i++) c.fillRect(0, i * 16, W2, 3);
+  const ribTex = canvasTex(256, 64, (c, W2, H2) => {
+    c.fillStyle = "#8f8276"; c.fillRect(0, 0, W2, H2);
+    c.fillStyle = "#6e645b"; for (let i = 0; i < 4; i++) c.fillRect(0, i * 16, W2, 3);
+    // さびの筋
+    for (let i = 0; i < 40; i++) {
+      c.fillStyle = `rgba(${150 + Math.random() * 40},${80 + Math.random() * 30},50,${Math.random() * 0.25})`;
+      c.fillRect(Math.random() * W2, 0, 2 + Math.random() * 6, H2);
+    }
   });
   ribTex.repeat.set(1, d / 1.2);
-  roofMat.map = ribTex;
+  const roofMat = new THREE.MeshStandardMaterial({ map: ribTex, roughness: 0.6, metalness: 0.25 });
   for (const side of [-1, 1]) {
-    const p = new THREE.Mesh(new THREE.BoxGeometry(slope, 0.25, d + ov * 2), roofMat);
+    const p = new THREE.Mesh(new THREE.BoxGeometry(slope, 0.25, d + ov), roofMat);
     p.position.set(cx + side * half / 2, y0 + rise / 2, cz);
     p.rotation.z = -side * ang;
     p.castShadow = true; p.receiveShadow = true;
@@ -472,6 +546,17 @@ const gymRoof = (() => {
     m.castShadow = true;
     g.add(m);
   }
+  // 平らな部分
+  const flat = (r0, r1, color) => {
+    const rc = rectOf({ c0: 7, r0, c1: 26, r1 });
+    const m = new THREE.Mesh(new THREE.BoxGeometry(rc.x1 - rc.x0, 0.3, rc.z1 - rc.z0), new THREE.MeshStandardMaterial({ map: texRoofTop, color, roughness: 0.9 }));
+    m.position.set((rc.x0 + rc.x1) / 2, y0 + 0.15, (rc.z0 + rc.z1) / 2);
+    m.castShadow = m.receiveShadow = true;
+    g.add(m);
+    return rc;
+  };
+  flat(1, 5, 0xb97a45);
+  g.add(solarPanels([flat(32, 38, 0x8c8f92)], y0 + 0.3));
   return g;
 })();
 buildingGroup.add(gymRoof);
@@ -483,13 +568,43 @@ ground.position.y = -0.25;
 ground.receiveShadow = true;
 scene.add(ground);
 
-const bb = { x0: X(4), x1: X(70), z0: Z(-2), z1: Z(74) };
+// 学校の敷地（アスファルト）
+const bb = { x0: -76, x1: 62, z0: -50, z1: 52 };
 texPaving.repeat.set((bb.x1 - bb.x0) / 4, (bb.z1 - bb.z0) / 4);
-const paving = new THREE.Mesh(new THREE.PlaneGeometry(bb.x1 - bb.x0, bb.z1 - bb.z0), new THREE.MeshStandardMaterial({ map: texPaving, roughness: 1 }));
+const paving = new THREE.Mesh(new THREE.PlaneGeometry(bb.x1 - bb.x0, bb.z1 - bb.z0), new THREE.MeshStandardMaterial({ map: texPaving, color: 0xa9a7a1, roughness: 1 }));
 paving.rotation.x = -Math.PI / 2;
 paving.position.set((bb.x0 + bb.x1) / 2, -0.2, (bb.z0 + bb.z1) / 2);
 paving.receiveShadow = true;
 scene.add(paving);
+
+// 体育館と校舎のあいだのピンク色の舗装、1号館と2号館のあいだの中庭
+const outdoor = new THREE.Group();
+scene.add(outdoor);
+{
+  const flatRect = (x0, x1, z0, z1, mat, y) => {
+    const m = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), mat);
+    m.rotation.x = -Math.PI / 2;
+    m.position.set((x0 + x1) / 2, y, (z0 + z1) / 2);
+    m.receiveShadow = true;
+    outdoor.add(m);
+  };
+  const pinkTex = texPaving.clone(); pinkTex.needsUpdate = true; pinkTex.repeat.set(8, 8);
+  const pink = new THREE.MeshStandardMaterial({ map: pinkTex, color: 0xe2a993, roughness: 1 });
+  flatRect(-13.5, -4.5, -19, 10, pink, -0.19);
+  flatRect(-34, -4.5, 4.5, 10, pink, -0.19);
+  const court = new THREE.MeshStandardMaterial({ color: 0x7c7b76, roughness: 1 });
+  flatRect(X(42), X(66), Z(32), Z(47), court, -0.19);
+  const walk = new THREE.MeshStandardMaterial({ color: 0xe9e6de, roughness: 1 });
+  flatRect(28.5, 31, Z(32), Z(47), walk, -0.185);
+  flatRect(X(42), X(66), 3, 5, walk, -0.185);
+  const hedge = new THREE.MeshStandardMaterial({ color: 0x4f7d3a, roughness: 1 });
+  for (const [x0, x1, z0, z1] of [[11, 27, -2.5, 1.5], [33, 44, -2, 1.5], [11, 26, 7, 12], [33, 43.5, 7.5, 12.5]]) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.9, z1 - z0), hedge);
+    m.position.set((x0 + x1) / 2, 0.25, (z0 + z1) / 2);
+    m.castShadow = m.receiveShadow = true;
+    outdoor.add(m);
+  }
+}
 
 // 光庭の芝生
 for (const [c0, r0, c1, r1] of OPEN_COURTS) {
@@ -518,17 +633,24 @@ scene.add(trees);
     }
     return site.isFree(x, z);
   };
-  for (let i = 0; i < 400 && spots.length < 90; i++) {
+  for (let i = 0, added = 0; i < 600 && added < 90; i++) {
     const side = Math.floor(rnd() * 4);
     let x, z;
     if (side === 0) { x = bb.x0 + rnd() * (bb.x1 - bb.x0); z = bb.z0 - 4 - rnd() * 14; }
     else if (side === 1) { x = bb.x0 + rnd() * (bb.x1 - bb.x0); z = bb.z1 + 4 + rnd() * 14; }
     else if (side === 2) { x = bb.x0 - 4 - rnd() * 14; z = bb.z0 + rnd() * (bb.z1 - bb.z0); }
     else { x = bb.x1 + 4 + rnd() * 14; z = bb.z0 + rnd() * (bb.z1 - bb.z0); }
-    if (ok(x, z)) spots.push([x, z, 0.8 + rnd() * 0.6]);
+    if (ok(x, z)) { spots.push([x, z, 0.8 + rnd() * 0.6]); added++; }
   }
   // 中庭の木
   spots.push([X(53.5), Z(23.5), 0.6]);
+  // グラウンド北東の道路ぞいの並木（2列）
+  {
+    const [[ax, az], [bx2, bz2]] = SITE.treeRow;
+    const L = Math.hypot(bx2 - ax, bz2 - az), ux = (bx2 - ax) / L, uz = (bz2 - az) / L;
+    const nx = uz, nz = -ux; // 北東向き
+    for (const off of [3, 13]) for (let t = 0; t < L; t += 7) spots.push([ax + ux * t + nx * off, az + uz * t + nz * off, 0.7]);
+  }
   const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.18, 0.25, 2.4, 6), new THREE.MeshStandardMaterial({ color: 0x6b4f35 }), spots.length);
   const crown = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(2.2, 1), new THREE.MeshStandardMaterial({ color: 0x4f7d3a, roughness: 1, flatShading: true }), spots.length);
   const m4 = new THREE.Matrix4();
@@ -638,15 +760,14 @@ for (const w of WINGS) {
 }
 // まわりの施設のラベル
 for (const it of SITE_INFO) {
-  const cfg = SITE[it.key];
-  if (!cfg) continue;
+  if (!SITE[it.key]) continue;
   const div = document.createElement("div");
   div.className = "wing-label site";
   div.textContent = it.name;
   div.addEventListener("pointerdown", (e) => e.stopPropagation());
   div.addEventListener("click", (e) => { e.stopPropagation(); showSite(it); });
   const obj = new CSS2DObject(div);
-  obj.position.set(cfg.x, 5, cfg.z);
+  obj.position.set(it.x, 5, it.z);
   wingLabels.add(obj);
 }
 scene.add(wingLabels);
@@ -694,7 +815,7 @@ function setFloor(f, { keepCamera = false } = {}) {
   applyMode();
   useCamera();
   if (!keepCamera) {
-    if (f === 0) flyTo(new THREE.Vector3(80, 95, 135), new THREE.Vector3(18, 0, 8));
+    if (f === 0) flyTo(new THREE.Vector3(75, 120, 120), new THREE.Vector3(0, 0, -35));
     else if (state.view === "3d") flyTo(new THREE.Vector3(10, base(f) + 85, 70), new THREE.Vector3(0, base(f), 4));
     else fit2d();
   }
@@ -810,7 +931,6 @@ function showWing(w) {
 }
 
 function showSite(it) {
-  const cfg = SITE[it.key];
   panelBody.innerHTML = `
     <div class="chip" style="--c:#cfe3c4">屋外の施設</div>
     <h2>${it.name}</h2>
@@ -818,7 +938,7 @@ function showSite(it) {
     <p class="muted">${SITE_NOTE}</p>
   `;
   openPanel();
-  flyTo(new THREE.Vector3(cfg.x + 25, 40, cfg.z + 45), new THREE.Vector3(cfg.x, 0, cfg.z));
+  flyTo(new THREE.Vector3(it.x + 30, 50, it.z + 55), new THREE.Vector3(it.x, 0, it.z));
 }
 
 function openPanel() { panel.classList.add("open"); }
@@ -916,7 +1036,7 @@ const alignPanel = document.getElementById("align-panel");
 const aerialMsg = document.getElementById("aerial-msg");
 function setAerial(on) {
   aerial.holder.visible = on;
-  ground.visible = paving.visible = trees.visible = site.group.visible = !on;
+  ground.visible = paving.visible = trees.visible = site.group.visible = outdoor.visible = !on;
   aerialBtn.classList.toggle("active", on);
   document.body.classList.toggle("aerial-on", on);
   document.getElementById("aerial-credit").hidden = !on;

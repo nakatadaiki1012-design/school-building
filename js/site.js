@@ -721,7 +721,8 @@ function buildHouses(SITE) {
       if (dist > R) continue;
       if (nearBoundary(x, z)) continue;
       if (avoid.some(([x0, x1, z0, z1]) => x > x0 && x < x1 && z > z0 && z < z1)) continue;
-      if (others.some((r) => r.pts.some((p, k) => k + 1 < r.pts.length && distSeg(x, z, p[0], p[1], r.pts[k + 1][0], r.pts[k + 1][1]) < r.w / 2 + 5))) continue;
+      // 家の角が道路や歩道にかからないよう、家の大きさの半分（約5〜7m）＋歩道の分だけ離す
+      if (others.some((r) => r.pts.some((p, k) => k + 1 < r.pts.length && distSeg(x, z, p[0], p[1], r.pts[k + 1][0], r.pts[k + 1][1]) < r.w / 2 + 8.5))) continue;
       if (rnd() < 0.1) continue; // ところどころ空き地や駐車場
       spots.push({ x, z, dist, ang: -ang + (rnd() < 0.25 ? Math.PI / 2 : 0) + (rnd() - 0.5) * 0.15, w: 6.5 + rnd() * 3.5, d: 7 + rnd() * 3, h: 4.8 + rnd() * 2, roof: rnd() });
     }

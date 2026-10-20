@@ -3,7 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ROOMS_RAW } from "./data.js";
-import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY, ROOM_EDITS, EXTRA_ROOMS, ROOM_SPLITS, ROOM_STYLE } from "./info.js";
+import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY, ROOM_EDITS, EXTRA_ROOMS, ROOM_SPLITS, ROOM_STYLE, WALL_OPENINGS } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
 import { buildTrees, buildColumnTrees, hedgeBox, hedgeMass, matHedge, bakeStatic } from "./nature.js";
 import { buildSite, createAerial, flatPoly, polyBounds, inPoly, buildTerrain, setSlope } from "./site.js";
@@ -600,6 +600,7 @@ for (const f of [1, 2, 3]) {
   // 外壁の色分け（info.js の FACADE で設定）。棟の境目で壁を分けるため、棟の名前もつけておく
   const facade = (c, r, d, style) => {
     const b = blockAtCell(c, r).id;
+    if (WALL_OPENINGS.some(([ff, ...rc]) => ff === f && inCells(c, r, rc))) return "open|" + b;
     if (style === "gym") return "gym" + f + "|" + b;
     if (style === "high") return "high|" + b;
     if (OPEN_COURTS.some((rc) => inCells(c + d.dc, r + d.dr, rc))) return "school|" + b; // 光庭のまわりは白
@@ -612,6 +613,7 @@ for (const f of [1, 2, 3]) {
   for (const sg of segs) {
     const [st, b] = sg.style.split("|");
     sg.style = st;
+    if (st === "open") continue;
     (segsByBlock[b] ||= []).push(sg);
   }
   const ext = new THREE.Group();

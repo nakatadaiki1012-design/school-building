@@ -315,6 +315,17 @@ function buildPool(cfg) {
   water.rotation.x = -Math.PI / 2;
   water.position.set((wx0 + wx1) / 2, 0.82, (wz0 + wz1) / 2);
   g.add(water);
+  // コースロープ（青と白の浮き）と、はしの飛び込み台
+  const L = wz1 - wz0, W = wx1 - wx0;
+  const ropeTex = canvasTex(8, 64, (c, w, h) => { for (let i = 0; i < 16; i++) { c.fillStyle = i % 4 === 0 ? "#f2f2f2" : i % 2 ? "#2a62c9" : "#d84a3a"; c.fillRect(0, i * 4, w, 4); } });
+  ropeTex.wrapS = ropeTex.wrapT = THREE.RepeatWrapping; ropeTex.repeat.set(1, L / 4);
+  const ropeMat = new THREE.MeshStandardMaterial({ map: ropeTex, roughness: 0.6 });
+  const ropes = [];
+  for (let i = 1; i < lanes; i++) { const r = new THREE.CylinderGeometry(0.06, 0.06, L - 0.4, 6); r.rotateX(Math.PI / 2); r.translate(wx0 + (W / lanes) * i, 0.86, (wz0 + wz1) / 2); ropes.push(r); }
+  g.add(new THREE.Mesh(mergeGeometries(ropes), ropeMat));
+  const blocks = [];
+  for (let i = 0; i < lanes; i++) { const b = new THREE.BoxGeometry(0.5, 0.45, 0.55); b.translate(wx0 + (W / lanes) * (i + 0.5), 0.8 + 0.22, wz0 - 0.4); blocks.push(b); }
+  const sb = new THREE.Mesh(mergeGeometries(blocks), M(0xf2f2ee)); sb.castShadow = true; g.add(sb);
   const fg = new THREE.Group();
   fenceLine(fg, x0, z0, x1, z0, 2.2); fenceLine(fg, x1, z0, x1, z1, 2.2); fenceLine(fg, x0, z1, x0, z0, 2.2);
   fg.position.y = 0.8;
@@ -325,6 +336,18 @@ function buildPool(cfg) {
   house.position.set((hx0 + hx1) / 2, 1.5, (hz0 + hz1) / 2);
   house.castShadow = true; house.receiveShadow = true;
   g.add(house);
+  // 建物の高い位置の横長の窓と、扉（4面に）
+  {
+    const win = M(0x3d5468, { roughness: 0.3, metalness: 0.3 }), parts = [], doors = [];
+    const cx = (hx0 + hx1) / 2, cz = (hz0 + hz1) / 2, hw = (hx1 - hx0) / 2, hd = (hz1 - hz0) / 2;
+    for (const s of [-1, 1]) {
+      for (let x = hx0 + 1.5; x < hx1 - 1.5; x += 3) { const b = new THREE.BoxGeometry(1.8, 0.5, 0.06); b.translate(x, 2.5, cz + s * (hd + 0.01)); parts.push(b); }
+      for (let z = hz0 + 1.5; z < hz1 - 1.5; z += 3) { const b = new THREE.BoxGeometry(0.06, 0.5, 1.8); b.translate(cx + s * (hw + 0.01), 2.5, z); parts.push(b); }
+    }
+    const d1 = new THREE.BoxGeometry(1.0, 2.0, 0.06); d1.translate(cx, 0.8, hz1 + 0.01); doors.push(d1);
+    const d2 = new THREE.BoxGeometry(1.0, 2.0, 0.06); d2.translate(cx, 0.8, hz0 - 0.01); doors.push(d2);
+    g.add(new THREE.Mesh(mergeGeometries(parts), win), new THREE.Mesh(mergeGeometries(doors), M(0x8a9aa6, { metalness: 0.4 })));
+  }
   const roof = new THREE.Mesh(new THREE.BoxGeometry(hx1 - hx0 + 0.3, 0.25, hz1 - hz0 + 0.3), M(0x9fd1b0));
   roof.position.set((hx0 + hx1) / 2, 3.3, (hz0 + hz1) / 2);
   roof.castShadow = true;
@@ -333,6 +356,49 @@ function buildPool(cfg) {
 }
 
 // ---------- 駐輪場（赤い屋根の細長い建物） ----------
+// 自転車（ママチャリ）を InstancedMesh でまとめて置く。spots: [x, y, z, 向き(ラジアン)]。前後のタイヤは向きの方向に ±0.5m
+const BIKE_COLORS = [0x2b2b2b, 0x1f4e8a, 0xb7b7b7, 0x8a1f1f, 0xf2f2f2, 0x2f6b3a, 0xc9b98f];
+const bikeFrameGeo = (() => {
+  const t = (len, x, y, rz) => { const g = new THREE.CylinderGeometry(0.022, 0.022, len, 5); g.rotateZ(rz); g.translate(x, y, 0); return g; };
+  return mergeGeometries([
+    t(0.62, 0.05, 0.42, -1.05),  // 下パイプ（ハンドルの下からペダルへ）
+    t(0.5, -0.17, 0.55, 0.35),   // サドルの下のパイプ
+    t(0.55, -0.27, 0.33, 1.1),   // うしろのパイプ
+    t(0.52, 0.45, 0.55, 0.25),   // 前のフォーク
+    t(0.5, -0.3, 0.6, 1.25),     // 荷台への支え
+  ]);
+})();
+const bikePartsGeo = (() => {
+  const b = (w, h, d, x, y, z = 0) => { const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y, z); return g; };
+  return mergeGeometries([
+    b(0.24, 0.05, 0.12, -0.25, 0.82),          // サドル
+    b(0.04, 0.04, 0.55, 0.38, 0.95),           // ハンドル
+    b(0.3, 0.22, 0.34, 0.62, 0.86),            // 前かご
+    b(0.32, 0.03, 0.14, -0.45, 0.72),          // うしろの荷台
+    b(0.9, 0.02, 0.06, 0, 0.36, 0.04),         // チェーンのカバー
+  ]);
+})();
+const bikeWheelGeo = new THREE.TorusGeometry(0.33, 0.03, 5, 14);
+const bikeWheelMat = M(0x222222), bikeFrameMat = M(0xffffff, { metalness: 0.3, roughness: 0.5 }), bikePartsMat = M(0x55585c, { roughness: 0.6, metalness: 0.3 });
+function bikeInstances(spots) {
+  const g = new THREE.Group();
+  const wheels = new THREE.InstancedMesh(bikeWheelGeo, bikeWheelMat, spots.length * 2);
+  const frames = new THREE.InstancedMesh(bikeFrameGeo, bikeFrameMat, spots.length);
+  const parts = new THREE.InstancedMesh(bikePartsGeo, bikePartsMat, spots.length);
+  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), up = new THREE.Vector3(0, 1, 0), one = new THREE.Vector3(1, 1, 1), col = new THREE.Color();
+  spots.forEach(([x, y, z, a], i) => {
+    q.setFromAxisAngle(up, a);
+    const ux = Math.cos(a), uz = -Math.sin(a);
+    for (const s of [-1, 1]) { m4.compose(new THREE.Vector3(x + ux * 0.5 * s, y + 0.33, z + uz * 0.5 * s), q, one); wheels.setMatrixAt(i * 2 + (s > 0 ? 1 : 0), m4); }
+    m4.compose(new THREE.Vector3(x, y, z), q, one);
+    frames.setMatrixAt(i, m4); parts.setMatrixAt(i, m4);
+    frames.setColorAt(i, col.setHex(BIKE_COLORS[(i * 7) % BIKE_COLORS.length]));
+  });
+  wheels.castShadow = frames.castShadow = parts.castShadow = true;
+  g.add(wheels, frames, parts);
+  return g;
+}
+
 // 2階建ての駐輪場（1階と2階に自転車。外階段つき）
 function buildBikes2({ x0, x1, z0, z1, roof = 0x9ea3a6 }) {
   const g = new THREE.Group();
@@ -348,14 +414,10 @@ function buildBikes2({ x0, x1, z0, z1, roof = 0x9ea3a6 }) {
   for (const z of [z0 + 0.1, z1 - 0.1]) { const r = new THREE.Mesh(new THREE.BoxGeometry(w, 1.0, 0.08), conc); r.position.set(cx, 3.35, z); g.add(r); }
   // 自転車（各階2列）。自転車は東西の向きにとめてある
   const n = Math.floor((d - 1) / 0.6);
-  const wheels = new THREE.InstancedMesh(new THREE.TorusGeometry(0.33, 0.035, 6, 16), M(0x222222), n * 8);
-  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion();
-  let k = 0;
-  for (const y of [0.15, 3.0]) for (const xc of [cx - w / 4, cx + w / 4]) for (let i = 0; i < n; i++) for (const dx of [-0.5, 0.5]) {
-    m4.compose(new THREE.Vector3(xc + dx, y + 0.33, z0 + 0.8 + i * 0.6), q, new THREE.Vector3(1, 1, 1)); wheels.setMatrixAt(k++, m4);
-  }
-  g.add(wheels);
+  const spots = [];
+  for (const y of [0.15, 3.0]) for (const xc of [cx - w / 4, cx + w / 4]) for (let i = 0; i < n; i++) spots.push([xc, y, z0 + 0.8 + i * 0.6, (i % 2) * Math.PI]);
   g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  g.add(bikeInstances(spots));
   g.position.y = -0.2;
   return g;
 }
@@ -387,27 +449,10 @@ function buildBikes({ len = 30, depth = 4.6, roof: roofColor = 0x9ea3a6, backWal
   floor.position.y = -0.14;
   floor.receiveShadow = true;
   g.add(floor);
-  // 自転車
-  const n = Math.floor(len / 0.6);
-  const wheelGeo = new THREE.TorusGeometry(0.33, 0.035, 6, 16);
-  const frameGeo = new THREE.BoxGeometry(0.04, 0.05, 1.0);
-  const colors = [0x2b2b2b, 0x1f4e8a, 0xb7b7b7, 0x8a1f1f, 0xf2f2f2, 0x2f6b3a];
-  const wheels = new THREE.InstancedMesh(wheelGeo, M(0x222222), n * 2);
-  const frames = new THREE.InstancedMesh(frameGeo, M(0xffffff, { metalness: 0.3 }), n);
-  const m4 = new THREE.Matrix4(), q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.PI / 2, 0));
-  let wi = 0;
-  for (let i = 0; i < n; i++) {
-    const x = -len / 2 + 0.3 + i * 0.6;
-    for (const dz of [-0.5, 0.5]) {
-      m4.compose(new THREE.Vector3(x, 0.33, dz), q, new THREE.Vector3(1, 1, 1));
-      wheels.setMatrixAt(wi++, m4);
-    }
-    m4.compose(new THREE.Vector3(x, 0.62, 0), new THREE.Quaternion(), new THREE.Vector3(1, 1, 1));
-    frames.setMatrixAt(i, m4);
-    frames.setColorAt(i, new THREE.Color(colors[(i * 7) % colors.length]));
-  }
-  wheels.castShadow = frames.castShadow = true;
-  g.add(wheels, frames);
+  // 自転車（屋根の奥行きの向きにとめる）
+  const n = Math.floor(len / 0.6), spots = [];
+  for (let i = 0; i < n; i++) spots.push([-len / 2 + 0.3 + i * 0.6, 0, 0, Math.PI / 2 + (i % 3 === 0 ? Math.PI : 0)]);
+  g.add(bikeInstances(spots));
   return g;
 }
 

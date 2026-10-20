@@ -395,8 +395,9 @@ export const ROOM_EDITS = [
   { name: "玄関", floor: 2, set: { c0: 14, r0: 35 } },
 ];
 export const EXTRA_ROOMS = [
-  { id: "F2-PR1", name: "練習室", floor: 2, c0: 33, r0: 11, c1: 35, r1: 12 },
-  { id: "F2-PR2", name: "練習室", floor: 2, c0: 37, r0: 11, c1: 39, r1: 12 },
+  // 音楽室の北の2つの練習室：壁1枚をはさんでくっついている
+  { id: "F2-PR1", name: "練習室", floor: 2, c0: 33, r0: 11, c1: 35.5, r1: 12 },
+  { id: "F2-PR2", name: "練習室", floor: 2, c0: 36.5, r0: 11, c1: 39, r1: 12 },
 ];
 
 // 1つの部屋を横（東西）にいくつかに分ける（北側の部室は8部屋）
@@ -409,6 +410,8 @@ export const ROOM_STYLE = [
   { name: "昇降口", floor: 1, r0: 47, open: ["n", "s"] },               // 南側の昇降口
   // 体育館のステージ：体育館の側（南）は壁なしで、高くなった舞台
   { name: "ステージ", floor: 2, open: ["s"] },
+  // ラウンジはみんなが使うコモンスペース：廊下側（南）は壁なしで、入り口をふさがない
+  { name: "ラウンジ", floor: 2, open: ["s"] },
   // STUDY HALL：階段側（南）以外はガラス張り
   { name: "STUDY HALL", floor: 2, glass: ["n", "e", "w"] },
   { name: "ホール", floor: 1, open: ["n", "s", "e", "w"], vending: "w" }, // 南の昇降口のとなりのホール：壁なし、西の壁ぎわに自販機

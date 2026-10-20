@@ -388,11 +388,11 @@ function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back
   out.push({ t: "bulletin", x: x1 + 0.12, z: (z0 + z1) / 2, rot: 0 });
   out.push({ t: "laptop", x: x0 + 1.35, z: (z0 + z1) / 2 + 0.2, rot: 0, y: 0.18 });
   // 廊下側（北）の前と後ろの引き戸
-  // 前のドアは教壇（窓から壁までの段）にかからないよう、教壇のすぐうしろ
-  out.push({ t: "door", x: x0 + 2.2, z: z0 - 0.2, rot: 0 }); // 壁のまんなか
+  // 前のドアは少し前寄り（教壇に少しかかる）
+  out.push({ t: "door", x: x0 + 1.6, z: z0 - 0.2, rot: 0 }); // 壁のまんなか。教壇に少しかかる
   out.push({ t: "door", x: x1 - 1.2, z: z0 - 0.2, rot: 0 });
   // 2つのドアのあいだの、廊下側の窓
-  for (let x = x0 + 4.1; x < x1 - 2.9; x += 1.85) out.push({ t: "hallWindow", x, z: z0 - 0.2, rot: 0 });
+  for (let x = x0 + 3.5; x < x1 - 2.9; x += 1.85) out.push({ t: "hallWindow", x, z: z0 - 0.2, rot: 0 });
   // 窓側（南）のカーテン（柱のところにまとめてある）
   for (let x = x0 + 0.5; x < x1 - 0.3; x += 2.25) out.push({ t: "curtainPanel", x, z: z1 + 0.1, rot: 0 });
   const dx0 = x0 + 2.2, dx1 = x1 - 1.3 - (x1 - x0) * back;

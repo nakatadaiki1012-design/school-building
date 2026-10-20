@@ -600,9 +600,9 @@ function solarPanels(rects, y) {
 const texCorridor = (() => {
   const cv = document.createElement("canvas"); cv.width = cv.height = 256;
   const c = cv.getContext("2d");
-  c.fillStyle = "#d9ddd3"; c.fillRect(0, 0, 256, 256);
+  c.fillStyle = "#efe7d8"; c.fillRect(0, 0, 256, 256); // うすいベージュ
   for (let i = 0; i < 2500; i++) { c.fillStyle = `rgba(${Math.random() < 0.5 ? "255,255,255" : "90,100,90"},${Math.random() * 0.08})`; c.fillRect(Math.random() * 256, Math.random() * 256, 2, 2); }
-  c.fillStyle = "rgba(120,125,115,0.25)"; c.fillRect(0, 0, 256, 1.5); // 1.8m おきのつなぎ目
+  c.fillStyle = "rgba(150,135,110,0.18)"; c.fillRect(0, 0, 256, 1.5); // 1.8m おきのつなぎ目
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.anisotropy = 4;
   return t;
@@ -1389,7 +1389,7 @@ const styleOf = (r) => ROOM_STYLE.find((s) => s.name === r.name && s.floor === r
 const WALL_H = 2.45;
 const pickables = [];
 const matStairs = new THREE.MeshStandardMaterial({ color: 0xd9d6cf, roughness: 0.9 });
-const matPartition = new THREE.MeshStandardMaterial({ color: 0xfaf8f3, roughness: 0.9 });
+const matPartition = new THREE.MeshStandardMaterial({ color: 0xfbf6ea, roughness: 0.9 }); // 白（ほんの少しクリーム色）
 // ガラス張りの仕切り（STUDY HALL など）
 const matGlassWall = new THREE.MeshStandardMaterial({ color: 0x9cc4dc, roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
 const matGlassFrame = new THREE.MeshStandardMaterial({ color: 0x26282b, roughness: 0.5, metalness: 0.4 }); // 黒い枠（写真より）

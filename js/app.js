@@ -3,7 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ROOMS_RAW } from "./data.js";
-import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS } from "./info.js";
+import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
 import { buildSite, createAerial, flatPoly, polyBounds, inPoly } from "./site.js";
 
@@ -683,8 +683,10 @@ for (const f of [1, 2, 3]) {
   const slab = new THREE.Group();
   const slabSets = {};
   for (const [k, st] of OCC[f]) {
-    if (f === 3 && (st === "gym" || st === "high")) continue;
     const [c, r] = k.split(",").map(Number);
+    // 3階の体育館は吹き抜け。ギャラリー（細い通路）と卓球場などの部屋のところだけ床がある
+    if (f === 3 && st === "gym" && !GYM_GALLERY.some((g) => inCells(c, r, g)) && r < 33) continue;
+    if (f === 3 && st === "high") continue;
     (slabSets[blockAtCell(c, r).id] ||= new Set()).add(k);
   }
   for (const [bid, set] of Object.entries(slabSets)) {
@@ -697,6 +699,18 @@ for (const f of [1, 2, 3]) {
     const m = new THREE.Mesh(mergeGeometries(geos), matSlab);
     m.receiveShadow = true;
     inBlock(slab, blockById(bid)).add(m);
+  }
+  // 体育館3階のギャラリーの手すり（吹き抜け側）
+  if (f === 3) {
+    const g1 = new THREE.BoxGeometry(0.12, 1.1, Z(33) - Z(8));
+    g1.translate(X(25), base(3) + 0.55, (Z(8) + Z(33)) / 2);
+    const g2 = new THREE.BoxGeometry(X(25) - X(7), 1.1, 0.12);
+    g2.translate((X(7) + X(25)) / 2, base(3) + 0.55, Z(33));
+    const g3 = new THREE.BoxGeometry(X(25) - X(23), 1.1, 0.12);
+    g3.translate((X(23) + X(25)) / 2, base(3) + 0.55, Z(8));
+    const rail = new THREE.Mesh(mergeGeometries([g1, g2, g3]), matSlab);
+    rail.castShadow = true;
+    inBlock(slab, blockById("gym")).add(rail);
   }
   layers.slab[f] = slab;
   buildingGroup.add(slab);
@@ -906,9 +920,9 @@ scene.add(outdoor);
   const pink = new THREE.MeshStandardMaterial({ map: pinkTex, roughness: 0.95 });
   // 体育館と中央棟のあいだ、体育館の南、図書室の棟と中央棟のあいだ
   // （位置は航空写真で測った実際のメートル）
-  flatRect(-13.4, -4.95, -14.9, 10.1, pink, -0.19);
-  flatRect(-43.5, -4.95, 2.7, 10.4, pink, -0.19);
-  flatRect(-16.3, -4.95, 10.1, 33.0, pink, -0.19);
+  flatRect(-13.4, -4.95, -14.9, 10.4, pink, -0.19);
+  flatRect(-43.5, -13.4, 2.7, 10.4, pink, -0.19); // 重ならないように分ける
+  flatRect(-16.3, -4.95, 10.4, 33.0, pink, -0.19);
   const planter = new THREE.MeshStandardMaterial({ color: 0x4f7d3a, roughness: 1 });
   for (const [x, z] of [[-8.6, 20.5], [-7.8, 27]]) {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.8, 0.6, 20), planter);
@@ -922,10 +936,11 @@ scene.add(outdoor);
   // （真上からの航空写真で測った形）
   // 白い通路：西の入口から植え込みまでの東西の通路、植え込みの両はしにつながる南北の通路、東の端の通路
   const walk = new THREE.MeshStandardMaterial({ color: 0xe9e6de, roughness: 1 });
-  flatRect(10.3, 24.5, 0.2, 2.3, walk, -0.185);
-  flatRect(23.9, 26, -4.7, -1.5, walk, -0.185);
-  flatRect(23.9, 26, 2.5, 6.4, walk, -0.185);
-  flatRect(37.5, 49, -2.7, -0.6, walk, -0.185);
+  // 通路は舗装より1.5cm上に置く（同じ高さだと遠くから見たときにちらつく）
+  flatRect(10.3, 24.5, 0.2, 2.3, walk, -0.175);
+  flatRect(23.9, 26, -4.7, -1.5, walk, -0.175);
+  flatRect(23.9, 26, 2.5, 6.4, walk, -0.175);
+  flatRect(37.5, 49, -2.7, -0.6, walk, -0.175);
   // 生け垣（角の丸い植え込み）。高さ0.8m、上に低木をのせる
   const hedge = new THREE.MeshStandardMaterial({ color: 0x4f7d3a, roughness: 1 });
   const curb = new THREE.MeshStandardMaterial({ color: 0xd9d5cb, roughness: 1 });
@@ -1058,7 +1073,7 @@ scene.add(trees);
     const { from: [ax, az], to: [bx2, bz2], offsets, step } = SITE.treeRow;
     const L = Math.hypot(bx2 - ax, bz2 - az), ux = (bx2 - ax) / L, uz = (bz2 - az) / L;
     const nx = uz, nz = -ux;
-    for (const off of offsets) for (let t = 0; t < L; t += step) columnar.push([ax + ux * t + nx * off, az + uz * t + nz * off, 0.9 + ((t * 7) % 3) * 0.08]);
+    for (const off of offsets) for (let t = 0; t < L; t += step) if (site.isFree(ax + ux * t + nx * off, az + uz * t + nz * off)) columnar.push([ax + ux * t + nx * off, az + uz * t + nz * off, 0.9 + ((t * 7) % 3) * 0.08]);
   }
   // 体育館と校舎のあいだの広場の丸い植え込みの木
   spots.push([-8.6, 20.5, 0.75], [-7.8, 27, 0.75]);

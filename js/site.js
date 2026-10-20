@@ -203,6 +203,7 @@ function tent({ x, z, rot = 0, w = 5.4, d = 3.6 }) {
 }
 
 // ---------- テニスコート（砂のコート。1区画に2面） ----------
+let tennisCount = 0;
 function buildTennisArea({ w, d }) {
   const g = new THREE.Group();
   const S = 10;
@@ -227,7 +228,7 @@ function buildTennisArea({ w, d }) {
   });
   const p = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }));
   p.rotation.x = -Math.PI / 2;
-  p.position.y = -0.16;
+  p.position.y = -0.16 + (tennisCount++) * 0.01; // となりのコートと高さを少しずらす（ちらつき防止）
   p.receiveShadow = true;
   g.add(p);
   const netMat = M(0xf2f2f2);

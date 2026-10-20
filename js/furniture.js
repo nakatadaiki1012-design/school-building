@@ -211,7 +211,7 @@ const SHAPES = {
     [MAT.metal, merge(legs(0.38, 0.38, 0.4))],
   ],
   teacherDesk: [[MAT.darkWood, merge([b(0.6, 0.75, 1.2)])]],
-  podium: [[MAT.wood, merge([b(1.0, 0.18, 5.0)])]],
+  podium: [[MAT.wood, merge([b(1.0, 0.18, 4.4)])]],
   blackboard: [
     [MAT.board, merge([b(0.04, 1.2, 4.2, 0, 0.8)])],
     [MAT.darkWood, merge([b(0.1, 0.04, 4.3, 0.03, 0.78), b(0.06, 0.06, 4.3, 0, 2.0)])],
@@ -323,7 +323,8 @@ function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true } = {
   out.push({ t: "cleanLocker", x: x1 - 0.35, z: z0 + 0.45, rot: 0 });
   // 黒板の上の時計、左前（窓側の前）の大型の電子黒板、後ろの掲示板、教卓のパソコン
   out.push({ t: "clock", x: x0 + 0.08, z: (z0 + z1) / 2, rot: 0 });
-  if (eboard) out.push({ t: "eboard", x: x0 + 0.55, z: z1 - 0.95, rot: 0 });
+  // 電子黒板は教壇（段）の窓側のはしの外に置く
+  if (eboard) out.push({ t: "eboard", x: x0 + 0.5, z: Math.max((z0 + z1) / 2 + 2.2 + 0.9, z1 - 0.9), rot: 0 });
   out.push({ t: "bulletin", x: x1 + 0.12, z: (z0 + z1) / 2, rot: 0 });
   out.push({ t: "laptop", x: x0 + 1.35, z: (z0 + z1) / 2 + 0.2, rot: 0, y: 0.18 });
   // 廊下側（北）の前と後ろの引き戸

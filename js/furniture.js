@@ -314,6 +314,7 @@ const SHAPES = {
     return [[MAT.darkWood, merge([top])], [MAT.metal, merge(legs)]];
   })(),
   bench: [[MAT.wood, merge([b(0.4, 0.05, 1.6, 0, 0.42)])], [MAT.metal, merge([b(0.35, 0.42, 0.05, 0, 0, -0.7), b(0.35, 0.42, 0.05, 0, 0, 0.7)])]],
+  wallBench: [[MAT.darkWood, merge([b(0.5, 0.42, 1.6)])]], // 壁ぞいの作りつけの木のベンチ
   roundTable: [[MAT.white, merge([new THREE.CylinderGeometry(0.45, 0.45, 0.04, 16).translate(0, 0.72, 0)])], [MAT.metal, merge([new THREE.CylinderGeometry(0.04, 0.04, 0.72, 6).translate(0, 0.36, 0)])]],
   // 受水槽・電気室の機械
   tank: [[MAT.tank, merge([b(2.2, 2.0, 3.0)])], [MAT.metal, merge([b(0.3, 0.3, 0.3, 0, 2.0, 0.8)])]],
@@ -855,7 +856,19 @@ const LAYOUTS = [
   [/受水槽/, (o, R) => o.push({ t: "tank", x: (R.x0 + R.x1) / 2, z: (R.z0 + R.z1) / 2, rot: 0 })],
   [/電気室/, (o, R) => along(o, "panel", R.x0 + 0.35, R.z0 + 0.8, R.z1 - 0.8, 1.25, 0)],
   [/給湯室/, (o, R) => o.push({ t: "kitchen", x: R.x0 + 0.35, z: (R.z0 + R.z1) / 2, rot: 0 })],
-  [/ラウンジ|らくらくスペース|コミュニティルーム/, (o, R) => {
+  // ラウンジ：壁ぞいにL字の木のベンチ、まんなかに長いテーブル2つとベンチ（写真）
+  [/ラウンジ/, (o, R) => {
+    const { x0, x1, z0, z1 } = R;
+    along(o, "wallBench", x0 + 0.25, z0 + 0.4, z1 - 0.6, 1.6, 0);
+    alongX(o, "wallBench", z0 + 0.25, x0 + 0.8, x1 - 0.4, 1.6, Math.PI / 2);
+    const cx = (x0 + x1) / 2 + 0.2;
+    for (const f of [0.38, 0.72]) {
+      const z = z0 + (z1 - z0) * f;
+      o.push({ t: "table", x: cx, z, rot: 0 });
+      for (const s of [-1, 1]) o.push({ t: "bench", x: cx + s * 0.85, z, rot: 0 });
+    }
+  }],
+  [/らくらくスペース|コミュニティルーム/, (o, R) => {
     const cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2;
     for (const dz of (R.z1 - R.z0 > 4.5 ? [-1.2, 1.2] : [0])) {
       o.push({ t: "roundTable", x: cx, z: cz + dz, rot: 0 });

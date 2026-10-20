@@ -3,7 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ROOMS_RAW } from "./data.js";
-import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY, ROOM_EDITS, EXTRA_ROOMS, ROOM_SPLITS, ROOM_STYLE, WALL_OPENINGS } from "./info.js";
+import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY, ROOM_EDITS, EXTRA_ROOMS, ROOM_SPLITS, ROOM_STYLE, WALL_OPENINGS, PHOTOS } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
 import { buildTrees, buildColumnTrees, hedgeBox, hedgeMass, matHedge, bakeStatic } from "./nature.js";
 import { buildSite, createAerial, flatPoly, polyBounds, inPoly, buildTerrain, setSlope, texAsphalt, texPavers, worldUV } from "./site.js";
@@ -65,7 +65,7 @@ const ROOMS = [...splitRooms, ...EXTRA_ROOMS].map((r) => {
   const ed = ROOM_EDITS.find((e) => e.name === r.name && e.floor === r.floor && (e.at === undefined || e.at === r.c0));
   if (ed) r = { ...r, ...ed.set };
   const d = describe(r.name);
-  return { ...r, ...d, kind: "room" };
+  return { ...r, ...d, ...(r.desc ? { desc: r.desc } : {}), kind: "room" }; // ROOM_EDITS で紹介文を書いたときはそれを使う
 });
 STAIRS.forEach((s, i) => {
   s.floors.forEach((f) => {
@@ -1704,6 +1704,7 @@ function selectRoom(r, { fly = true } = {}) {
     <div class="chip" style="--c:${cat.color}">${cat.label}</div>
     <h2>${r.name}</h2>
     <p class="where">${r.floor}階${r.wing ? `・<button class="link" data-wing="${r.wing.id}">${r.wing.name}</button>` : ""}</p>
+    ${(() => { const ph = PHOTOS.find(([re, , fl]) => re.test(r.name) && (fl === undefined || fl === r.floor)); return ph ? [].concat(ph[1]).map((src) => `<img class="room-photo" src="${src}" alt="${r.name}の写真" loading="lazy">`).join("") : ""; })()}
     <p class="desc">${r.desc || "（紹介文はまだありません）"}</p>
     ${sameFloor}
     ${nearby.length ? `<h3>近くにあるもの</h3><ul class="nearby">${nearby.join("")}</ul>` : ""}
@@ -1998,3 +1999,4 @@ const m = location.hash.match(/room=([\w-]+)/);
 if (m && ROOM_BY_ID[m[1]]) selectRoom(ROOM_BY_ID[m[1]]);
 requestAnimationFrame(tick);
 document.getElementById("loading").remove();
+

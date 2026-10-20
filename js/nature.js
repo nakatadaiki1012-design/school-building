@@ -1,6 +1,6 @@
 // 木・生け垣と、たくさんの部品を1つにまとめて軽くする仕組み
 import * as THREE from "three";
-import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometryUtils.js";
 
 // ---------- 軽くする：グループの中の動かない部品を、材質ごとに1つの形にまとめる ----------
 // （描画の回数が減るので、画面が軽くなる）。InstancedMesh はそのまま残す
@@ -68,7 +68,10 @@ export const matHedge = new THREE.MeshStandardMaterial({ map: texHedge, color: 0
 
 // でこぼこした丸い形（葉のかたまり）。seed で形を少しずつ変える
 function lumpy(radius, detail, seed, amount = 0.22) {
-  const g = new THREE.IcosahedronGeometry(radius, detail);
+  // 頂点をつなげておくと、陰影がなめらかになる（三角形の数は同じなので重くならない）
+  let g = new THREE.IcosahedronGeometry(radius, detail);
+  g.deleteAttribute("normal"); g.deleteAttribute("uv");
+  g = mergeVertices(g);
   const p = g.attributes.position;
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
@@ -77,7 +80,11 @@ function lumpy(radius, detail, seed, amount = 0.22) {
     p.setXYZ(i, x * k, y * k, z * k);
   }
   g.computeVertexNormals();
-  return g;
+  // 葉の模様のための uv（球の向きから）
+  const uv = new Float32Array(p.count * 2);
+  for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), r = Math.hypot(x, y, z) || 1; uv[i * 2] = 0.5 + Math.atan2(z, x) / (2 * Math.PI); uv[i * 2 + 1] = 0.5 + Math.asin(y / r) / Math.PI; }
+  g.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
+  return g.toNonIndexed();
 }
 
 // ---------- 生け垣（角の丸い箱に、葉の模様と、上のもこもこ） ----------

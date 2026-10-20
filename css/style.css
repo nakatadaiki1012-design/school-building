@@ -126,6 +126,26 @@ main { position: fixed; inset: 0; }
 .legend ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; }
 .legend li { display: flex; align-items: center; gap: 6px; }
 
+/* ---------- 方角 ---------- */
+.dir-box { position: absolute; right: 16px; top: 76px; z-index: 10; display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+.compass {
+  width: 52px; height: 52px; border-radius: 50%; background: #fff; box-shadow: var(--shadow);
+  position: relative; transition: transform .1s linear;
+}
+.compass::before {
+  content: ""; position: absolute; left: 50%; top: 6px; transform: translateX(-50%);
+  border-left: 8px solid transparent; border-right: 8px solid transparent; border-bottom: 18px solid #d64541;
+}
+.compass::after {
+  content: ""; position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%);
+  border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 18px solid #9aa3ad;
+}
+.compass span { position: absolute; left: 0; right: 0; top: 18px; text-align: center; font-size: 11px; font-weight: 700; color: #1f2933; }
+.dir-btns { display: flex; flex-direction: column; gap: 4px; background: #fff; padding: 6px; border-radius: 12px; box-shadow: var(--shadow); }
+.dir-btns button { border: 0; background: none; padding: 6px 10px; border-radius: 8px; font-size: 13px; }
+.dir-btns button:hover { background: var(--accent-soft); }
+#panel.open ~ .dir-box, body.panel-open .dir-box { display: none; }
+
 /* ---------- 航空写真 ---------- */
 .aerial-box {
   position: absolute; right: 16px; bottom: 18px; z-index: 12; max-width: 300px;
@@ -212,6 +232,9 @@ dialog::backdrop { background: rgba(20, 30, 40, 0.45); }
   .floor-btn { width: 52px; height: 40px; font-size: 14px; }
   .legend { display: none; }
   .aerial-box { bottom: 74px; right: 10px; }
+  .dir-box { top: 112px; right: 10px; }
+  .compass { width: 44px; height: 44px; }
+  .dir-btns button { padding: 4px 8px; font-size: 12px; }
   #align-panel { width: min(300px, calc(100vw - 20px)); }
   .view-bar { bottom: 14px; gap: 8px; }
   .check { font-size: 12px; }

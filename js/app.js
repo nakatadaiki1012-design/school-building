@@ -582,7 +582,18 @@ function solarPanels(rects, y) {
   im.castShadow = true;
   return im;
 }
-const matSlab = new THREE.MeshStandardMaterial({ color: 0xeeebe4, roughness: 0.95 });
+// 廊下の床：学校によくある長尺シート（うすい灰緑色。かすかなまだら模様と、つなぎ目の線）
+const texCorridor = (() => {
+  const cv = document.createElement("canvas"); cv.width = cv.height = 256;
+  const c = cv.getContext("2d");
+  c.fillStyle = "#d9ddd3"; c.fillRect(0, 0, 256, 256);
+  for (let i = 0; i < 2500; i++) { c.fillStyle = `rgba(${Math.random() < 0.5 ? "255,255,255" : "90,100,90"},${Math.random() * 0.08})`; c.fillRect(Math.random() * 256, Math.random() * 256, 2, 2); }
+  c.fillStyle = "rgba(120,125,115,0.25)"; c.fillRect(0, 0, 256, 1.5); // 1.8m おきのつなぎ目
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 4;
+  return t;
+})();
+const matSlab = new THREE.MeshStandardMaterial({ map: texCorridor, color: 0xffffff, roughness: 0.6 });
 const wallMat = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.82, metalness: 0.0 });
 const matStack = new THREE.MeshStandardMaterial({ map: texStack, roughness: 0.8 });
 const matGlassDoor = new THREE.MeshStandardMaterial({ color: 0x3e5a74, roughness: 0.15, metalness: 0.3 });
@@ -791,7 +802,9 @@ for (const f of [1, 2, 3]) {
       g.translate((rc.x0 + rc.x1) / 2, base(f) - 0.1, (rc.z0 + rc.z1) / 2);
       return g;
     });
-    const m = new THREE.Mesh(mergeGeometries(geos), matSlab);
+    const mg = mergeGeometries(geos);
+    { const p = mg.attributes.position, uv = mg.attributes.uv; for (let i = 0; i < p.count; i++) uv.setXY(i, p.getX(i) / 1.8, p.getZ(i) / 1.8); }
+    const m = new THREE.Mesh(mg, matSlab);
     m.receiveShadow = true;
     inBlock(slab, blockById(bid)).add(m);
   }
@@ -1038,6 +1051,11 @@ setSlope(SITE.slope);
 const grassFar = texGrass.clone(); grassFar.needsUpdate = true; grassFar.repeat.set(1, 1);
 const ground = buildTerrain(SITE.boundary, new THREE.MeshStandardMaterial({ map: grassFar, roughness: 1 }), SITE.roads);
 scene.add(ground);
+// 斜面の地面のさらに外：遠くまで続く平らな地面（四角いはしが見えないように。霧で空にとけこむ）
+const farGround = new THREE.Mesh(new THREE.RingGeometry(150, 2500, 48, 1), new THREE.MeshStandardMaterial({ color: 0x8fa874, roughness: 1 }));
+farGround.rotation.x = -Math.PI / 2;
+farGround.position.y = -2.5;
+scene.add(farGround);
 
 // 学校の敷地（アスファルト）
 // 学校の敷地（芝生・植え込み）と、舗装している範囲（アスファルト）
@@ -1789,7 +1807,7 @@ const alignPanel = document.getElementById("align-panel");
 const aerialMsg = document.getElementById("aerial-msg");
 function setAerial(on) {
   aerial.holder.visible = on;
-  ground.visible = paving.visible = trees.visible = site.group.visible = outdoor.visible = siteGround.visible = !on;
+  farGround.visible = ground.visible = paving.visible = trees.visible = site.group.visible = outdoor.visible = siteGround.visible = !on;
   aerialBtn.classList.toggle("active", on);
   document.body.classList.toggle("aerial-on", on);
   document.getElementById("aerial-credit").hidden = !on;

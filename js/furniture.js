@@ -583,6 +583,7 @@ const LAYOUTS = [
   [/コンピューター/, computers],
   [/視聴覚/, theater],
   // 音楽室：横8列×縦5列の机、黒板は北側、前のすみにピアノ
+  [/練習室/, (o, R) => { o.push({ t: "piano", x: (R.x0 + R.x1) / 2 - 0.5, z: (R.z0 + R.z1) / 2, rot: 0 }); o.push({ t: "chair", x: (R.x0 + R.x1) / 2 + 1.2, z: (R.z0 + R.z1) / 2, rot: 0 }); }],
   [/音楽室/, (o, R) => { classroom(o, R, { cols: 8, rows: 5, seats: 40, eboard: false }); o.push({ t: "piano", x: R.x0 + 1.6, z: R.z0 + 1.2, rot: 0 }); }],
   [/美術教室/, (o, R) => artroom(o, R)],
   [/工芸教室/, (o, R) => artroom(o, R)],

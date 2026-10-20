@@ -387,3 +387,10 @@ export const EXTRA_ROOMS = [
 
 // 1つの部屋を横（東西）にいくつかに分ける（北側の部室は8部屋）
 export const ROOM_SPLITS = [{ name: "部室", floor: 1, r0: 3, n: 8 }];
+
+// 部屋の壁をなくす向き（n/s/e/w）と、自動販売機を置く壁（vending）
+export const ROOM_STYLE = [
+  { name: "昇降口", floor: 1, r0: 27, open: ["n"], vending: "e" }, // 北側の昇降口：北は壁なし、東の壁に自販機
+  { name: "昇降口", floor: 1, r0: 47, open: ["s"] },               // 南側の昇降口：南は壁なし
+  { name: "ホール", floor: 1, open: ["n", "s", "e", "w"], vending: "w" }, // 南の昇降口のとなりのホール：壁なし、西の壁ぎわに自販機
+];

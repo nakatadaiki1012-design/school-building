@@ -51,6 +51,14 @@ const texBoard = canvasTex(512, 160, (g, w, h) => {
   g.fillStyle = "rgba(240,220,120,0.8)"; g.fillText("連絡", 24, h - 14);
 });
 
+// 自動販売機の正面（飲み物がならんだ窓）
+const texVend = canvasTex(64, 96, (g, w, h) => {
+  g.fillStyle = "#e9eef2"; g.fillRect(0, 0, w, h);
+  const cols = ["#d33", "#36c", "#3a3", "#fa0", "#eee", "#a5f"];
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 5; c++) { g.fillStyle = cols[(r * 5 + c) % cols.length]; g.fillRect(4 + c * 12, 6 + r * 16, 8, 12); }
+  g.fillStyle = "#333"; g.fillRect(6, 74, 52, 14);
+});
+
 // 電子黒板の画面（授業のスライド）
 const texEboard = canvasTex(256, 150, (g, w, h) => {
   g.fillStyle = "#f7f9fc"; g.fillRect(0, 0, w, h);
@@ -189,6 +197,7 @@ const MAT = {
   paper: M(0xf5f3ec, { roughness: 0.9 }),
   mirror: M(0xcfd8de, { metalness: 0.9, roughness: 0.1 }),
   red: M(0x9e1f2c, { roughness: 0.9 }),
+  vendFace: new THREE.MeshStandardMaterial({ map: texVend, roughness: 0.3, emissive: 0xffffff, emissiveMap: texVend, emissiveIntensity: 0.35 }),
   screenOn: new THREE.MeshStandardMaterial({ map: texEboard, roughness: 0.3, emissive: 0xffffff, emissiveMap: texEboard, emissiveIntensity: 0.55 }),
   gray: M(0x8e98a2),
 };
@@ -293,6 +302,8 @@ const SHAPES = {
   mirror: [[MAT.mirror, merge([b(0.02, 0.8, 1.6, 0, 1.15)])]],
   stageCurtain: [[MAT.red, merge([b(0.2, 3.2, 1.0)])]],
   lectern: [[MAT.darkWood, merge([b(0.5, 1.1, 0.7)])]],
+  // 自動販売機（正面が -x）
+  vending: [[MAT.white, merge([b(0.75, 1.83, 1.0)])], [MAT.vendFace, merge([b(0.03, 1.2, 0.85, -0.38, 0.5)])], [MAT.red, merge([b(0.04, 0.25, 1.0, -0.37, 1.6)])]],
   // 長机（長さは1mの形を len 倍にのばす）と、跳ね上げ椅子（座面が上がった形）
   longDesk: [[MAT.wood, merge([b(0.45, 0.04, 1, 0, 0.7)])], [MAT.metal, merge([b(0.04, 0.7, 0.04, 0.18, 0, -0.48), b(0.04, 0.7, 0.04, 0.18, 0, 0.48), b(0.03, 0.3, 1, 0.2, 0.35)])]],
   flipSeat: [[MAT.navy, merge([b(0.08, 0.45, 0.44, 0.2, 0.45), b(0.05, 0.42, 0.42, 0.05, 0.35)])], [MAT.metal, merge([b(0.05, 0.42, 0.05, 0.15, 0, -0.22), b(0.05, 0.42, 0.05, 0.15, 0, 0.22)])]],
@@ -641,6 +652,11 @@ export function floorStyle(name) {
 export function buildFurniture(rooms, y) {
   const items = [];
   for (const r of rooms) {
+    // 自動販売機（壁ぎわ。正面は部屋の内側）
+    if (r.vending) {
+      const pos = { e: [r.cx + r.w / 2 - 0.55, r.cz, 0], w: [r.cx - r.w / 2 + 0.55, r.cz, Math.PI], n: [r.cx, r.cz - r.d / 2 + 0.55, -Math.PI / 2], s: [r.cx, r.cz + r.d / 2 - 0.55, Math.PI / 2] }[r.vending];
+      items.push({ t: "vending", x: pos[0], z: pos[1] - 0.6, rot: pos[2] }, { t: "vending", x: pos[0], z: pos[1] + 0.6, rot: pos[2] });
+    }
     const fn = LAYOUTS.find(([re]) => re.test(r.name));
     if (!fn) continue;
     const list = [];

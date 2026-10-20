@@ -3,7 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ROOMS_RAW } from "./data.js";
-import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY, ROOM_EDITS, EXTRA_ROOMS, ROOM_SPLITS } from "./info.js";
+import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY, ROOM_EDITS, EXTRA_ROOMS, ROOM_SPLITS, ROOM_STYLE } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
 import { buildTrees, buildColumnTrees, hedgeBox, matHedge, bakeStatic } from "./nature.js";
 import { buildSite, createAerial, flatPoly, polyBounds, inPoly, buildTerrain, setSlope } from "./site.js";
@@ -1298,6 +1298,7 @@ function stairGuard(r, y, list) {
   add(list, L / 2 - 0.1, L / 2 + 0.05, -Wd / 2, Wd / 2, y, y + 1.1);
 }
 
+const styleOf = (r) => ROOM_STYLE.find((s) => s.name === r.name && s.floor === r.floor && (s.r0 === undefined || s.r0 === r.r0));
 const pickables = [];
 const matStairs = new THREE.MeshStandardMaterial({ color: 0xd9d6cf, roughness: 0.9 });
 const matPartition = new THREE.MeshStandardMaterial({ color: 0xfaf8f3, roughness: 0.9 });
@@ -1367,10 +1368,12 @@ for (const f of [1, 2, 3]) {
     } else if (!isCourt && r.kind !== "stairs" && r.kind !== "part" && !r.joinedTo) {
       const t = 0.14, h = isOpen ? 1.0 : 1.25;
       const rc = { x0: r.cx - r.w / 2, x1: r.cx + r.w / 2, z0: r.cz - r.d / 2, z1: r.cz + r.d / 2 };
-      for (const [w, d, x, z] of [
-        [r.w, t, r.cx, rc.z0], [r.w, t, r.cx, rc.z1],
-        [t, r.d, rc.x0, r.cz], [t, r.d, rc.x1, r.cz],
+      const sty = styleOf(r);
+      for (const [w, d, x, z, side] of [
+        [r.w, t, r.cx, rc.z0, "n"], [r.w, t, r.cx, rc.z1, "s"],
+        [t, r.d, rc.x0, r.cz, "w"], [t, r.d, rc.x1, r.cz, "e"],
       ]) {
+        if (sty?.open?.includes(side)) continue;
         const g = new THREE.BoxGeometry(w, h, d);
         g.translate(x, y + h / 2, z);
         (walls[r.block.id] ||= []).push(g);
@@ -1399,7 +1402,7 @@ for (const f of [1, 2, 3]) {
   // 家具（伸び縮みさせず、航空写真に合わせたあとの部屋の大きさで置く）
   const furn = buildFurniture(
     ROOMS.filter((x) => x.floor === f && (x.kind === "room" || x.kind === "part"))
-      .map((x) => ({ name: x.kind === "part" ? "受付カウンター" : x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd })),
+      .map((x) => ({ name: x.kind === "part" ? "受付カウンター" : x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd, vending: x.kind === "part" ? null : styleOf(x)?.vending })),
     y0OfFloor(f),
   );
   layers.furniture[f] = furn;

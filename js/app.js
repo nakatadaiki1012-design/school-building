@@ -1273,13 +1273,29 @@ for (const [c0, r0, c1, r1] of COLUMN_AREAS) {
   inBlock(layers.exterior[1], b).add(m);
 }
 
-// 光庭の芝生
+// うすい色のレンガタイル（1枚の模様が 2.4m 四方。タイルは 20cm×10cm くらい）
+const texCourtTile = canvasTex(256, 256, (g, W, H) => {
+  g.fillStyle = "#cdbcaa"; g.fillRect(0, 0, W, H); // 目地
+  const bw = 21, bh = 10.5;
+  for (let row = 0, y = 0; y < H; row++, y += bh) for (let x = (row % 2) * bw / 2 - bw; x < W; x += bw) {
+    const v = Math.random() * 18 - 9;
+    g.fillStyle = `rgb(${226 + v},${200 + v},${180 + v})`;
+    g.fillRect(x + 1, y + 1, bw - 2, bh - 2);
+  }
+});
+texCourtTile.wrapS = texCourtTile.wrapT = THREE.RepeatWrapping;
+// 光庭：床はうすい色のレンガタイル。植え込みはほんの少しだけ（両はしに小さく）
 for (const [c0, r0, c1, r1] of OPEN_COURTS) {
   const rc = rectOf({ c0, r0, c1, r1 });
-  const m = new THREE.Mesh(new THREE.BoxGeometry(rc.x1 - rc.x0, 0.1, rc.z1 - rc.z0), new THREE.MeshStandardMaterial({ map: texGrass, color: 0xbfe0a0 }));
+  const w = rc.x1 - rc.x0, d = rc.z1 - rc.z0;
+  const tex = texCourtTile.clone(); tex.needsUpdate = true; tex.repeat.set(w / 2.4, d / 2.4);
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, 0.1, d), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 }));
   m.position.set((rc.x0 + rc.x1) / 2, -0.12, (rc.z0 + rc.z1) / 2);
   m.receiveShadow = true;
-  inBlock(scene, blockAtCell(c0, r0)).add(m);
+  const holder = inBlock(scene, blockAtCell(c0, r0));
+  holder.add(m);
+  holder.add(hedgeMass([[rc.x0 + 1.0, rc.z0 + 0.9, 0.8], [rc.x0 + 1.9, rc.z0 + 0.8, 0.7]], 0.9));
+  holder.add(hedgeMass([[rc.x1 - 1.0, rc.z1 - 0.9, 0.8], [rc.x1 - 1.9, rc.z1 - 0.8, 0.7]], 0.9));
 }
 
 // グラウンド・テニスコート・駐輪場
@@ -1306,8 +1322,6 @@ scene.add(trees);
     if (spots.some(([px, pz]) => Math.hypot(px - x, pz - z) < 4)) continue;
     if (ok(x, z)) { spots.push([x, z, 0.8 + rnd() * 0.6]); added++; }
   }
-  // 中庭の木
-  spots.push([...toWorld(X(53.5), Z(23.5)), 0.6]);
   // グラウンド北東の道路ぞいの並木（2列）
   {
     const { from: [ax, az], to: [bx2, bz2], offsets, step } = SITE.treeRow;

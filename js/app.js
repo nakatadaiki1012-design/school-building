@@ -5,6 +5,7 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ROOMS_RAW } from "./data.js";
 import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
+import { buildTrees, buildColumnTrees, hedgeBox, matHedge, bakeStatic } from "./nature.js";
 import { buildSite, createAerial, flatPoly, polyBounds, inPoly, buildTerrain, setSlope } from "./site.js";
 
 // ---------- 寸法（メートル） ----------
@@ -139,7 +140,8 @@ app.appendChild(labelRenderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = skyTexture();
-scene.fog = new THREE.Fog(0xdfe9f2, 160, 420);
+// 遠くの家並みは霧でうすくなって消えていく
+scene.fog = new THREE.Fog(0xdde8f1, 230, 520);
 
 const persp = new THREE.PerspectiveCamera(45, 1, 0.5, 1000);
 persp.position.set(55, 75, 95);
@@ -192,7 +194,7 @@ function skyTexture() {
     const gr = g.createLinearGradient(0, 0, 0, h);
     gr.addColorStop(0, "#7fb2e5");
     gr.addColorStop(0.55, "#cfe3f5");
-    gr.addColorStop(1, "#eef3f6");
+    gr.addColorStop(1, "#dde8f1");
     g.fillStyle = gr; g.fillRect(0, 0, w, h);
   }, false);
 }
@@ -986,7 +988,7 @@ scene.add(outdoor);
   flatRect(-13.4, -4.95, -14.9, 10.4, pink, -0.19);
   flatRect(-43.5, -13.4, 2.7, 10.4, pink, -0.19); // 重ならないように分ける
   flatRect(-16.3, -4.95, 10.4, 33.0, pink, -0.19);
-  const planter = new THREE.MeshStandardMaterial({ color: 0x4f7d3a, roughness: 1 });
+  const planter = matHedge;
   for (const [x, z] of [[-8.6, 20.5], [-7.8, 27]]) {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.8, 0.6, 20), planter);
     m.position.set(x, 0.1, z);
@@ -1005,7 +1007,7 @@ scene.add(outdoor);
   flatRect(23.9, 26, 2.5, 6.4, walk, -0.175);
   flatRect(37.5, 49, -2.7, -0.6, walk, -0.175);
   // 生け垣（角の丸い植え込み）。高さ0.8m、上に低木をのせる
-  const hedge = new THREE.MeshStandardMaterial({ color: 0x4f7d3a, roughness: 1 });
+  const hedge = matHedge;
   const curb = new THREE.MeshStandardMaterial({ color: 0xd9d5cb, roughness: 1 });
   const rounded = (x0, x1, z0, z1, h = 0.8) => {
     const w = x1 - x0, d = z1 - z0, r = Math.min(w, d) / 2;
@@ -1024,7 +1026,7 @@ scene.add(outdoor);
     // 低木のかたまり
     const n = Math.max(2, Math.round(w / 2.2));
     for (let i = 0; i < n; i++) {
-      const b = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 1), new THREE.MeshStandardMaterial({ color: 0x3f6e2e + (i % 3) * 0x020400, roughness: 1, flatShading: true }));
+      const b = new THREE.Mesh(new THREE.IcosahedronGeometry(1, 2), matHedge);
       b.scale.set(Math.min(1.3, d / 2), 0.7, Math.min(1.3, d / 2) * 0.9);
       b.position.set(x0 + r + ((w - 2 * r) * (i + 0.5)) / n, h - 0.1, (z0 + z1) / 2 + Math.sin(i * 2.3) * d * 0.12);
       b.castShadow = true;
@@ -1140,29 +1142,9 @@ scene.add(trees);
   }
   // 体育館と校舎のあいだの広場の丸い植え込みの木
   spots.push([-8.6, 20.5, 0.75], [-7.8, 27, 0.75]);
-  // 並木の細長い木（円すい形）
-  {
-    const cm = new THREE.InstancedMesh(new THREE.ConeGeometry(1.6, 9, 8), new THREE.MeshStandardMaterial({ color: 0x4a7a3a, roughness: 1, flatShading: true }), columnar.length);
-    const tm = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.15, 0.22, 2, 6), new THREE.MeshStandardMaterial({ color: 0x6b4f35 }), columnar.length);
-    const mm = new THREE.Matrix4();
-    columnar.forEach(([x, z, sc], i) => {
-      mm.compose(new THREE.Vector3(x, 0.8, z), new THREE.Quaternion(), new THREE.Vector3(1, 1, 1)); tm.setMatrixAt(i, mm);
-      mm.compose(new THREE.Vector3(x, 1.5 + 4.5 * sc, z), new THREE.Quaternion(), new THREE.Vector3(sc, sc, sc)); cm.setMatrixAt(i, mm);
-    });
-    cm.castShadow = tm.castShadow = true;
-    trees.add(cm, tm);
-  }
-  const trunk = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.18, 0.25, 2.4, 6), new THREE.MeshStandardMaterial({ color: 0x6b4f35 }), spots.length);
-  const crown = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(2.2, 1), new THREE.MeshStandardMaterial({ color: 0x4f7d3a, roughness: 1, flatShading: true }), spots.length);
-  const m4 = new THREE.Matrix4();
-  spots.forEach(([x, z, s], i) => {
-    m4.compose(new THREE.Vector3(x, 1.2 * s - 0.2, z), new THREE.Quaternion(), new THREE.Vector3(s, s, s));
-    trunk.setMatrixAt(i, m4);
-    m4.compose(new THREE.Vector3(x, 3.6 * s, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, i, 0)), new THREE.Vector3(s, s * 1.15, s));
-    crown.setMatrixAt(i, m4);
-  });
-  trunk.castShadow = crown.castShadow = true;
-  trees.add(trunk, crown);
+  // 木（葉のかたまりを重ねた形）と、並木の細長い木
+  trees.add(buildTrees(spots.map(([x, z, sc]) => [x, 0, z, sc * 0.85])));
+  trees.add(buildColumnTrees(columnar.map(([x, z, sc]) => [x, 0, z, sc])));
 }
 
 // ---------- 部屋（フロア表示） ----------
@@ -1718,6 +1700,9 @@ function tick(now) {
 }
 
 // ---------- はじめの表示 ----------
+// 動かない屋外の部品を、材質ごとにまとめて軽くする
+bakeStatic(site.group);
+bakeStatic(outdoor);
 setFloor(0);
 const m = location.hash.match(/room=([\w-]+)/);
 if (m && ROOM_BY_ID[m[1]]) selectRoom(ROOM_BY_ID[m[1]]);

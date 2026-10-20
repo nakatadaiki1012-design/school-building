@@ -337,6 +337,8 @@ const SHAPES = {
   // 廊下側の壁の上の細長い窓（欄間）と、下の小窓。壁より厚くして両側から見える
   hallWindow: [[MAT.transom, merge([b(1.7, 0.42, 0.24, 0, 1.92), b(1.7, 0.32, 0.24, 0, 0.12)])], [MAT.doorFrame, merge([b(1.78, 0.04, 0.26, 0, 2.34), b(1.78, 0.04, 0.26, 0, 1.88), b(0.04, 0.46, 0.26, 0, 1.88)])]],
   // 壁より厚くして、教室の中からも廊下からも見えるようにする
+  // 4枚の大きな両引き戸（体育館の入口）。ガラスの入ったアルミの戸
+  door4: [[MAT.gray, merge([b(0.95, 2.2, 0.3, -1.42, 0, -0.03), b(0.95, 2.2, 0.3, -0.47, 0, 0.03), b(0.95, 2.2, 0.3, 0.47, 0, 0.03), b(0.95, 2.2, 0.3, 1.42, 0, -0.03)])], [MAT.transom, merge([-1.42, -0.47, 0.47, 1.42].map((x) => b(0.7, 1.4, 0.34, x, 0.6)))], [MAT.metal, merge([b(4.0, 0.1, 0.36, 0, 2.2), b(0.1, 2.3, 0.36, -1.95), b(0.1, 2.3, 0.36, 1.95)])]],
   // 2枚の引き戸（少し前後にずらして重ねる）
   door: [[MAT.door, merge([b(0.9, 1.95, 0.3, -0.45, 0, -0.02), b(0.9, 1.95, 0.3, 0.45, 0, 0.02)])], [MAT.doorFrame, merge([b(1.96, 0.07, 0.34, 0, 1.95), b(0.07, 2.02, 0.34, -0.95), b(0.07, 2.02, 0.34, 0.95), b(0.03, 1.95, 0.35, 0)])], [MAT.transom, merge([b(1.8, 0.35, 0.26, 0, 2.03)])]],
   curtainPanel: [[MAT.curtain, merge([b(0.7, 2.05, 0.05, 0, 0.3)])]],
@@ -882,9 +884,11 @@ export function buildFurniture(rooms, y) {
       }
     }
     // 外への出入口の両引き戸（doors: 向きのリスト）。壁のまんなかに置く
-    for (const d of r.doors || []) {
+    // "s:door4" のように書くと、4枚の大きな両引き戸
+    for (const dd of r.doors || []) {
+      const [d, t = "door"] = dd.split(":");
       const p = { n: [r.cx, r.cz - r.d / 2, 0], s: [r.cx, r.cz + r.d / 2, 0], e: [r.cx + r.w / 2, r.cz, Math.PI / 2], w: [r.cx - r.w / 2, r.cz, Math.PI / 2] }[d];
-      items.push({ t: "door", x: p[0], z: p[1], rot: p[2] });
+      items.push({ t, x: p[0], z: p[1], rot: p[2] });
     }
     const fn = LAYOUTS.find(([re]) => re.test(r.name));
     if (!fn) continue;

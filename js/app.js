@@ -990,6 +990,7 @@ function rustTex() {
   // 写真：体育館の西の壁ぞいに、北の踊り場から南へ1階へ下りる外階段。その南から外廊下が続く
   deck(gx - sw - 0.2, gx, zTop + landL + stairL, gz1 + 2.5);
   rail(gx - sw - 0.2, gx - sw - 0.2, zTop, gz1 + 2.5);
+  rail(gx - sw - 0.2, gx, gz1 + 2.5, gz1 + 2.5); // 西の外廊下の南のはし（落ちないように手すり）
   deck(gx, gxe + dw, gz1, zBot);                // 南
   deck(gxe, gxe + dw, zTop, gz1);               // 東
   rail(gx - sw - 0.2, gx, zTop, zTop);

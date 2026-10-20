@@ -1428,7 +1428,7 @@ for (const f of [1, 2, 3]) {
   // 家具（伸び縮みさせず、航空写真に合わせたあとの部屋の大きさで置く）
   const furn = buildFurniture(
     ROOMS.filter((x) => x.floor === f && (x.kind === "room" || x.kind === "part"))
-      .map((x) => ({ name: x.kind === "part" ? "受付カウンター" : x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd, vending: x.kind === "part" ? null : styleOf(x)?.vending })),
+      .map((x) => ({ name: x.kind === "part" ? (x.parent.name === "事務室" ? "受付カウンター" : x.parent.name + "（L字）") : x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd, vending: x.kind === "part" ? null : styleOf(x)?.vending })),
     y0OfFloor(f),
   );
   layers.furniture[f] = furn;

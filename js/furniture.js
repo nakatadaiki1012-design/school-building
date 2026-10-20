@@ -407,6 +407,31 @@ function office(out, R, perIsland = 6) {
   }
 }
 
+// 職員室：北から「通路・ロッカー・机・椅子・通路・椅子・机・机・椅子・通路」の列が東西にのびる
+function staffRoom(out, R) {
+  const { x0, x1, z0, z1 } = R;
+  const k = Math.min(1, (z1 - z0) / 7.2), z = (d) => z0 + d * k;
+  const N = -Math.PI / 2, S = Math.PI / 2; // 椅子が北／南を向く
+  for (let x = x0 + 0.6; x < x1 - 0.5; x += 0.95) out.push({ t: "locker", x, z: z(1.12), rot: S });
+  for (let x = x0 + 0.8; x < x1 - 0.6; x += 1.15) {
+    out.push({ t: "officeDesk", x, z: z(1.8), rot: S }, { t: "laptop", x, z: z(1.8), rot: N, y: 0 });
+    out.push({ t: "officeChair", x, z: z(2.5), rot: N });
+    out.push({ t: "officeChair", x, z: z(4.0), rot: S });
+    out.push({ t: "officeDesk", x, z: z(4.65), rot: S }, { t: "laptop", x, z: z(4.65), rot: S });
+    out.push({ t: "officeDesk", x, z: z(5.35), rot: S }, { t: "laptop", x, z: z(5.35), rot: N });
+    out.push({ t: "officeChair", x, z: z(6.05), rot: N });
+  }
+}
+// 職員室の東のはしで北へ折れるL字の部分：机が南北にならぶ
+function staffRoomL(out, R) {
+  const { x0, x1, z0, z1 } = R;
+  const cx = (x0 + x1) / 2;
+  for (let z = z0 + 0.6; z < z1 - 0.4; z += 1.15) {
+    out.push({ t: "officeDesk", x: cx - 0.35, z, rot: 0 }, { t: "officeDesk", x: cx + 0.35, z, rot: Math.PI });
+    out.push({ t: "officeChair", x: cx - 1.05, z, rot: Math.PI }, { t: "officeChair", x: cx + 1.05, z, rot: 0 });
+  }
+}
+
 // 会議室：長い机が2列（部屋の長い方向にのびる）。机の両側に椅子
 function meeting(out, R) {
   const { x0, x1, z0, z1 } = R;
@@ -643,6 +668,8 @@ const LAYOUTS = [
     for (let i = 0; i < 3; i++) o.push({ t: "table", x: cx, z: zs + ((ze - zs) * (i + 0.5)) / 3, rot: 0, len: 1 });
     for (let i = 0; i < n; i++) { const z = zs + ((ze - zs) * (i + 0.5)) / n; for (const s of [-1, 1]) o.push({ t: "officeChair", x: cx + s * 0.85, z, rot: s > 0 ? 0 : Math.PI }); }
   }],
+  [/^職員室$/, staffRoom],
+  [/^職員室（L字）$/, staffRoomL],
   [/職員室|事務室/, (o, R) => office(o, R)],
   [/会議室/, meeting],
   [/校長室/, principal],

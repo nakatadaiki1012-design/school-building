@@ -2435,7 +2435,7 @@ here.visible = false;
   acc.position.y = 0.05; acc.name = "acc";
   const div = document.createElement("div");
   div.className = "here-label"; div.textContent = "現在地";
-  const label = new CSS2DObject(div); label.position.y = 2.2;
+  const label = new CSS2DObject(div); label.position.y = 2.2; label.name = "label"; label.visible = false; // 名前の札は、親を隠しても消えないので別に切りかえる
   here.add(acc, rim, dot, label);
   acc.renderOrder = 10; rim.renderOrder = 11; dot.renderOrder = 12; // 屋根や壁にかくれないよう、いちばん上に描く
 }
@@ -2456,14 +2456,14 @@ function onGeo(p) {
   const v = geoToWorld(p.coords.latitude, p.coords.longitude);
   const dist = Math.hypot(v.x, v.z + 25);
   if (dist > 400) {
-    here.visible = false;
+    here.visible = false; here.getObjectByName("label").visible = false;
     showGeoMsg(`学校の外にいるようです（学校から約${dist >= 1000 ? (dist / 1000).toFixed(1) + "km" : Math.round(dist / 10) * 10 + "m"}）。学校の近くで使ってください。`, 7000);
     return;
   }
   const r = Math.min(60, Math.max(3, p.coords.accuracy || 10));
   here.getObjectByName("acc").scale.set(r, 1, r);
   here.position.set(v.x, hereY(), v.z);
-  here.visible = true;
+  here.visible = true; here.getObjectByName("label").visible = true;
   poke();
   if (geoFirst) {
     geoFirst = false;
@@ -2479,7 +2479,7 @@ function onGeoErr(e) {
 }
 function stopGeo() {
   if (geoWatch !== null) navigator.geolocation.clearWatch(geoWatch);
-  geoWatch = null; here.visible = false; poke();
+  geoWatch = null; here.visible = false; here.getObjectByName("label").visible = false; poke();
   document.getElementById("here-btn").classList.remove("active");
 }
 document.getElementById("here-btn").addEventListener("click", () => {

@@ -1181,8 +1181,9 @@ function rustTex() {
   // 南側の2階の入口の上は、3階の床がのびた ひさし
   // （上の外階段のところは、ひさしの南の部分をあける）
   box(eaves, pl, 0.35, zBot + SW - gz1, gx + pl / 2, 2 * FH - 0.2, (gz1 + zBot + SW) / 2);
-  box(eaves, sl, 0.35, zBot - gz1, gx + pl + sl / 2, 2 * FH - 0.2, (gz1 + zBot) / 2);
-  box(eaves, gxe + dw - gx - pl - sl, 0.35, zBot + SW - gz1, (gx + pl + sl + gxe + dw) / 2, 2 * FH - 0.2, (gz1 + zBot + SW) / 2);
+  // 踊り場より東は、壁から少しだけ出た小さなひさし
+  const eD = 1.5;
+  box(eaves, gxe + dw - gx - pl, 0.3, eD, (gx + pl + gxe + dw) / 2, 2 * FH - 0.18, gz1 + eD / 2);
   stair(geos1, gx + pl + sl, zBot + SW / 2, gx + pl, zBot + SW / 2, -0.2, ty, SW - 0.1);
   // 体育準備室の前の外階段は、1階→2階の階段の真上に、同じ形の2階→3階の階段がある（3階の卓球場へ）
   deck(gx + pl + sl, gx + pl + sl + 2.4, zBot, zBot + SW); // 2階：上の階段の上り口の踊り場

@@ -1863,6 +1863,7 @@ function showSite(it) {
   panelBody.innerHTML = `
     <div class="chip" style="--c:#cfe3c4">屋外の施設</div>
     <h2>${it.name}</h2>
+    ${[].concat(it.photos || []).map((src) => `<img class="room-photo" src="${src}" alt="${it.name}の写真" loading="lazy">`).join("")}
     <p class="desc">${it.desc}</p>
     <p class="muted">${SITE_NOTE}</p>
   `;

@@ -163,6 +163,7 @@ const RULES = [
 export const PHOTOS = [
   [/^音楽室$/, "images/music.jpg"],
   [/^ラウンジ$/, "images/lounge3.jpg", 3], // 3つめの数字を書くと、その階の部屋だけ
+  [/^正面玄関$/, "images/genkan.jpg"],
   [/^社会科教室$/, ["images/shakai-1.jpg", "images/shakai-2.jpg", "images/shakai-3.jpg", "images/shakai-4.jpg"]],
   [/^選択第[１1]教室$/, ["images/sentaku1-a.jpg", "images/sentaku1-b.jpg"]], // 写真が何枚かあるときは並べて書く
 ];
@@ -419,7 +420,7 @@ export const GYM_GALLERY = [[25, 4, 26, 34], [23, 4, 26, 7], [23, 33, 26, 38]];
 export const ROOM_EDITS = [
   { name: "音楽室", floor: 2, set: { r0: 13 } },
   // 正面玄関は、2号館の階段のすぐとなりまで広い空間になっている
-  { name: "正面玄関", floor: 1, set: { c0: 60 } },
+  { name: "正面玄関", floor: 1, set: { c0: 60, desc: "正面玄関です。ご来校の際はこちらからお入りください。" } },
   // 美術教室と工芸教室を南へ広げる：美術室横の玄関は南の階段のほうへ寄せ、美術準備室は男子トイレのほうへ寄せる
   { name: "工芸教室", floor: 1, set: { c0: 10, r1: 54 } },
   { name: "美術教室", floor: 1, set: { r1: 55 } },

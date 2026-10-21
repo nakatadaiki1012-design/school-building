@@ -288,7 +288,12 @@ const SHAPES = {
     [MAT.metal, merge([b(0.04, 0.9, 0.95, -0.98)])],
   ],
   curtain: [[MAT.pink, merge([b(0.02, 1.8, 2.0)])]],
-  piano: [[MAT.black, merge([b(1.5, 0.95, 1.5, 0, 0.05), b(0.5, 0.08, 1.4, 0.5, 1.0)])]],
+  // グランドピアノ：鍵盤は -x 側（弾く人は -x 側に座り、+x の方を向く）。本体は +x へのび、ふたが少し開いている
+  piano: [
+    [MAT.black, merge([b(1.5, 0.3, 1.45, 0.15, 0.65), b(0.9, 0.3, 1.0, 1.0, 0.65), b(0.08, 0.65, 0.08, -0.45, 0, -0.6), b(0.08, 0.65, 0.08, -0.45, 0, 0.6), b(0.08, 0.65, 0.08, 1.2, 0), b(1.3, 0.04, 1.3, 0.35, 1.25).rotateZ(0.3).translate(0.25, -0.2, 0), b(0.25, 0.35, 1.45, -0.72, 0.7)])],
+    [MAT.white || new THREE.MeshStandardMaterial({ color: 0xf5f5f0 }), merge([b(0.22, 0.04, 1.3, -0.72, 0.72)])],
+  ],
+  pianoBench: [[MAT.black, merge([b(0.4, 0.06, 0.8, 0, 0.45), b(0.05, 0.45, 0.05, -0.15, 0, -0.35), b(0.05, 0.45, 0.05, 0.15, 0, -0.35), b(0.05, 0.45, 0.05, -0.15, 0, 0.35), b(0.05, 0.45, 0.05, 0.15, 0, 0.35)])]],
   kiln: [[MAT.kiln, merge([b(1.0, 1.3, 1.0)])]],
   sofa: [[MAT.sofa, merge([b(0.8, 0.42, 1.9), b(0.2, 0.4, 1.9, 0.3, 0.42)])]],
   lowTable: [[MAT.darkWood, merge([b(0.7, 0.4, 1.2)])]],
@@ -867,7 +872,13 @@ const LAYOUTS = [
   [/視聴覚/, theater],
   // 音楽室：横8列×縦5列の机、黒板は北側、前のすみにピアノ
   [/練習室/, (o, R) => { o.push({ t: "piano", x: (R.x0 + R.x1) / 2 - 0.5, z: (R.z0 + R.z1) / 2, rot: 0 }); o.push({ t: "chair", x: (R.x0 + R.x1) / 2 + 1.2, z: (R.z0 + R.z1) / 2, rot: 0 }); }],
-  [/音楽室/, (o, R) => { classroom(o, R, { cols: 8, rows: 5, seats: 40, eboard: false, doorT: "swing" }); o.push({ t: "piano", x: R.x0 + 1.6, z: R.z0 + 1.2, rot: 0 }); }],
+  [/音楽室/, (o, R) => { classroom(o, R, { cols: 8, rows: 5, seats: 40, eboard: false, doorT: "swing" });
+    // ピアノは前のまんなか。先生は黒板側に座り、生徒の方を向いて弾く。教卓は窓側へよける
+    const zc = (R.z0 + R.z1) / 2;
+    // ピアノと重なる前の机・椅子はどける
+    for (let i = o.length - 1; i >= 0; i--) { const it = o[i]; if (!["blackboard", "podium", "teacherDesk", "laptop", "clock", "bulletin", "swing", "hallWindow", "curtainPanel", "locker", "cleanLocker"].includes(it.t) && it.x < R.x0 + 3.7 && Math.abs(it.z - zc) < 1.3) o.splice(i, 1); }
+    for (const it of o) if ((it.t === "teacherDesk" || it.t === "laptop") && Math.abs(it.z - zc) < 0.5) it.z += 2.6;
+    o.push({ t: "piano", x: R.x0 + 1.75, z: zc, rot: 0, y: 0.18 }, { t: "pianoBench", x: R.x0 + 0.65, z: zc, rot: 0, y: 0.18 }); }],
   [/美術教室/, artIslands],
   [/工芸教室/, (o, R) => artroom(o, R, true)],
   [/^窯$/, (o, R) => o.push({ t: "kiln", x: (R.x0 + R.x1) / 2, z: (R.z0 + R.z1) / 2, rot: 0 })],

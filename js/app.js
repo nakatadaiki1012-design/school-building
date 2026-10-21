@@ -1440,7 +1440,8 @@ scene.add(outdoor);
   for (const [list, f] of [[low, 1], [high, 2]]) {
     const m = new THREE.Mesh(mergeGeometries(list), matRelief);
     m.castShadow = m.receiveShadow = true;
-    inBlock(layers.exterior[f], b).add(m);
+    // 3階の床の裏（吹き抜けの天井）は、2階を見ているときはじゃまなので屋根と同じあつかい
+    inBlock(f === 2 ? layers.roofs[2] : layers.exterior[f], b).add(m);
   }
 }
 
@@ -1755,9 +1756,10 @@ function applyMode() {
   const f = state.floor;
   for (const k of [1, 2, 3]) {
     const below = f === 0 || k < f;
-    layers.exterior[k].visible = below;
+    // 選んだ階の外壁も、外観と同じもの（窓・レンガ・柱・バルコニー）をそのまま見せる。屋根だけ外して中を見る
+    layers.exterior[k].visible = below || k === f;
     layers.roofs[k].visible = below;
-    layers.cut[k].visible = k === f;
+    layers.cut[k].visible = false;
     layers.slab[k].visible = k === f;
     layers.rooms[k].visible = k === f;
     setLabelsVisible(layers.labels[k], k === f && labelsOn);

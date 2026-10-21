@@ -643,6 +643,8 @@ const matGlassDoor = new THREE.MeshStandardMaterial({ color: 0x3e5a74, roughness
 const matStackSide = new THREE.MeshStandardMaterial({ color: 0xf2efe8, roughness: 0.85, side: THREE.DoubleSide });
 // フロア表示のときの外壁の高さ。外観と同じ模様の下の部分（レンガ・窓の下半分まで）を見せる
 const CUT_H = 2.2;
+// コモンスペースから渡り廊下へ上がる高さ（階段7段）
+const BR_RISE = 1.05;
 const cutMats = {};
 function cutMat(style) {
   if (!cutMats[style]) {
@@ -758,22 +760,28 @@ for (const f of [1, 2, 3]) {
       // 渡り廊下：下半分だけの腰壁で、上半分は開いている（柱が屋根を支える）
       // 床（下から見える厚い板）と、厚みのある腰壁
       const rc = rectOf({ c0: 27, r0: 19, c1: 32, r1: 21 });
-      const fl = new THREE.Mesh(new THREE.BoxGeometry(rc.x1 - rc.x0, 0.4, rc.z1 - rc.z0), matRelief);
-      fl.position.set((rc.x0 + rc.x1) / 2, base(f) - 0.2 + (f === 2 ? 0.6 : 0), (rc.z0 + rc.z1) / 2); // 2階の渡り廊下は、コモンスペースから少し上がった高さ
+      // 2階の渡り廊下は、コモンスペースの階段を上がった高さ（中央棟側で +BR_RISE）から、体育館側へゆるく下る
+      const lift = (x) => (f === 2 ? BR_RISE * THREE.MathUtils.clamp((x - rc.x0) / (rc.x1 - rc.x0), 0, 1) : 0);
+      const shear = (g) => { const p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setY(i, p.getY(i) + lift(p.getX(i))); g.computeVertexNormals(); return g; };
+      const fg = new THREE.BoxGeometry(rc.x1 - rc.x0, 0.4, rc.z1 - rc.z0, 4, 1, 1);
+      fg.translate((rc.x0 + rc.x1) / 2, base(f) - 0.2, (rc.z0 + rc.z1) / 2);
+      const fl = new THREE.Mesh(shear(fg), matRelief);
       fl.castShadow = fl.receiveShadow = true;
       holder.add(fl);
       for (const sg of list) {
         const len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az), alongX = sg.n[1] !== 0;
-        const w = new THREE.Mesh(new THREE.BoxGeometry(alongX ? len : 0.2, 1.7, alongX ? 0.2 : len), matRelief); // 腰壁は少し高め（1.7m）
-        w.position.set((sg.ax + sg.bx) / 2, base(f) + 0.85, (sg.az + sg.bz) / 2);
+        const wg = new THREE.BoxGeometry(alongX ? len : 0.2, 1.7, alongX ? 0.2 : len, alongX ? 4 : 1, 1, 1); // 腰壁は少し高め（1.7m）
+        wg.translate((sg.ax + sg.bx) / 2, base(f) + 0.85, (sg.az + sg.bz) / 2);
+        const w = new THREE.Mesh(shear(wg), matRelief);
         w.castShadow = w.receiveShadow = true;
         holder.add(w);
       }
       for (const sg of list) {
         const len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az), n = Math.max(1, Math.round(len / 3));
         for (let i = 0; i <= n; i++) {
-          const p = new THREE.Mesh(new THREE.BoxGeometry(0.25, FH - 1.7, 0.25), matRelief);
-          p.position.set(sg.ax + ((sg.bx - sg.ax) * i) / n, base(f) + 1.7 + (FH - 1.7) / 2, sg.az + ((sg.bz - sg.az) * i) / n);
+          const x = sg.ax + ((sg.bx - sg.ax) * i) / n, h = FH - 1.7 - lift(x);
+          const p = new THREE.Mesh(new THREE.BoxGeometry(0.25, h, 0.25), matRelief);
+          p.position.set(x, base(f) + 1.7 + lift(x) + h / 2, sg.az + ((sg.bz - sg.az) * i) / n);
           holder.add(p);
         }
       }

@@ -389,6 +389,8 @@ const SHAPES = {
   // 視聴覚教室の段（1段 0.2m の高さ×奥行き1m。len で横にのばす）と、壁に埋めこんだ大きなスクリーン
   tier: [[MAT.wood, merge([b(1.0, 0.2, 1.0)])]],
   step: [[MAT.stepFloor, merge([b(1.0, 0.2, 1.0)])]],
+  // コモンスペースの階段の南の、段にそって斜めの手すり壁（長さ2.1m、高さ1.05m上がる）
+  stairRail: [[MAT.white, (() => { const g = b(2.1, 1.0, 0.12, 0, 0.1); const p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setY(i, p.getY(i) + 1.05 * (1.05 - p.getX(i)) / 2.1); g.computeVertexNormals(); return g; })()]],
   bigScreen: [[MAT.screen, merge([b(0.03, 2.2, 4.4, 0, 0.75)])], [MAT.black, merge([b(0.05, 2.4, 4.6, -0.02, 0.65)])]],
   longDesk: [[MAT.wood, merge([b(0.45, 0.04, 1, 0, 0.7)])], [MAT.metal, merge([b(0.04, 0.7, 0.04, 0.18, 0, -0.48), b(0.04, 0.7, 0.04, 0.18, 0, 0.48), b(0.03, 0.3, 1, 0.2, 0.35)])]],
   flipSeat: [[MAT.navy, merge([b(0.08, 0.45, 0.44, 0.2, 0.45), b(0.05, 0.42, 0.42, 0.05, 0.35)])], [MAT.metal, merge([b(0.05, 0.42, 0.05, 0.15, 0, -0.22), b(0.05, 0.42, 0.05, 0.15, 0, 0.22)])]],
@@ -945,9 +947,10 @@ const LAYOUTS = [
       o.push({ t: "table", x, z: cz, rot: Math.PI / 2 });
       for (const sd of [-1, 1]) o.push({ t: "bench", x, z: cz + sd * 0.75, rot: Math.PI / 2 });
     }
-    // 渡り廊下へ少し上がる階段：壁画の壁にくっついて、西へ3段上がり、そのまま渡り廊下へ（幅は渡り廊下と同じ 4.6m）
-    const bw = 4.6, tread = 0.45;
-    for (let k = 0; k < 3; k++) o.push({ t: "step", x: x0 + (2.5 - k) * tread, z: z0 + bw / 2 + 0.05, rot: 0, y: -0.15, sx: tread, sy: k + 1, sz: bw });
+    // 渡り廊下へ上がる階段：壁画の壁にくっついて、西へ7段上がり、そのまま渡り廊下へ。南側に斜めの手すり壁
+    const sw = 2.4, n = 7, rise = 0.15, tread = 0.3, xs = x0 + n * tread;
+    for (let k = 0; k < n; k++) o.push({ t: "step", x: xs - (k + 0.5) * tread, z: z0 + sw / 2 + 0.05, rot: 0, y: -0.15, sx: tread, sy: (rise * (k + 1)) / 0.2, sz: sw });
+    o.push({ t: "stairRail", x: xs - (n * tread) / 2, z: z0 + sw + 0.1, rot: 0 });
   }],
   [/らくらくスペース/, (o, R) => {
     const cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2;

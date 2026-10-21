@@ -671,8 +671,9 @@ function artroom(out, R, kiln = false) {
     const x = xa + ((xb - xa) * (i + 0.5)) / 3;
     for (const f of [0.27, 0.73]) {
       const z = z0 + w * f;
-      out.push({ t: "bigTable", x, z, rot: 0 });
-      for (const s of [-1, 1]) for (const k of [-0.6, 0.6]) out.push({ t: "stool", x: x + s * 0.9, z: z + k, rot: 0 });
+      // 机は東西に長く置き、椅子は東西の向き（机の東と西の側）に2つずつ（部屋は南が前なので、ここでは z が東西）
+      out.push({ t: "bigTable", x, z, rot: Math.PI / 2 });
+      for (const sd of [-1, 1]) for (const k of [-0.6, 0.6]) out.push({ t: "stool", x: x + k, z: z + sd * 0.9, rot: 0 });
     }
   }
   along(out, "cabinet", x1 - 0.3, z0 + (kiln ? 2.8 : 0.5), z1 - 0.5, 0.95, Math.PI);
@@ -691,9 +692,10 @@ function artIslands(out, R) {
   const xa = x0 + 2.4, xb = x1 - 1.0, za = z0 + 0.9, zb = z1 - 0.9;
   for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
     const x = xa + ((xb - xa) * (i + 0.5)) / 3, z = za + ((zb - za) * (j + 0.5)) / 3;
+    // 椅子は東西の向き（部屋は南が前なので、ここでは z が東西）
     for (const dx of [-1, 1]) for (const dz of [-1, 1]) {
-      out.push({ t: "desk", x: x + dx * 0.24, z: z + dz * 0.31, rot: 0 });
-      out.push({ t: "chair", x: x + dx * 0.68, z: z + dz * 0.31, rot: dx > 0 ? 0 : Math.PI });
+      out.push({ t: "desk", x: x + dx * 0.31, z: z + dz * 0.24, rot: Math.PI / 2 });
+      out.push({ t: "chair", x: x + dx * 0.31, z: z + dz * 0.68, rot: dz > 0 ? -Math.PI / 2 : Math.PI / 2 });
     }
   }
   along(out, "shelf", x1 - 0.25, z0 + 0.5, z1 - 0.5, 0.92, Math.PI);

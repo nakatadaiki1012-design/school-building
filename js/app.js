@@ -69,7 +69,7 @@ const ROOMS = [...splitRooms, ...EXTRA_ROOMS].map((r) => {
   if (ed) r = { ...r, ...ed.set };
   const d = describe(r.name);
   return { ...r, ...d, ...(r.desc ? { desc: r.desc } : {}), kind: "room" }; // ROOM_EDITS で紹介文を書いたときはそれを使う
-});
+}).filter((r) => !r.remove); // ROOM_EDITS の remove: true で消す部屋
 STAIRS.forEach((s, i) => {
   s.floors.forEach((f) => {
     ROOMS.push({

@@ -1722,7 +1722,7 @@ for (const f of [1, 2, 3]) {
       if (n > bestN && n >= Math.min(2, ks.length)) { best = d; bestN = n; }
     }
     // 前と後ろに入口がある特別教室
-    return best ? [/被服室|コンピューター|調理室/.test(x.name) ? best + "2" : best] : null;
+    return best ? [/被服室|コンピューター|調理室|実験室|美術教室|工芸教室/.test(x.name) ? best + "2" : best] : null;
   };
   // 家具（伸び縮みさせず、航空写真に合わせたあとの部屋の大きさで置く）
   const furn = buildFurniture(

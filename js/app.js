@@ -1559,7 +1559,16 @@ function stairFrame(r) {
   const n = 11, land = Math.min(1.6, L * 0.28), run = L - land - 0.2, tread = run / n, rise = FH / 2 / n;
   return { add, L, Wd, n, tread, rise, a0: -L / 2 + 0.1, landU: L / 2 - 0.1 - land };
 }
+// まっすぐな階段（折り返しなし）：壁の幅いっぱいに段がならび、上りきったところが踊り場
+const isStraight = (r) => !!STAIRS.find((x) => x.name === r.name)?.straight;
+function straightFlight(r, y, list) {
+  const { add, L, Wd } = stairFrame(r);
+  const land = 1.5, a0 = -L / 2 + 0.05, run = L - land - 0.1, n = 18, tread = run / n, rise = FH / n;
+  for (let i = 0; i < n; i++) add(list, a0 + i * tread, a0 + (i + 1) * tread, -Wd / 2 + 0.05, Wd / 2 - 0.05, y + rise * (i + 1) - 0.35, y + rise * (i + 1));
+  return { add, L, Wd, landU: a0 + run };
+}
 function stairFlights(r, y, list, upperOnly = false) {
+  if (isStraight(r)) { straightFlight(r, y, list); return; }
   const { add, L, Wd, n, tread, rise, a0, landU } = stairFrame(r);
   for (let i = 0; i < n; i++) {
     if (!upperOnly) add(list, a0 + i * tread, a0 + (i + 1) * tread, 0.06, Wd / 2 - 0.1, y, y + rise * (i + 1)); // 上り（右側）
@@ -1571,6 +1580,13 @@ function stairFlights(r, y, list, upperOnly = false) {
 }
 // いちばん上の階：上り切ったところの床と、吹き抜けのまわりの手すり壁
 function stairGuard(r, y, list) {
+  if (isStraight(r)) {
+    // 上りきったところの踊り場と、段の両側の手すり壁（踊り場の先は通路なので壁なし）
+    const { add, L, Wd, landU } = straightFlight(r, y - FH, []);
+    add(list, landU, L / 2, -Wd / 2, Wd / 2, y - 0.2, y);
+    for (const v of [-Wd / 2, Wd / 2 - 0.1]) add(list, -L / 2, landU, v, v + 0.1, y, y + 1.0);
+    return;
+  }
   const { add, L, Wd, a0, landU } = stairFrame(r);
   add(list, -L / 2, a0 + 0.02, -Wd / 2, Wd / 2, y - 0.2, y);           // 上り切ったところの床
   add(list, a0, landU, -0.08, 0.08, y, y + 1.1);                        // 吹き抜けと上りの段のあいだの手すり壁

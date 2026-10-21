@@ -2071,6 +2071,14 @@ window.addEventListener("keydown", (e) => {
   else return;
   e.preventDefault();
 });
+// 押したキーを、左下のキーボードの絵でへこませる
+{
+  const alias = { "=": "+", ";": "+", "_": "-" };
+  const flash = (k, on) => document.querySelectorAll(`.kb kbd[data-k="${CSS.escape(alias[k] || k)}"]`).forEach((el) => el.classList.toggle("pressed", on));
+  window.addEventListener("keydown", (e) => { if (!e.target.closest("input, textarea, select")) flash(e.key.toLowerCase(), true); });
+  window.addEventListener("keyup", (e) => flash(e.key.toLowerCase(), false));
+  window.addEventListener("blur", () => document.querySelectorAll(".kb kbd.pressed").forEach((el) => el.classList.remove("pressed")));
+}
 const compassEl = document.getElementById("compass");
 
 // ---------- 航空写真 ----------

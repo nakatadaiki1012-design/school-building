@@ -69,8 +69,32 @@
       </div>
     </div>
 
-    <!-- キーボード操作のヒント（パソコンだけ、左下に小さく） -->
-    <p class="key-hint">ドラッグ：回す　右ドラッグ：動かす　ホイール：ズーム　ダブルクリック：近づく<br>矢印/WASD：移動　＋ −：ズーム　Q E：回る　H：全体</p>
+    <!-- キーボード操作のヒント（パソコンだけ、左下に小さく）。押したキーは光る -->
+    <div class="key-hint" aria-hidden="true">
+      <div class="kb">
+        <div class="kb-grp">
+          <div class="kb-row"><kbd data-k="q">Q</kbd><kbd data-k="w">W</kbd><kbd data-k="e">E</kbd></div>
+          <div class="kb-row"><kbd data-k="a">A</kbd><kbd data-k="s">S</kbd><kbd data-k="d">D</kbd></div>
+          <div class="kb-cap">移動・Q E 回る</div>
+        </div>
+        <div class="kb-grp">
+          <div class="kb-row"><span class="kb-sp"></span><kbd data-k="arrowup">↑</kbd><span class="kb-sp"></span></div>
+          <div class="kb-row"><kbd data-k="arrowleft">←</kbd><kbd data-k="arrowdown">↓</kbd><kbd data-k="arrowright">→</kbd></div>
+          <div class="kb-cap">移動</div>
+        </div>
+        <div class="kb-grp">
+          <div class="kb-row"><kbd data-k="+">＋</kbd></div>
+          <div class="kb-row"><kbd data-k="-">−</kbd></div>
+          <div class="kb-cap">ズーム</div>
+        </div>
+        <div class="kb-grp">
+          <div class="kb-row"><kbd data-k="h">H</kbd></div>
+          <div class="kb-row"><span class="kb-sp"></span></div>
+          <div class="kb-cap">全体</div>
+        </div>
+      </div>
+      <div class="kb-mouse">ドラッグ：回す　右ドラッグ：動かす　ホイール：ズーム　ダブルクリック：近づく</div>
+    </div>
 
     <div class="aerial-box">
       <div class="aerial-row">

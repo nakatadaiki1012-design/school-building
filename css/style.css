@@ -276,11 +276,23 @@ dialog::backdrop { background: rgba(20, 30, 40, 0.45); }
   .logo { font-size: 22px; }
 }
 
-/* キーボード操作のヒント：左下に小さく薄く（スマホなどタッチの画面では出さない） */
+/* キーボード操作のヒント：左下に小さく薄く、キーボードの形（スマホなどタッチの画面では出さない） */
 .key-hint {
-  position: fixed; left: 12px; bottom: 10px; z-index: 5; margin: 0;
-  font-size: 11px; line-height: 1.5; color: rgba(31, 41, 51, 0.7);
-  background: rgba(255, 255, 255, 0.6); padding: 4px 8px; border-radius: 8px;
-  pointer-events: none;
+  position: fixed; left: 12px; bottom: 10px; z-index: 5;
+  font-size: 10px; color: rgba(31, 41, 51, 0.7);
+  background: rgba(255, 255, 255, 0.55); padding: 6px 8px; border-radius: 10px;
+  pointer-events: none; opacity: 0.85;
 }
+.kb { display: flex; gap: 10px; align-items: flex-start; }
+.kb-grp { display: grid; gap: 2px; justify-items: center; }
+.kb-row { display: flex; gap: 2px; }
+.kb kbd, .kb-sp { width: 20px; height: 20px; }
+.kb kbd {
+  display: grid; place-items: center; font: 600 10px/1 system-ui, sans-serif; color: #3a4652;
+  background: linear-gradient(#ffffff, #e9edf1); border: 1px solid #c3ccd5; border-bottom-width: 3px; border-radius: 4px;
+  transition: transform .08s, background .08s, border-bottom-width .08s;
+}
+.kb kbd.pressed { transform: translateY(2px); border-bottom-width: 1px; background: #cfe3f6; color: #1f6fb2; }
+.kb-cap { font-size: 9px; color: rgba(31, 41, 51, 0.6); white-space: nowrap; }
+.kb-mouse { margin-top: 4px; font-size: 9.5px; color: rgba(31, 41, 51, 0.6); white-space: nowrap; }
 @media (pointer: coarse), (max-width: 760px) { .key-hint { display: none; } }

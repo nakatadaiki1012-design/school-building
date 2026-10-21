@@ -285,6 +285,8 @@ function makeSchoolTex(p) {
   });
 }
 const texSchool = makeSchoolTex(PALETTE.white);
+// 美術・図書館棟はうすいベージュの壁（写真）
+const texArtWing = makeSchoolTex({ base: "#e9dfcf", band: "#ddd2c0", line: "#cfc3ae", tile: false });
 
 // 茶色いレンガタイルの壁（端の壁。窓はほとんどない）
 const texBrick = canvasTex(W, H, (g) => {
@@ -552,6 +554,11 @@ function wallRelief(segs, f) {
       const dep = 0.45;
       const cx = (sg.ax + sg.bx) / 2 + nx * dep / 2, cz = (sg.az + sg.bz) / 2 + nz * dep / 2;
       if (f < 3) { if (alongX) box(len + 0.2, 0.12, dep, cx, y0 + FH - 0.55, cz); else box(dep, 0.12, len + 0.2, cx, y0 + FH - 0.55, cz); }
+    } else if (sg.style === "artwing") {
+      // 美術・図書館棟（写真）：窓の上下に細い横の帯だけ（出っ張りは小さい）
+      const dep = 0.12;
+      const cx = (sg.ax + sg.bx) / 2 + nx * dep / 2, cz = (sg.az + sg.bz) / 2 + nz * dep / 2;
+      for (const yy of [0.25, 1.15]) { if (alongX) box(len + 0.2, 0.12, dep, cx, y0 + yy, cz); else box(dep, 0.12, len + 0.2, cx, y0 + yy, cz); }
     } else if (sg.style === "glassblock") {
       // 床の位置の白い梁だけ（腰はガラスブロックなので出っ張らない）
       const dep = 0.25, bh = 0.5;
@@ -570,10 +577,12 @@ function wallRelief(segs, f) {
       if (alongX) box(len, 0.5, 0.2, bx, 0.05, bz); else box(0.2, 0.5, len, bx, 0.05, bz);
     }
   }
-  const m = new THREE.Mesh(geos.length ? mergeGeometries(geos) : new THREE.BufferGeometry(), matRelief);
+  const beige = segs.length && segs.every((sg) => sg.style === "artwing");
+  const m = new THREE.Mesh(geos.length ? mergeGeometries(geos) : new THREE.BufferGeometry(), beige ? matReliefBeige : matRelief);
   m.castShadow = m.receiveShadow = true;
   return m;
 }
+const matReliefBeige = new THREE.MeshStandardMaterial({ color: 0xe6dccb, roughness: 0.85 });
 
 // 太陽光パネル（屋上の長方形の中に、南向きに少し傾けてならべる）
 const texSolar = canvasTex(64, 96, (g, w, h) => {
@@ -687,6 +696,7 @@ const texGlassBlock = canvasTex(W, H, (g) => {
 });
 
 const MAT_WALL = {
+  artwing: wallMat(texArtWing),
   office: wallMat(texOffice),
   glassblock: wallMat(texGlassBlock),
   school: wallMat(texSchool),
@@ -714,6 +724,7 @@ for (const f of [1, 2, 3]) {
     for (const [st, list] of [["office", FACADE.office], ["glassblock", FACADE.glassblock]]) {
       if ((list || []).some(([c0, r0, c1, r1, dir]) => side === dir && inCells(c, r, [c0, r0, c1, r1]) && (f >= 2 || st === "office"))) return st + "|" + b;
     }
+    if (b === "art" && style !== "gym") return "artwing|" + b; // 美術・図書館棟
     if (FACADE.brick.some((rc) => inCells(c, r, rc))) return "brick|" + b;
     if (d.dc !== 0 && FACADE.endWallWings.some((rc) => inCells(c, r, rc))) return "brick|" + b; // 棟の東西の端
     return "school|" + b;
@@ -943,7 +954,7 @@ for (const f of [1, 2, 3]) {
 {
   // 寄棟は教室・図書室の部分だけ（南の廊下・階段・トイレの帯は3階まであるので、平らな屋上にする）
   const rc = rectOf({ c0: 9, r0: 44, c1: 22, r1: 58 });
-  const ov = 0.5, y = 2 * FH, rise = 3.2; // 2階の上
+  const ov = 1.6, y = 2 * FH + 0.3, rise = 1.4; // 2階の上。写真：ゆるい勾配で、軒が大きく張り出している
   const x0 = rc.x0 - ov, x1 = rc.x1 + ov, z0 = rc.z0 - ov, z1 = rc.z1 + ov;
   const h = (z1 - z0) / 2, zc = (z0 + z1) / 2;
   const v = [
@@ -956,9 +967,17 @@ for (const f of [1, 2, 3]) {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
   geo.computeVertexNormals();
-  const hip = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xd4917e, roughness: 0.75, side: THREE.DoubleSide }));
+  const hip = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xb98676, roughness: 0.75, side: THREE.DoubleSide }));
   hip.castShadow = hip.receiveShadow = true;
-  inBlock(layers.roofs[2], blockById("art")).add(hip);
+  // 軒先の茶色い鼻隠し（屋根のふち）と、軒の裏（白）
+  const fasc = new THREE.MeshStandardMaterial({ color: 0x7b5547, roughness: 0.6 });
+  const soffit = new THREE.MeshStandardMaterial({ color: 0xece4d6, roughness: 0.9, side: THREE.DoubleSide });
+  const fg = [new THREE.BoxGeometry(x1 - x0, 0.35, 0.08).translate((x0 + x1) / 2, y - 0.1, z0), new THREE.BoxGeometry(x1 - x0, 0.35, 0.08).translate((x0 + x1) / 2, y - 0.1, z1),
+    new THREE.BoxGeometry(0.08, 0.35, z1 - z0).translate(x0, y - 0.1, (z0 + z1) / 2), new THREE.BoxGeometry(0.08, 0.35, z1 - z0).translate(x1, y - 0.1, (z0 + z1) / 2)];
+  const under = new THREE.Mesh(new THREE.PlaneGeometry(x1 - x0, z1 - z0), soffit);
+  under.rotation.x = -Math.PI / 2; under.position.set((x0 + x1) / 2, y - 0.27, (z0 + z1) / 2);
+  const holderArt = inBlock(layers.roofs[2], blockById("art"));
+  holderArt.add(hip, new THREE.Mesh(mergeGeometries(fg), fasc), under);
 }
 
 // 中央棟の屋上の設備（白い箱）

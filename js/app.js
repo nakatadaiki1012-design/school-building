@@ -1631,8 +1631,7 @@ for (const f of [1, 2, 3]) {
     r.mesh = tile;
     r.baseColor = color.clone();
     inBlock(grp, r.block).add(tile);
-    if (!isStaffOnly(r)) pickables.push(tile); // 入れない部屋は押せない
-    else if (r.kind !== "part") { mat.color.lerp(new THREE.Color(0xe9e7e2), 0.6); } // 色もうすく
+    if (!isStaffOnly(r)) pickables.push(tile); // 入れない部屋は押せない（床の色はそのまま。名前の文字だけうすく小さく）
 
     // 建物の中の階段：上の階へ上がる折り返し階段（行きの段・踊り場・帰りの段）
     // その階から上る段と、下の階から上ってきた段（上り切ったところ）の両方を見せる。いちばん上の階では吹き抜けに手すり

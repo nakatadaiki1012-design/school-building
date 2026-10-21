@@ -1721,7 +1721,8 @@ for (const f of [1, 2, 3]) {
       const n = ks.filter((k) => OCC[f].has(k) && !roomCells.has(k)).length;
       if (n > bestN && n >= Math.min(2, ks.length)) { best = d; bestN = n; }
     }
-    return best ? [best] : null;
+    // 前と後ろに入口がある特別教室
+    return best ? [/被服室|コンピューター|調理室/.test(x.name) ? best + "2" : best] : null;
   };
   // 家具（伸び縮みさせず、航空写真に合わせたあとの部屋の大きさで置く）
   const furn = buildFurniture(

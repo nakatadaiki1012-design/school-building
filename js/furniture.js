@@ -986,10 +986,13 @@ export function buildFurniture(rooms, y) {
     }
     // 外への出入口の両引き戸（doors: 向きのリスト）。壁のまんなかに置く
     // "s:door4" のように書くと、4枚の大きな両引き戸
+    // "n2" のように2をつけると、その壁の前と後ろ（両はし寄り）に2つ
     for (const dd of r.doors || []) {
-      const [d, t = "door"] = dd.split(":");
+      const [d0, t = "door"] = dd.split(":");
+      const d = d0[0], two = d0.endsWith("2");
       const p = { n: [r.cx, r.cz - r.d / 2, 0], s: [r.cx, r.cz + r.d / 2, 0], e: [r.cx + r.w / 2, r.cz, Math.PI / 2], w: [r.cx - r.w / 2, r.cz, Math.PI / 2] }[d];
-      items.push({ t, x: p[0], z: p[1], rot: p[2] });
+      const along = d === "n" || d === "s", half = (along ? r.w : r.d) / 2 - 1.3;
+      for (const o of two ? [-half, half] : [0]) items.push({ t, x: p[0] + (along ? o : 0), z: p[1] + (along ? 0 : o), rot: p[2] });
     }
     const fn = LAYOUTS.find(([re]) => re.test(r.name));
     if (!fn) continue;

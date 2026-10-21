@@ -1700,10 +1700,26 @@ for (const f of [1, 2, 3]) {
     pm.castShadow = true; pm.receiveShadow = true;
     inBlock(grp, blockById(bid)).add(pm);
   }
+  // 廊下に面した入口のドア：教室の家具の置き方にドアがない部屋は、廊下（部屋のない建物の中）に面した辺にドアをつける
+  const NO_DOOR = /年\d+組|選択|オーラル|社会科教室|音楽室|昇降口|玄関|ホール|吹抜|バルコニー|光庭|体育館|ステージ|ラウンジ|らくらく|STUDY HALL|部室|窯|倉庫|受水槽|電気室/;
+  const roomCells = new Set();
+  for (const q of ROOMS.filter((x) => x.floor === f)) for (let c = Math.floor(q.c0); c <= Math.ceil(q.c1); c++) for (let rr = q.r0; rr <= q.r1; rr++) roomCells.add(key(c, rr));
+  const autoDoors = (x) => {
+    if (x.kind !== "room" || NO_DOOR.test(x.name) || styleOf(x)?.doors || styleOf(x)?.open) return null;
+    const c0 = Math.floor(x.c0), c1 = Math.ceil(x.c1), sides = { n: [], s: [], w: [], e: [] };
+    for (let c = c0; c <= c1; c++) { sides.n.push(key(c, x.r0 - 1)); sides.s.push(key(c, x.r1 + 1)); }
+    for (let rr = x.r0; rr <= x.r1; rr++) { sides.w.push(key(c0 - 1, rr)); sides.e.push(key(c1 + 1, rr)); }
+    let best = null, bestN = 0;
+    for (const [d, ks] of Object.entries(sides)) {
+      const n = ks.filter((k) => OCC[f].has(k) && !roomCells.has(k)).length;
+      if (n > bestN && n >= Math.min(2, ks.length)) { best = d; bestN = n; }
+    }
+    return best ? [best] : null;
+  };
   // 家具（伸び縮みさせず、航空写真に合わせたあとの部屋の大きさで置く）
   const furn = buildFurniture(
     ROOMS.filter((x) => x.floor === f && (x.kind === "room" || x.kind === "part"))
-      .map((x) => ({ name: x.kind === "part" ? (x.parent.name === "事務室" ? "受付カウンター" : x.parent.name + "（L字）") : x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd, vending: x.kind === "part" ? null : styleOf(x)?.vending, vendingN: styleOf(x)?.vendingN, vendingShift: styleOf(x)?.vendingShift, doors: x.kind === "part" ? null : styleOf(x)?.doors })),
+      .map((x) => ({ name: x.kind === "part" ? (x.parent.name === "事務室" ? "受付カウンター" : x.parent.name + "（L字）") : x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd, vending: x.kind === "part" ? null : styleOf(x)?.vending, vendingN: styleOf(x)?.vendingN, vendingShift: styleOf(x)?.vendingShift, doors: x.kind === "part" ? null : styleOf(x)?.doors || autoDoors(x) })),
     y0OfFloor(f),
   );
   layers.furniture[f] = furn;

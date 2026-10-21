@@ -1317,8 +1317,8 @@ scene.add(outdoor);
   const glassM = new THREE.MeshStandardMaterial({ color: 0x3e5a74, roughness: 0.15, metalness: 0.3 });
   const parts = [];
   const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; parts.push(m); return m; };
-  // レンガのアーチの枠（壁から1.2m 前に出して、入口がくぼんで見えるようにする）
-  const ow = 5.4, oh = 3.9, aw = 3.6, spring = 1.7, D = 0.7;
+  // レンガのアーチの枠（壁の面にそのまま重ねる）
+  const ow = 5.4, oh = 3.9, aw = 3.6, spring = 1.7, D = 0.06; // 壁と同じ面（張り出しなし）
   const sh = new THREE.Shape();
   // 下のふちから入口の形（アーチ）を切りこんだ1本の輪郭
   sh.moveTo(-ow / 2, 0); sh.lineTo(-aw / 2, 0); sh.lineTo(-aw / 2, spring);
@@ -1331,9 +1331,9 @@ scene.add(outdoor);
   arch.position.x = wx + D;
   // アーチの内側の天井と横の壁（少し暗い）、奥のガラスの扉
   const inner = new THREE.MeshStandardMaterial({ color: 0x5a3a30, roughness: 0.9, side: THREE.DoubleSide });
-  add(new THREE.BoxGeometry(0.06, 2.4, 3.2), glassM, wx + 0.05, 1.0, cz);
-  for (const dz of [-1.6, -0.55, 0.55, 1.6]) add(new THREE.BoxGeometry(0.1, 2.45, 0.08), matRelief, wx + 0.08, 1.02, cz + dz);
-  add(new THREE.BoxGeometry(0.06, spring + aw / 2 - 2.4, aw), inner, wx + 0.04, 2.2 + (spring + aw / 2 - 2.4) / 2, cz);
+  add(new THREE.BoxGeometry(0.04, 2.4, aw - 0.1), glassM, wx + 0.07, 1.0, cz);
+  for (const dz of [-1.75, -0.6, 0.6, 1.75]) add(new THREE.BoxGeometry(0.06, 2.45, 0.08), matRelief, wx + 0.09, 1.02, cz + dz);
+  add(new THREE.BoxGeometry(0.04, spring + aw / 2 - 2.4, aw), inner, wx + 0.07, 2.2 + (spring + aw / 2 - 2.4) / 2, cz);
   // 学校名の銘板（入口の北のわき）
   const plateTex = (() => { const cv = document.createElement("canvas"); cv.width = 48; cv.height = 256; const c = cv.getContext("2d"); c.fillStyle = "#3b3b38"; c.fillRect(0, 0, 48, 256); c.fillStyle = "#e9e4d6"; c.font = "bold 26px serif"; c.textAlign = "center"; [..."神奈川県立麻生高等学校"].forEach((ch, i) => c.fillText(ch, 24, 26 + i * 22.5)); const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t; })();
   const pl = add(new THREE.PlaneGeometry(0.35, 1.7), new THREE.MeshStandardMaterial({ map: plateTex }), wx + D + 0.02, 1.4, cz - ow / 2 + 0.45);

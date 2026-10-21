@@ -453,6 +453,8 @@ export const ROOM_EDITS = [
   { name: "体育館", floor: 2, set: { desc: "体育館です。バスケットボールやバレーボールのコートが2面取れる広さです。" } },
   // 1号館側（北）の昇降口
   { name: "昇降口", floor: 1, atR: 27, set: { desc: "1号館側の昇降口です。自動販売機が3台設置されています。", photos: ["images/shoko1-a.jpg", "images/shoko1-b.jpg"] } },
+  // 2号館・3号館側（南）の昇降口
+  { name: "昇降口", floor: 1, atR: 47, set: { desc: "2号館・3号館側の昇降口です。3年生や、1年5組〜8組の生徒が利用します。飲み物のほか、パンなどの自動販売機も設置されています。", photos: ["images/shoko2-a.jpg", "images/shoko2-b.jpg"] } },
   { name: "卓球場", floor: 3, set: { desc: "卓球場です。体育の授業や、卓球部の活動場所として使われています。" } },
   { name: "社会科教室", floor: 3, set: { desc: "地歴公民の授業などで使われています。埴輪の模型や地球儀などの資料が置かれています。" } },
   { name: "選択第１教室", floor: 3, set: { desc: "数学の少人数授業、委員会などの集まり、その他部活動の活動場所などで使われています。" } },
@@ -495,7 +497,7 @@ export const ROOM_STYLE = [
   { name: "ラウンジ", floor: 3, open: ["s"] }, // 3階にも同じラウンジがある
   // STUDY HALL：階段側（南）以外はガラス張り
   { name: "STUDY HALL", floor: 2, glass: ["n", "e", "w"] },
-  { name: "ホール", floor: 1, open: ["n", "s", "e", "w"], vending: "w", vendingN: 3, vendingShift: 1.5, noLabel: true, noFloor: true }, // 南の昇降口のとなりのホール：壁なし、西の壁ぎわに自販機、名前は出さない
+  { name: "ホール", floor: 1, open: ["n", "s", "e", "w"], vending: "w", vendingN: 4, vendingShift: 1.5, noLabel: true, noFloor: true }, // 南の昇降口のとなりのホール：壁なし、西の壁ぎわに自販機、名前は出さない
 ];
 
 // 外壁を作らない場所（通り抜けの出入口）[階, c0, r0, c1, r1]

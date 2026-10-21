@@ -413,11 +413,11 @@ function bikeInstances(spots) {
 
 // 2階建ての駐輪場（1階と2階に自転車。外階段つき）
 // L字などの形は parts（[x0, x1, z0, z1] の並び）で、屋根のつながった1つの建物にする
-function buildBikes2({ parts, roof = 0x9ea3a6, ...main }) {
+function buildBikes2({ parts, roof = 0x9ea3a6, stair, ...main }) {
   if (parts) {
     const g = new THREE.Group();
     parts.forEach(([x0, x1, z0, z1], i) => {
-      const p = buildBikes2({ x0, x1, z0, z1, roof });
+      const p = buildBikes2({ x0, x1, z0, z1, roof, stair: i === 0 ? stair : undefined });
       p.position.y += i * 0.01; // 屋根の重なりのちらつきを防ぐ
       g.add(p);
     });
@@ -426,15 +426,36 @@ function buildBikes2({ parts, roof = 0x9ea3a6, ...main }) {
   const { x0, x1, z0, z1 } = main;
   const g = new THREE.Group();
   const w = x1 - x0, d = z1 - z0, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-  const conc = M(0xd6d3cb), steel = M(0x8c949b, { metalness: 0.4 });
-  const slab = new THREE.Mesh(new THREE.BoxGeometry(w, 0.3, d), conc); slab.position.set(cx, 2.7, cz);
-  const top = new THREE.Mesh(new THREE.BoxGeometry(w + 0.5, 0.2, d + 0.5), M(roof, { roughness: 0.6 })); top.position.set(cx, 5.4, cz);
-  g.add(slab, top);
+  // 写真：うすいベージュのコンクリート（柱・床・2階の手すり壁）、屋根は灰色がかったベージュ
+  const conc = M(0xd9d1c1, { roughness: 0.9 }), post = M(0xcfc7b6, { roughness: 0.9 });
+  const slab = new THREE.Mesh(new THREE.BoxGeometry(w + 0.2, 0.35, d + 0.2), conc); slab.position.set(cx, 2.7, cz);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(w + 0.8, 0.18, d + 0.8), M(roof, { roughness: 0.7 })); top.position.set(cx, 5.45, cz);
+  const fascia = new THREE.Mesh(new THREE.BoxGeometry(w + 0.84, 0.35, d + 0.84), M(0xbdb5a5)); fascia.position.set(cx, 5.3, cz);
+  g.add(slab, fascia, top);
   for (let x = x0 + 0.2; x <= x1; x += Math.max(3, (w - 0.4) / Math.round(w / 4))) for (const z of [z0 + 0.2, z1 - 0.2]) {
-    const p = new THREE.Mesh(new THREE.BoxGeometry(0.3, 5.4, 0.3), steel); p.position.set(x, 2.7, z); g.add(p);
+    const p = new THREE.Mesh(new THREE.BoxGeometry(0.4, 5.4, 0.4), post); p.position.set(x, 2.7, z); g.add(p);
   }
-  // 2階の手すり
-  for (const z of [z0 + 0.1, z1 - 0.1]) { const r = new THREE.Mesh(new THREE.BoxGeometry(w, 1.0, 0.08), conc); r.position.set(cx, 3.35, z); g.add(r); }
+  // 2階の手すり壁（四方。たて縞の目地）
+  const ptex = canvasTex(64, 32, (c, W, H) => { c.fillStyle = "#ddd5c5"; c.fillRect(0, 0, W, H); c.fillStyle = "rgba(120,110,95,0.25)"; for (let x = 0; x < W; x += 8) c.fillRect(x, 0, 1.5, H); });
+  ptex.wrapS = ptex.wrapT = THREE.RepeatWrapping;
+  const pmat = new THREE.MeshStandardMaterial({ map: ptex, roughness: 0.9 });
+  const panel = (len, x, z, alongX) => { const t = ptex.clone(); t.needsUpdate = true; t.repeat.set(len / 1.5, 1); const m = new THREE.Mesh(new THREE.BoxGeometry(alongX ? len : 0.12, 1.1, alongX ? 0.12 : len), new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 })); m.position.set(x, 3.4, z); g.add(m); };
+  panel(w, cx, z0 + 0.05, true); panel(w, cx, z1 - 0.05, true);
+  panel(d, x0 + 0.05, cz, false); panel(d, x1 - 0.05, cz, false);
+  // 1階の腰の低いブロック塀（自転車の前輪どめ）
+  for (const z of [z0 + 0.1, z1 - 0.1]) { const r = new THREE.Mesh(new THREE.BoxGeometry(w, 0.4, 0.15), conc); r.position.set(cx, 0.2, z); g.add(r); }
+  // 外階段（写真：建物の横を、手すり壁つきで2階へ上がる）。stair: "e"（東の外側を北へ上る）など
+  if (stair) {
+    const sx = stair === "e" ? x1 + 0.8 : x0 - 0.8, n = 16, len = Math.min(d - 0.5, 6.4), tread = len / n;
+    const steps = [];
+    for (let i = 0; i < n; i++) steps.push(new THREE.BoxGeometry(1.4, 2.7 * (i + 1) / n, tread).translate(sx, 1.35 * (i + 1) / n, z1 - 0.3 - (i + 0.5) * tread));
+    g.add(new THREE.Mesh(mergeGeometries(steps), conc));
+    const land = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.3, 1.4), conc); land.position.set(sx, 2.7, z1 - 0.3 - len - 0.7); g.add(land);
+    for (const s2 of [-1, 1]) {
+      const r = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.0, Math.hypot(len, 2.7)), conc);
+      r.position.set(sx + s2 * 0.7, 1.35 + 0.5, z1 - 0.3 - len / 2); r.rotation.x = Math.atan2(2.7, len); g.add(r);
+    }
+  }
   // 自転車（各階2列）。自転車は東西の向きにとめてある
   const n = Math.floor((d - 1) / 0.6);
   const spots = [];

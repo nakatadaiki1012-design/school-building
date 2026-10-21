@@ -1064,8 +1064,10 @@ function rustTex() {
     const alongX = Math.abs(x1 - x0) > Math.abs(z1 - z0);
     for (let i = 0; i < n; i++) {
       const cx = x0 + dx * (i + 0.5), cz = z0 + dz * (i + 0.5), top = y0 + rise * (i + 1);
-      if (alongX) box(list, Math.abs(dx) + 0.02, top, width, cx, top / 2, cz);
-      else box(list, width, top, Math.abs(dz) + 0.02, cx, top / 2, cz);
+      // 地面から始まる階段は下まで埋める。上の階から始まる階段は、段の下に板の厚みだけ
+      const b0 = y0 > 0.5 ? y0 + rise * i - 0.35 : 0;
+      if (alongX) box(list, Math.abs(dx) + 0.02, top - b0, width, cx, (top + b0) / 2, cz);
+      else box(list, width, top - b0, Math.abs(dz) + 0.02, cx, (top + b0) / 2, cz);
     }
     // 手すり壁（両側。段にそって傾けた細い板）
     const L = Math.hypot(x1 - x0, z1 - z0), S = Math.hypot(L, y1 - y0);
@@ -1131,6 +1133,15 @@ function rustTex() {
   // 南側の2階の入口の上は、3階の床がのびた ひさし
   box(geos2, gxe + dw - gx, 0.35, zBot + 2.5 - gz1, (gx + gxe + dw) / 2, 2 * FH - 0.2, (gz1 + zBot + 2.5) / 2);
   stair(geos1, gx + pl + sl, zBot + 1.25, gx + pl, zBot + 1.25, -0.2, ty, 2.3);
+  // 2階の南の外廊下の東のはしから、3階の卓球場へ上がる外階段（南のひさしの外側を西へ上り、ひさしの上に出る）
+  {
+    const xb = gxe + dw - 2.6, zs = zBot + 3.7, sl3 = 9.4;
+    deck(xb, gxe + dw, zBot, zBot + 4.9);                                     // 2階の踊り場
+    rail(gxe + dw, gxe + dw, zBot, zBot + 4.9); rail(xb, gxe + dw, zBot + 4.9, zBot + 4.9);
+    stair(geos1, xb, zs, xb - sl3, zs, ty, 2 * FH, 2.3);
+    box(geos2, 2.6, 0.3, 2.4, xb - sl3 - 1.3, 2 * FH - 0.15, zs);              // 3階の踊り場（ひさしの上につながる）
+    for (const [x, z] of [[gxe + dw - 0.2, zBot + 4.7], [xb, zBot + 4.7], [xb - sl3 / 2, zBot + 4.7], [xb - sl3 - 2.4, zBot + 4.7]]) box(geos2, 0.35, (x > xb - 1 ? ty : 2 * FH), 0.35, x, (x > xb - 1 ? ty : 2 * FH) / 2 - 0.15, z);
+  }
   stair(geos1, gxe + dw + 1.2, zTop + 2.4 + sl, gxe + dw + 1.2, zTop + 2.4, -0.2, ty, 2.3);
   // 1階の南側の柱（柱が並ぶ吹きさらしの部分）
   for (let x = gx + 9; x < gxe; x += 4.2) box(geos2, 0.5, FH, 0.5, x, FH / 2 - 0.2, gz1 + 0.3);

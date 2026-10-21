@@ -218,6 +218,7 @@ const MAT = {
   greenNet: new THREE.MeshStandardMaterial({ color: 0x2f8a46, transparent: true, opacity: 0.45, roughness: 1, depthWrite: false, side: THREE.DoubleSide }),
   curtainDark: M(0x5c1420, { roughness: 1 }),
   cardboard: M(0xb8935e, { roughness: 1 }),
+  stepFloor: M(0xd8cfbf, { roughness: 0.8 }),
   pingBlue: M(0x2a4f9a, { roughness: 0.5 }), // 卓球台（写真では青）
   doorFrame: M(0xc9b796, { roughness: 0.7 }), // ドアと窓の枠もベージュ
   tank: M(0x6d97b8, { roughness: 0.6 }),
@@ -387,6 +388,7 @@ const SHAPES = {
   // 長机（長さは1mの形を len 倍にのばす）と、跳ね上げ椅子（座面が上がった形）
   // 視聴覚教室の段（1段 0.2m の高さ×奥行き1m。len で横にのばす）と、壁に埋めこんだ大きなスクリーン
   tier: [[MAT.wood, merge([b(1.0, 0.2, 1.0)])]],
+  step: [[MAT.stepFloor, merge([b(1.0, 0.2, 1.0)])]],
   bigScreen: [[MAT.screen, merge([b(0.03, 2.2, 4.4, 0, 0.75)])], [MAT.black, merge([b(0.05, 2.4, 4.6, -0.02, 0.65)])]],
   longDesk: [[MAT.wood, merge([b(0.45, 0.04, 1, 0, 0.7)])], [MAT.metal, merge([b(0.04, 0.7, 0.04, 0.18, 0, -0.48), b(0.04, 0.7, 0.04, 0.18, 0, 0.48), b(0.03, 0.3, 1, 0.2, 0.35)])]],
   flipSeat: [[MAT.navy, merge([b(0.08, 0.45, 0.44, 0.2, 0.45), b(0.05, 0.42, 0.42, 0.05, 0.35)])], [MAT.metal, merge([b(0.05, 0.42, 0.05, 0.15, 0, -0.22), b(0.05, 0.42, 0.05, 0.15, 0, 0.22)])]],
@@ -938,12 +940,16 @@ const LAYOUTS = [
   // コモンスペース：北の壁に壁画、テーブル2つと長椅子、西のはしに渡り廊下へ少し上がる階段（北へ上る）
   [/コモンスペース/, (o, R) => {
     const { x0, x1, z0, z1 } = R, cz = (z0 + z1) / 2 + 0.8;
-    o.push({ t: "mural", x: (x0 + x1) / 2 + 0.6, z: z0 + 0.05, rot: Math.PI / 2, len: x1 - x0 - 1.4 });
-    for (const x of [x0 + (x1 - x0) * 0.42, x0 + (x1 - x0) * 0.72]) {
+    o.push({ t: "mural", x: (x0 + 2.9 + x1 - 0.3) / 2, z: z0 + 0.05, rot: Math.PI / 2, len: x1 - 0.3 - x0 - 2.9 }); // 階段の東から
+    for (const x of [x0 + (x1 - x0) * 0.2, x0 + (x1 - x0) * 0.45]) { // テーブルは西寄り
       o.push({ t: "table", x, z: cz, rot: Math.PI / 2 });
       for (const sd of [-1, 1]) o.push({ t: "bench", x, z: cz + sd * 0.75, rot: Math.PI / 2 });
     }
-    for (let k = 0; k < 4; k++) for (let j = 0; j <= k; j++) o.push({ t: "tier", x: x0 + 0.9, z: z0 + 2.4 - k * 0.4, rot: 0, y: 0.2 * j - 0.15, sx: 1.6, sz: 0.4 });
+    // 渡り廊下へ少し上がる階段：準備室の西どなりを北へ3段上がり、上は渡り廊下と同じ高さ（+0.6m）の通路
+    const sw = 2.6, sxc = x0 + sw / 2 + 0.1, tread = 0.4, nStep = 3, zs = z0 + 0.6;
+    for (let k = 0; k < nStep; k++) o.push({ t: "step", x: sxc, z: zs - (k + 0.5) * tread, rot: 0, y: -0.15, sx: sw, sy: k + 1, sz: tread });
+    const zl0 = zs - nStep * tread, zl1 = z0 - 3.9;
+    o.push({ t: "step", x: sxc, z: (zl0 + zl1) / 2, rot: 0, y: -0.15, sx: sw, sy: nStep, sz: zl0 - zl1 });
   }],
   [/らくらくスペース/, (o, R) => {
     const cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2;
@@ -1056,7 +1062,7 @@ export function buildFurniture(rooms, y) {
       list.forEach((it, i) => {
         p.set(it.x, y + 0.15 + (it.y || 0), it.z);
         q.setFromAxisAngle(up, it.rot || 0);
-        s.set(it.sx || 1, 1, it.sz || it.len || 1); // sx・sz：箱の大きさを変える（段など）
+        s.set(it.sx || 1, it.sy || 1, it.sz || it.len || 1); // sx・sy・sz：箱の大きさを変える（段など）
         m4.compose(p, q, s);
         im.setMatrixAt(i, m4);
         if (it.col !== undefined) im.setColorAt(i, new THREE.Color(it.col));

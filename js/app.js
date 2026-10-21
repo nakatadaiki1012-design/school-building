@@ -759,7 +759,7 @@ for (const f of [1, 2, 3]) {
       // 床（下から見える厚い板）と、厚みのある腰壁
       const rc = rectOf({ c0: 27, r0: 19, c1: 32, r1: 21 });
       const fl = new THREE.Mesh(new THREE.BoxGeometry(rc.x1 - rc.x0, 0.4, rc.z1 - rc.z0), matRelief);
-      fl.position.set((rc.x0 + rc.x1) / 2, base(f) - 0.2, (rc.z0 + rc.z1) / 2);
+      fl.position.set((rc.x0 + rc.x1) / 2, base(f) - 0.2 + (f === 2 ? 0.6 : 0), (rc.z0 + rc.z1) / 2); // 2階の渡り廊下は、コモンスペースから少し上がった高さ
       fl.castShadow = fl.receiveShadow = true;
       holder.add(fl);
       for (const sg of list) {
@@ -1633,7 +1633,6 @@ for (const f of [1, 2, 3]) {
       else if (st === "tile") map.repeat.set(r.w / 1.2, r.d / 1.2);
       else map.repeat.set(r.w / 4, r.d / 4);
       if (/ステージ/.test(r.name)) tint = new THREE.Color(0xc99560); // ステージの木の床
-      else if (/コモンスペース/.test(r.name)) { map = null; tint = new THREE.Color(0xefe7d8); } // 廊下と同じうすいベージュ
       else if (/卓球場/.test(r.name)) { map = null; tint = new THREE.Color(0x2f7a72); } // 卓球場の床は緑がかった青の樹脂の床（写真）
       else if (/コンピューター/.test(r.name)) tint = new THREE.Color(0x4a74c9); // コンピューター教室の床は青
       else if (/教室/.test(r.name) && st === "wood") tint = new THREE.Color(0xeadfc8); // 教室の床はうすいベージュ

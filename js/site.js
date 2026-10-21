@@ -1353,12 +1353,10 @@ export function buildSite(scene, SITE) {
       for (const x of [x0 + 2, x1 - 2]) { const bn = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.42, 0.4), wood); bn.position.set(x, 0.0, (z0 + z1) / 2); group.add(bn); }
     }
   }
-  // ごみ捨て場（コンクリートの床、緑の網のかこい、屋根）
+  // ごみ捨て場のまわりの植え込み
   if (SITE.garbage) {
     const gb = SITE.garbage, gg = new THREE.Group();
-    const base = new THREE.Mesh(new THREE.BoxGeometry(gb.w, 0.15, gb.d), M(0xbdbab2)); base.position.y = -0.12;
-    const roof = new THREE.Mesh(new THREE.BoxGeometry(gb.w + 0.4, 0.1, gb.d + 0.4), M(0x7f8a86, { metalness: 0.3 })); roof.position.y = 2.2;
-    gg.add(base, roof);
+    // 屋根（東屋）・床・ごみ箱は置かない。まわりの植え込みだけ
     // まわりを生け垣でかこむ（片側のまんなかに入口のすきま）
     const hw = 0.9, hh = 1.6, W2 = gb.w / 2 + hw, D2 = gb.d / 2 + hw;
     const gap = 1.6, half = (gb.d + 2 * hw - gap) / 2; // 入口のすきま（片側の端）
@@ -1366,7 +1364,6 @@ export function buildSite(scene, SITE) {
       [hw, half, -W2, -(gap + half) / 2], [hw, half, -W2, (gap + half) / 2]]) {
       const h = hedgeBox(w, hh, d); h.position.set(x, -0.2, z); gg.add(h);
     }
-    for (let i = 0; i < 4; i++) { const bin = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.28, 0.75, 12), M([0x2f5fa8, 0x3a8a4f, 0xd8d4c8, 0x2f5fa8][i])); bin.position.set(-gb.w / 2 + 0.6 + i * 0.75, 0.35, 0); gg.add(bin); }
     gg.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     gg.position.set(gb.x, 0, gb.z); gg.rotation.y = THREE.MathUtils.degToRad(gb.rot || 0);
     group.add(gg);

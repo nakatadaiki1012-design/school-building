@@ -1714,11 +1714,21 @@ for (const f of [1, 2, 3]) {
       const t = 0.14, h = isOpen ? 1.0 : WALL_H;
       const rc = { x0: r.cx - r.w / 2, x1: r.cx + r.w / 2, z0: r.cz - r.d / 2, z1: r.cz + r.d / 2 };
       const sty = styleOf(r);
+      // 建物の外に面した辺は、外壁があるので部屋の壁を立てない（外壁から少しはみ出して、レンガの壁に白い帯が見えてしまうため）
+      const ca = Math.floor(r.c0), cb = Math.ceil(r.c1), outSide = (side) => {
+        const ks = [];
+        if (side === "n" || side === "s") for (let c = ca; c <= cb; c++) ks.push(key(c, side === "n" ? r.r0 - 1 : r.r1 + 1));
+        else for (let rr = r.r0; rr <= r.r1; rr++) ks.push(key(side === "w" ? ca - 1 : cb + 1, rr));
+        return ks.every((k) => !OCC[f].has(k));
+      };
+      // 外に面した辺に向かってのびる壁は、外壁の内側で止める（はしが外壁から少し出て白い線に見えないように）
+      const cut = 0.25, oW = outSide("w") ? cut : 0, oE = outSide("e") ? cut : 0, oN = outSide("n") ? cut : 0, oS = outSide("s") ? cut : 0;
       for (const [w, d, x, z, side] of [
-        [r.w, t, r.cx, rc.z0, "n"], [r.w, t, r.cx, rc.z1, "s"],
-        [t, r.d, rc.x0, r.cz, "w"], [t, r.d, rc.x1, r.cz, "e"],
+        [r.w - oW - oE, t, r.cx + (oW - oE) / 2, rc.z0, "n"], [r.w - oW - oE, t, r.cx + (oW - oE) / 2, rc.z1, "s"],
+        [t, r.d - oN - oS, rc.x0, r.cz + (oN - oS) / 2, "w"], [t, r.d - oN - oS, rc.x1, r.cz + (oN - oS) / 2, "e"],
       ]) {
         if (sty?.open?.includes(side)) continue;
+        if (!sty?.glass?.includes(side) && outSide(side)) continue;
         if (sty?.glass?.includes(side)) {
           // 床から天井近くまでのガラスと、細い枠（たての枠は約1.5mおき）
           const along = side === "n" || side === "s", L = along ? w : d, H = WALL_H + 0.4;

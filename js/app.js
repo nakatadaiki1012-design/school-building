@@ -1861,11 +1861,22 @@ function useCamera() {
   return is2d ? ortho : persp;
 }
 
+let floorCamInit = false; // いちど見たら、階を切り替えても見ている角度・場所はそのまま
 function setFloor(f, { keepCamera = false } = {}) {
+  const prev = state.floor;
   state.floor = f;
   if (f === 0) state.view = "3d";
   applyMode();
   useCamera();
+  if (!keepCamera && floorCamInit && state.view === "3d") {
+    // 角度と場所はそのままで、見る高さだけ新しい階に合わせる
+    const dy = (f ? base(f) : 0) - (prev ? base(prev) : 0);
+    anim = null;
+    persp.position.y += dy; controls3d.target.y += dy;
+    return;
+  }
+  if (!keepCamera && floorCamInit && state.view === "2d") return; // 平面図も、ずらした場所・ズームのまま
+  floorCamInit = true;
   if (!keepCamera) {
     if (f === 0) flyTo(new THREE.Vector3(75, 120, 120), new THREE.Vector3(0, 0, -35)); // HOME と同じ
     else if (state.view === "3d") flyTo(new THREE.Vector3(10, base(f) + 85, 70), new THREE.Vector3(0, base(f), 4));

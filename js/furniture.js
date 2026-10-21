@@ -212,6 +212,8 @@ const MAT = {
   vendFace: new THREE.MeshStandardMaterial({ map: texVend, roughness: 0.3, emissive: 0xffffff, emissiveMap: texVend, emissiveIntensity: 0.35 }),
   screenOn: new THREE.MeshStandardMaterial({ map: texEboard, roughness: 0.3, emissive: 0xffffff, emissiveMap: texEboard, emissiveIntensity: 0.55 }),
   gray: M(0x8e98a2),
+  tatamiTop: (() => { const t = FLOOR_TEX.tatami.clone(); t.needsUpdate = true; t.repeat.set(1.3, 1.6); return new THREE.MeshStandardMaterial({ map: t, roughness: 0.9 }); })(),
+  fusuma: new THREE.MeshStandardMaterial({ map: canvasTex(64, 128, (g, w, h) => { g.fillStyle = "#efe8d6"; g.fillRect(0, 0, w, h); for (let i = 0; i < 30; i++) { g.fillStyle = `rgba(190,170,120,${Math.random() * 0.06})`; g.beginPath(); g.arc(Math.random() * w, Math.random() * h, 2 + Math.random() * 4, 0, 7); g.fill(); } g.fillStyle = "#6b4c2e"; g.fillRect(w - 14, 60, 6, 10); }, 1, 1), roughness: 0.9 }),
   stageWood: M(0xc08a4a, { roughness: 0.5 }),
   greenNet: new THREE.MeshStandardMaterial({ color: 0x2f8a46, transparent: true, opacity: 0.45, roughness: 1, depthWrite: false, side: THREE.DoubleSide }),
   curtainDark: M(0x5c1420, { roughness: 1 }),
@@ -337,6 +339,10 @@ const SHAPES = {
   // 作法室の座卓と床の間
   zataku: [[MAT.darkWood, merge([b(0.9, 0.33, 1.6)])]],
   tokonoma: [[MAT.darkWood, merge([b(0.6, 0.15, 1.8)])], [MAT.paper, merge([b(0.02, 1.2, 0.5, -0.28, 0.9)])]],
+  // 作法室：畳の小上がり（高さ0.35m。sx・sz で大きさ）、入口の板の間、ふすま（1枚 0.9m）
+  tatamiDais: [[MAT.tatamiTop, merge([b(1, 0.35, 1)])]],
+  entryFloor: [[MAT.wood, merge([b(1, 0.03, 1)])]],
+  fusuma: [[MAT.fusuma, merge([b(0.9, 1.8, 0.04, 0, 0.35)])], [MAT.darkWood, merge([b(0.92, 0.04, 0.06, 0, 2.15), b(0.03, 1.8, 0.06, -0.45, 0.35)])]],
   // 教室の小物
   bulletin: [[MAT.cork, merge([b(0.03, 0.9, 2.4, 0, 1.25)])], [MAT.darkWood, merge([b(0.05, 0.05, 2.5, 0, 2.15), b(0.05, 0.05, 2.5, 0, 1.2)])]],
   clock: [[MAT.clock, (() => { const g = new THREE.CylinderGeometry(0.17, 0.17, 0.05, 24); g.rotateZ(-Math.PI / 2); g.translate(0.03, 2.45, 0); return g; })()]],
@@ -911,14 +917,32 @@ const LAYOUTS = [
       for (const s of [-1, 1]) o.push({ t: "bench", x: cx + s * 0.85, z, rot: 0 });
     }
   }],
-  [/らくらくスペース|コミュニティルーム/, (o, R) => {
+  // コミュニティルーム：西の壁ぞいに書棚、まんなかに長方形の机、椅子は両側に4つずつ
+  [/コミュニティルーム/, (o, R) => {
+    const { x0, x1, z0, z1 } = R, cx = (x0 + x1) / 2 + 0.3, cz = (z0 + z1) / 2;
+    along(o, "shelf", x0 + 0.25, z0 + 0.5, z1 - 0.5, 0.92, 0);
+    const long = z1 - z0 >= x1 - x0; // 部屋の長い方向に机をのばす
+    for (const k of [-0.95, 0.95]) o.push({ t: "table", x: long ? cx : cx + k, z: long ? cz + k : cz, rot: long ? 0 : Math.PI / 2 });
+    for (let i = 0; i < 4; i++) {
+      const t = -1.35 + i * 0.9;
+      for (const sd of [-1, 1]) o.push(long ? { t: "chair", x: cx + sd * 0.8, z: cz + t, rot: sd > 0 ? 0 : Math.PI } : { t: "chair", x: cx + t, z: cz + sd * 0.8, rot: sd > 0 ? -Math.PI / 2 : Math.PI / 2 });
+    }
+  }],
+  [/らくらくスペース/, (o, R) => {
     const cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2;
     for (const dz of (R.z1 - R.z0 > 4.5 ? [-1.2, 1.2] : [0])) {
       o.push({ t: "roundTable", x: cx, z: cz + dz, rot: 0 });
       for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) o.push({ t: "chair", x: cx + Math.cos(a) * 0.75, z: cz + dz + Math.sin(a) * 0.75, rot: a });
     }
   }],
-  [/作法室/, (o, R) => { o.push({ t: "zataku", x: (R.x0 + R.x1) / 2, z: (R.z0 + R.z1) / 2, rot: 0 }); o.push({ t: "tokonoma", x: R.x0 + 0.3, z: (R.z0 + R.z1) / 2, rot: 0 }); }],
+  // 作法室：机や椅子はない。入口（北の廊下側）に小さな板の間があり、ふすまで仕切られた奥が畳の小上がり。奥に床の間
+  [/作法室/, (o, R) => {
+    const { x0, x1, z0, z1 } = R, W = x1 - x0, cx = (x0 + x1) / 2, ze = z0 + 1.3;
+    o.push({ t: "entryFloor", x: cx, z: (z0 + ze) / 2, rot: 0, sx: W, sz: ze - z0 });
+    o.push({ t: "tatamiDais", x: cx, z: (ze + z1) / 2, rot: 0, sx: W, sz: z1 - ze });
+    for (let x = x0 + 0.45; x < x1 - 0.3; x += 0.9) if (Math.abs(x - (cx + 0.45)) > 0.5) o.push({ t: "fusuma", x, z: ze, rot: 0 }); // まんなかの1枚分は開けてある
+    o.push({ t: "tokonoma", x: cx, z: z1 - 0.3, rot: Math.PI / 2, y: 0.35 });
+  }],
   // 正面玄関：西の壁ぞいいっぱいに下駄箱、東（入口）側に丸テーブルと椅子4つ、北東のすみに傘立て
   [/正面玄関/, (o, R) => {
     o.push({ t: "umbrella", x: R.x1 - 0.5, z: R.z0 + 0.8, rot: Math.PI });

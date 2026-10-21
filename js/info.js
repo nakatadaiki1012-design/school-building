@@ -451,6 +451,8 @@ export const ROOM_EDITS = [
   // 社会科教室の西のバルコニーはせまい
   { name: "バルコニー", floor: 3, at: 33, set: { c0: 34 } },
   { name: "体育館", floor: 2, set: { desc: "体育館です。バスケットボールやバレーボールのコートが2面取れる広さです。" } },
+  // 1号館側（北）の昇降口
+  { name: "昇降口", floor: 1, atR: 27, set: { desc: "1号館側の昇降口です。自動販売機が3台設置されています。", photos: ["images/shoko1-a.jpg", "images/shoko1-b.jpg"] } },
   { name: "卓球場", floor: 3, set: { desc: "卓球場です。体育の授業や、卓球部の活動場所として使われています。" } },
   { name: "社会科教室", floor: 3, set: { desc: "地歴公民の授業などで使われています。埴輪の模型や地球儀などの資料が置かれています。" } },
   { name: "選択第１教室", floor: 3, set: { desc: "数学の少人数授業、委員会などの集まり、その他部活動の活動場所などで使われています。" } },
@@ -473,7 +475,7 @@ export const ROOM_SPLITS = [{ name: "部室", floor: 1, r0: 3, n: 8 }];
 // 部屋の壁をなくす向き（n/s/e/w）と、自動販売機を置く壁（vending）
 export const ROOM_STYLE = [
   // 2つの昇降口は、外側と、レンガ敷きの中庭（吹き抜けの下）側の両方が入り口で壁なし
-  { name: "昇降口", floor: 1, r0: 27, open: ["n", "s"], vending: "e" }, // 北側の昇降口：東の壁に自販機
+  { name: "昇降口", floor: 1, r0: 27, open: ["n", "s"], vending: "e", vendingN: 3 }, // 北側の昇降口：東の壁に自販機3台（写真）
   { name: "昇降口", floor: 1, r0: 47, open: ["n", "s"] },               // 南側の昇降口
   // 体育館のステージ：体育館の側（南）は壁なしで、高くなった舞台
   { name: "ステージ", floor: 2, open: ["s"] },

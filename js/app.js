@@ -62,7 +62,7 @@ const splitRooms = ROOMS_RAW.filter((r) => r.name !== "窯").flatMap((r) => { //
   return Array.from({ length: sp.n }, (_, i) => ({ ...r, id: `${r.id}-${i + 1}`, name: `${r.name}${i + 1}`, c0: r.c0 + w * i, c1: r.c0 + w * (i + 1) - 1 }));
 });
 const ROOMS = [...splitRooms, ...EXTRA_ROOMS].map((r) => {
-  const ed = ROOM_EDITS.find((e) => e.name === r.name && e.floor === r.floor && (e.at === undefined || e.at === r.c0));
+  const ed = ROOM_EDITS.find((e) => e.name === r.name && e.floor === r.floor && (e.at === undefined || e.at === r.c0) && (e.atR === undefined || e.atR === r.r0)); // atR：図面の上の行で区別
   if (ed) r = { ...r, ...ed.set };
   const d = describe(r.name);
   return { ...r, ...d, ...(r.desc ? { desc: r.desc } : {}), kind: "room" }; // ROOM_EDITS で紹介文を書いたときはそれを使う
@@ -1830,7 +1830,7 @@ function selectRoom(r, { fly = true } = {}) {
     <div class="chip" style="--c:${cat.color}">${cat.label}</div>
     <h2>${r.name}</h2>
     <p class="where">${r.floor}階${r.wing ? `・<button class="link" data-wing="${r.wing.id}">${r.wing.name}</button>` : ""}</p>
-    ${(() => { const ph = PHOTOS.find(([re, , fl]) => re.test(r.name) && (fl === undefined || fl === r.floor)); return ph ? [].concat(ph[1]).map((src) => `<img class="room-photo" src="${src}" alt="${r.name}の写真" loading="lazy">`).join("") : ""; })()}
+    ${(() => { const ph = r.photos ? [, r.photos] : PHOTOS.find(([re, , fl]) => re.test(r.name) && (fl === undefined || fl === r.floor)); return ph ? [].concat(ph[1]).map((src) => `<img class="room-photo" src="${src}" alt="${r.name}の写真" loading="lazy">`).join("") : ""; })()}
     <p class="desc">${r.desc || "（紹介文はまだありません）"}</p>
     ${sameFloor}
     ${nearby.length ? `<h3>近くにあるもの</h3><ul class="nearby">${nearby.join("")}</ul>` : ""}

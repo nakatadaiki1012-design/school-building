@@ -257,3 +257,21 @@ dialog::backdrop { background: rgba(20, 30, 40, 0.45); }
 #viewer, .labels { touch-action: none; -webkit-user-select: none; user-select: none; }
 /* スマホでボタンを押しやすく */
 @media (pointer: coarse) { .dir-btns button, .floor-btn, .view-btn { min-height: 40px; } }
+
+/* ---------- 上のバーもマップの上に重ねる（バーの背景はなくし、タイトル・検索・ボタンを浮かせる） ---------- */
+.topbar {
+  background: none; backdrop-filter: none; border-bottom: 0;
+  pointer-events: none; /* すき間はマップを操作できる */
+}
+.topbar > * { pointer-events: auto; }
+.brand {
+  padding: 6px 14px 6px 10px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86); backdrop-filter: blur(8px);
+  box-shadow: 0 2px 12px rgba(20, 40, 60, 0.16);
+}
+#search { box-shadow: 0 2px 12px rgba(20, 40, 60, 0.16); background: rgba(255, 255, 255, 0.94); }
+.top-actions .ghost { box-shadow: 0 2px 12px rgba(20, 40, 60, 0.16); background: rgba(255, 255, 255, 0.92); }
+@media (max-width: 760px) {
+  .brand { flex: 0 1 auto; padding: 4px 12px 4px 8px; }
+  .logo { font-size: 22px; }
+}

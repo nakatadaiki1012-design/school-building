@@ -929,6 +929,8 @@ for (const f of [1, 2, 3]) {
     if (f === 3 && st === "high") continue;
     // 下の階から上ってくる階段のところは床に穴をあける
     if (STAIRS.some((sr) => sr.floors.includes(f - 1) && sr.floors.includes(f) && inCells(c, r, [sr.c0, sr.r0, sr.c1, sr.r1]))) continue;
+    // 吹き抜け（昇降口の上など）は床がない
+    if (ROOMS_RAW.some((q) => q.floor === f && q.name === "吹抜" && inCells(c, r, [q.c0, q.r0, q.c1, q.r1]))) continue;
     (slabSets[blockAtCell(c, r).id] ||= new Set()).add(k);
   }
   for (const [bid, set] of Object.entries(slabSets)) {
@@ -1616,7 +1618,7 @@ for (const f of [1, 2, 3]) {
   for (const r of ROOMS.filter((x) => x.floor === f)) {
     const y = base(f);
     const isOpen = r.cat === "open";
-    const isCourt = /光庭/.test(r.name);
+    const isCourt = /光庭/.test(r.name) || r.name === "吹抜"; // 吹き抜けは床を描かない（下が見える）
     const color = new THREE.Color(CATEGORIES[r.cat].color);
     // 床の模様（木の床・タイル・畳・体育館のコート）
     let map = r.kind === "stairs" ? texStairs : null;
@@ -1800,6 +1802,21 @@ function setLabelsVisible(group, v) {
 const visibleDeep = (o) => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
 
 // 3階を見ているとき、体育館（3階は吹き抜け）の下に2階の体育館の床とステージ・ゴールなどを見せる（押せない）
+// 2階を見ているとき、昇降口の上の吹き抜けから1階の昇降口（床・下駄箱・自販機）が見えるように
+const belowGroup = (floor, test) => {
+  const g = new THREE.Group();
+  const list = ROOMS.filter((r) => r.floor === floor && r.kind === "room" && test(r));
+  for (const r of list) {
+    const m = new THREE.Mesh(r.mesh.geometry, r.mesh.material);
+    m.position.copy(r.mesh.position); m.receiveShadow = true;
+    inBlock(g, r.block).add(m);
+  }
+  g.add(buildFurniture(list.map((x) => ({ name: x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd, vending: styleOf(x)?.vending, vendingN: styleOf(x)?.vendingN, vendingShift: styleOf(x)?.vendingShift })), y0OfFloor(floor)));
+  g.visible = false;
+  scene.add(g);
+  return g;
+};
+const entranceBelow = belowGroup(1, (r) => r.name === "昇降口");
 const gymBelow = (() => {
   const g = new THREE.Group();
   const list = ROOMS.filter((r) => r.floor === 2 && r.kind === "room" && /^(体育館|ステージ|ウエイトルーム)$/.test(r.name));
@@ -1817,6 +1834,7 @@ const gymBelow = (() => {
 function applyMode() {
   const f = state.floor;
   gymBelow.visible = f === 3;
+  entranceBelow.visible = f === 2;
   for (const k of [1, 2, 3]) {
     const below = f === 0 || k < f;
     // 選んだ階の外壁も、外観と同じもの（窓・レンガ・柱・バルコニー）をそのまま見せる。屋根だけ外して中を見る

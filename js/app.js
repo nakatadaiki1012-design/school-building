@@ -1425,18 +1425,23 @@ scene.add(outdoor);
   const bx0 = X(PILOTIS.bridge[0]), bx1 = X(PILOTIS.bridge[1] + 1);
   box(low, bx1 - bx0, 0.4, d, (bx0 + bx1) / 2, FH - 0.2, (rc.z0 + rc.z1) / 2);
   box(high, bx0 - rc.x0, 0.4, d, (rc.x0 + bx0) / 2, 2 * FH - 0.2, (rc.z0 + rc.z1) / 2);
-  for (let z = rc.z0 + 3; z < rc.z1 - 1; z += 4.5) {
+  // 柱は1列に3本（写真）。1階から3階の床まで、上まで茶色
+  const colsHigh = [];
+  for (const z of [0.18, 0.5, 0.82].map((k) => rc.z0 + (rc.z1 - rc.z0) * k)) {
     for (const x of [rc.x0 + 0.4, (rc.x0 + bx0) / 2]) {
       box(cols, 0.6, FH, 0.6, x, FH / 2 - 0.2, z);
-      box(high, 0.6, FH, 0.6, x, FH * 1.5 - 0.2, z);
+      box(colsHigh, 0.6, FH, 0.6, x, FH * 1.5 - 0.2, z);
     }
     // 渡り廊下を支える柱（中庭側と吹き抜け側）
     box(cols, 0.5, FH, 0.5, bx1 - 0.3, FH / 2 - 0.2, z);
     box(cols, 0.5, FH, 0.5, bx0 + 0.3, FH / 2 - 0.2, z);
   }
-  const cm = new THREE.Mesh(mergeGeometries(cols), new THREE.MeshStandardMaterial({ color: 0x7a4b38, roughness: 0.85 }));
-  cm.castShadow = cm.receiveShadow = true;
-  inBlock(layers.exterior[1], b).add(cm);
+  const brownCol = new THREE.MeshStandardMaterial({ color: 0x7a4b38, roughness: 0.85 });
+  for (const [list, f] of [[cols, 1], [colsHigh, 2]]) {
+    const cm = new THREE.Mesh(mergeGeometries(list), brownCol);
+    cm.castShadow = cm.receiveShadow = true;
+    inBlock(layers.exterior[f], b).add(cm);
+  }
   for (const [list, f] of [[low, 1], [high, 2]]) {
     const m = new THREE.Mesh(mergeGeometries(list), matRelief);
     m.castShadow = m.receiveShadow = true;

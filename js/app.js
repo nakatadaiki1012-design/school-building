@@ -3,7 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ROOMS_RAW } from "./data.js";
-import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY, ROOM_EDITS, EXTRA_ROOMS, ROOM_SPLITS, ROOM_STYLE, WALL_OPENINGS, PHOTOS } from "./info.js";
+import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY, ROOM_EDITS, EXTRA_ROOMS, ROOM_SPLITS, ROOM_STYLE, WALL_OPENINGS, PHOTOS, GEO_ALIGN } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
 import { buildTrees, buildColumnTrees, hedgeBox, hedgeMass, matHedge, bakeStatic } from "./nature.js";
 import { buildSite, createAerial, flatPoly, polyBounds, inPoly, buildTerrain, setSlope, texAsphalt, texPavers, worldUV } from "./site.js";
@@ -2392,10 +2392,12 @@ const geoMsg = document.getElementById("geo-msg");
 let geoWatch = null, geoFirst = true, geoTimer = 0;
 const showGeoMsg = (t, ms = 5000) => { geoMsg.textContent = t; clearTimeout(geoTimer); if (ms) geoTimer = setTimeout(() => { geoMsg.textContent = ""; }, ms); };
 function geoToWorld(lat, lng) {
-  const k = 111319.49;
-  const lx = (lng - SCHOOL.lng) * k * Math.cos((SCHOOL.lat * Math.PI) / 180), lz = -(lat - SCHOOL.lat) * k;
-  aerial.holder.updateMatrixWorld();
-  return aerial.holder.localToWorld(new THREE.Vector3(lx, 0, lz));
+  // 学校の地点からの東西（+x が東）・南北（-z が北）のメートル（この緯度での1度の長さ）
+  const la = (SCHOOL.lat * Math.PI) / 180;
+  const mLat = 111132.92 - 559.82 * Math.cos(2 * la) + 1.175 * Math.cos(4 * la), mLng = 111412.84 * Math.cos(la) - 93.5 * Math.cos(3 * la);
+  const gx = (lng - SCHOOL.lng) * mLng, gz = -(lat - SCHOOL.lat) * mLat;
+  const { rot, scale, x, z } = GEO_ALIGN, a = (rot * Math.PI) / 180;
+  return new THREE.Vector3(scale * (Math.cos(a) * gx - Math.sin(a) * gz) + x, 0, scale * (Math.sin(a) * gx + Math.cos(a) * gz) + z);
 }
 function hereY() { return state.floor ? base(state.floor) : 0; }
 function onGeo(p) {

@@ -131,17 +131,19 @@ export const FLOOR_TEX = {
       g.fillRect(off, y, 1, 16);
     }
   }, 1, 1),
+  // 体育館の床（写真）：つやのある赤茶色の板の床に、白・青・赤・緑のライン
   gym: canvasTex(1024, 512, (g, w, h) => {
-    g.fillStyle = "#d9b27c"; g.fillRect(0, 0, w, h);
-    for (let i = 0; i < 64; i++) {
-      g.fillStyle = `rgba(120,80,30,${0.04 + Math.random() * 0.06})`;
-      g.fillRect(0, i * 8, w, 8);
+    g.fillStyle = "#b8743e"; g.fillRect(0, 0, w, h);
+    // 細長い板（少しずつ色がちがう）
+    for (let y = 0; y < h; y += 6) for (let x = -Math.random() * 60; x < w; x += 40 + Math.random() * 50) {
+      const v = Math.random() * 26 - 13;
+      g.fillStyle = `rgb(${186 + v},${118 + v * 0.8},${64 + v * 0.5})`;
+      g.fillRect(x, y, 60, 5.4);
     }
-    // バスケットボールのコート：横向きに2面（ゴールは東と西の壁ぎわに2つずつ）
-    // 模様の横（w）が体育館の南北 約35m、たて（h）が東西 約30m
     g.save();
     g.scale(w / 35, h / 30);
-    g.strokeStyle = "#ffffff"; g.lineWidth = 0.1;
+    // バスケットボールのコート2面（青）
+    g.strokeStyle = "#2f6fb8"; g.lineWidth = 0.1;
     for (const cx of [9, 26]) {
       const x0 = cx - 7.5, y0 = 1, y1 = 29, cy = 15;
       g.strokeRect(x0, y0, 15, 28);
@@ -153,9 +155,13 @@ export const FLOOR_TEX = {
         g.beginPath(); g.arc(cx, yb + dir * 1.575, 6.75, dir > 0 ? 0 : Math.PI, dir > 0 ? Math.PI : Math.PI * 2); g.stroke();
       }
     }
-    // バレーボールのライン（まんなかに1面）
-    g.strokeStyle = "#e8d14a"; g.lineWidth = 0.08;
-    g.strokeRect(17.5 - 4.5, 15 - 9, 9, 18);
+    // バレーボールのコート2面（白）、バドミントン（緑）、ほかのライン（赤）
+    g.strokeStyle = "#f2efe6"; g.lineWidth = 0.07;
+    for (const cx of [9, 26]) g.strokeRect(cx - 4.5, 15 - 9, 9, 18);
+    g.strokeStyle = "#3d8a4f"; g.lineWidth = 0.05;
+    for (const cx of [6, 12, 23, 29]) g.strokeRect(cx - 3.05, 15 - 6.7, 6.1, 13.4);
+    g.strokeStyle = "#b8343a"; g.lineWidth = 0.06;
+    g.strokeRect(1.5, 2, 32, 26);
     g.restore();
   }, 1, 1),
   tatami: canvasTex(256, 256, (g, w, h) => {
@@ -206,6 +212,8 @@ const MAT = {
   vendFace: new THREE.MeshStandardMaterial({ map: texVend, roughness: 0.3, emissive: 0xffffff, emissiveMap: texVend, emissiveIntensity: 0.35 }),
   screenOn: new THREE.MeshStandardMaterial({ map: texEboard, roughness: 0.3, emissive: 0xffffff, emissiveMap: texEboard, emissiveIntensity: 0.55 }),
   gray: M(0x8e98a2),
+  stageWood: M(0xc08a4a, { roughness: 0.5 }),
+  greenNet: new THREE.MeshStandardMaterial({ color: 0x2f8a46, transparent: true, opacity: 0.45, roughness: 1, depthWrite: false, side: THREE.DoubleSide }),
   curtainDark: M(0x5c1420, { roughness: 1 }),
   cardboard: M(0xb8935e, { roughness: 1 }),
   pingBlue: M(0x2a4f9a, { roughness: 0.5 }), // 卓球台（写真では青）
@@ -353,14 +361,16 @@ const SHAPES = {
   laptop: [[MAT.black, merge([b(0.25, 0.02, 0.34, 0, 0.76), b(0.02, 0.22, 0.34, -0.12, 0.77)])]],
   urinal: [[MAT.white, merge([b(0.32, 0.65, 0.38, 0, 0.4)])]],
   mirror: [[MAT.mirror, merge([b(0.02, 0.8, 1.6, 0, 1.15)])]],
-  stageCurtain: [[MAT.red, merge([b(0.2, 3.2, 1.0)])]],
+  stageCurtain: [[MAT.red, merge([b(0.25, 3.8, 1.0)])]],
+  // 体育館の壁ぞいにたらした緑のネット、壁につけたバスケットのゴール
+  gymNet: [[MAT.greenNet, merge([b(0.05, 6.0, 1.0, 0, 0.3)])]],
   lectern: [[MAT.darkWood, merge([b(0.5, 1.1, 0.7)])]],
   // ステージまわり（len で横の長さをのばす。rot: π/2 で東西向き）
-  stageHeader: [[MAT.white, merge([b(0.5, 1.2, 1.0, 0, 5.2)])], [MAT.darkWood, merge([b(0.55, 0.12, 1.0, 0, 5.15)])]], // 舞台の上の額ぶち
-  stageBackdrop: [[MAT.curtainDark, merge([b(0.12, 3.4, 1.0)])]],   // 奥の幕
+  stageHeader: [[MAT.stageWood, merge([b(0.5, 0.35, 1.0, 0, 5.2)])], [MAT.red, merge([b(0.12, 0.6, 1.0, 0.2, 4.6)])]], // 舞台の上の木の額ぶちと、赤い横幕（写真）
+  stageBackdrop: [[MAT.white, merge([b(0.12, 3.6, 1.0)])]],   // 奥の白い壁（幕は開けてある）
   stageValance: [[MAT.red, merge([b(0.15, 0.6, 1.0, 0, 3.7)])]],     // 上の横幕
   stageSteps: [[MAT.darkWood, merge([b(0.9, 0.33, 1.2, 0, 0), b(0.6, 0.33, 1.2, -0.15, 0.33), b(0.3, 0.33, 1.2, -0.3, 0.66)])]],
-  stagePillar: [[MAT.white, merge([b(1.0, 6.2, 0.8)])]],
+  stagePillar: [[MAT.stageWood, merge([b(0.4, 5.55, 0.35)])]], // 木の額ぶちの柱
   flowerStand: [[MAT.darkWood, merge([b(0.4, 0.8, 0.4)])], [MAT.green, merge([b(0.7, 0.5, 0.7, 0, 0.8)])], [MAT.pink, merge([b(0.5, 0.25, 0.5, 0, 1.3)])]],
   // 自動販売機（正面が -x）
   vending: [[MAT.white, merge([b(0.75, 1.83, 1.0)])], [MAT.vendFace, merge([b(0.03, 1.2, 0.85, -0.38, 0.5)])], [MAT.red, merge([b(0.04, 0.25, 1.0, -0.37, 1.6)])]],
@@ -799,6 +809,8 @@ function sewing(out, R) {
 
 function gym(out, R) {
   const { x0, x1, z0, z1 } = R;
+  // 東と西の壁ぞいに、まとめてたらした緑のネット（写真）
+  for (const x of [x0 + 0.3, x1 - 0.3]) for (const k of [0.15, 0.5, 0.85]) out.push({ t: "gymNet", x, z: z0 + (z1 - z0) * k, rot: 0, len: 2.0 });
   // 横向きのコート2面：東と西の壁ぎわに、ゴールが2つずつ
   for (const k of [9 / 35, 26 / 35]) {
     const z = z0 + (z1 - z0) * k;

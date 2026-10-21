@@ -1566,7 +1566,7 @@ for (const f of [1, 2, 3]) {
       const st = floorStyle(r.name);
       map = FLOOR_TEX[st === "flooring" ? "wood" : st].clone();
       map.needsUpdate = true;
-      if (st === "gym") { map.center.set(0.5, 0.5); map.rotation = Math.PI / 2; tint = new THREE.Color(0xffffff); }
+      if (st === "gym") { map.center.set(0.5, 0.5); map.rotation = Math.PI / 2; tint = new THREE.Color(0xffffff); r.glossy = true; } // 体育館の床はつやがある
       else if (st === "tatami") { map.repeat.set(r.w / 3.6, r.d / 3.6); tint = new THREE.Color(0xffffff); }
       else if (st === "flooring") { map.repeat.set(r.w / 3, r.d / 3); tint = new THREE.Color(0xd9b07a); } // 武道場の木の床
       else if (st === "tile") map.repeat.set(r.w / 1.2, r.d / 1.2);
@@ -1577,7 +1577,7 @@ for (const f of [1, 2, 3]) {
       else if (/教室/.test(r.name) && st === "wood") tint = new THREE.Color(0xeadfc8); // 教室の床はうすいベージュ
     }
     const mat = r.kind === "part" ? r.parent.mesh.material : new THREE.MeshStandardMaterial({
-      color: tint, roughness: 0.85,
+      color: tint, roughness: r.glossy ? 0.35 : 0.85,
       map,
       transparent: isOpen || !!styleOf(r)?.noFloor, opacity: isCourt || styleOf(r)?.noFloor ? 0.0 : isOpen ? 0.35 : 1,
       depthWrite: !isOpen && !styleOf(r)?.noFloor,

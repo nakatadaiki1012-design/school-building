@@ -298,6 +298,8 @@ function makeSchoolTex(p) {
   });
 }
 const texSchool = makeSchoolTex(PALETTE.white);
+// 窓のない白い壁（練習室の北など）
+const texPlain = canvasTex(W, H, (g) => { wallBase(g, PALETTE.white); });
 // 美術・図書館棟はうすいベージュの壁（写真）
 const texArtWing = makeSchoolTex({ base: "#e9dfcf", band: "#ddd2c0", line: "#cfc3ae", tile: false });
 
@@ -718,6 +720,7 @@ const MAT_WALL = {
   brick: wallMat(texBrick),
   gym2: wallMat(texGymLow),
   gym3: wallMat(texGymHigh),
+  plain: wallMat(texPlain),
 };
 
 const layers = { exterior: {}, roofs: {}, cut: {}, slab: {}, rooms: {}, labels: {}, furniture: {}, inner: {} };
@@ -725,7 +728,7 @@ const layers = { exterior: {}, roofs: {}, cut: {}, slab: {}, rooms: {}, labels: 
 const matInnerWall = new THREE.MeshStandardMaterial({ color: 0xf4f0e6, roughness: 0.9 });
 const matInnerGlass = new THREE.MeshStandardMaterial({ color: 0x9cc4dc, roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
 const matInnerFrame = new THREE.MeshStandardMaterial({ color: 0xc9ccce, roughness: 0.5, metalness: 0.4 }); // アルミの窓枠
-const NO_WINDOW_STYLE = /^(brick|gym)/; // レンガの壁・体育館は窓なし（レンガは内側も壁だけ、体育館は作らない）
+const NO_WINDOW_STYLE = /^(brick|gym|plain)/; // レンガの壁・体育館は窓なし（レンガは内側も壁だけ、体育館は作らない）
 const y0OfFloor = (f) => base(f);
 const buildingGroup = new THREE.Group();
 scene.add(buildingGroup);
@@ -736,6 +739,7 @@ for (const f of [1, 2, 3]) {
     const b = blockAtCell(c, r).id;
     const side = d.dr < 0 ? "n" : d.dr > 0 ? "s" : d.dc < 0 ? "w" : "e";
     if (WALL_OPENINGS.some(([ff, c0, r0, c1, r1, dir]) => ff === f && inCells(c, r, [c0, r0, c1, r1]) && (!dir || dir === side))) return "open|" + b;
+    if ((FACADE.plain || []).some(([ff, c0, r0, c1, r1, dir]) => ff === f && side === dir && inCells(c, r, [c0, r0, c1, r1]))) return "plain|" + b; // 窓のない壁
     if (style === "gym") return "gym" + f + "|" + b;
     if (style === "high") return "high|" + b;
     if (OPEN_COURTS.some((rc) => inCells(c + d.dc, r + d.dr, rc))) return "school|" + b; // 光庭のまわりは白

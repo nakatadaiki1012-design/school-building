@@ -720,7 +720,12 @@ const MAT_WALL = {
   gym3: wallMat(texGymHigh),
 };
 
-const layers = { exterior: {}, roofs: {}, cut: {}, slab: {}, rooms: {}, labels: {}, furniture: {} };
+const layers = { exterior: {}, roofs: {}, cut: {}, slab: {}, rooms: {}, labels: {}, furniture: {}, inner: {} };
+// 外壁の内側の面（フロア表示のときだけ）：腰壁＋ガラスの窓（STUDY HALL のガラスと同じ）＋上の壁。外壁は外向きの面しかないので、中から見ると柱だけが見えてしまうため
+const matInnerWall = new THREE.MeshStandardMaterial({ color: 0xf4f0e6, roughness: 0.9 });
+const matInnerGlass = new THREE.MeshStandardMaterial({ color: 0x9cc4dc, roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
+const matInnerFrame = new THREE.MeshStandardMaterial({ color: 0xc9ccce, roughness: 0.5, metalness: 0.4 }); // アルミの窓枠
+const NO_WINDOW_STYLE = /^(brick|gym)/; // レンガの壁・体育館は窓なし（レンガは内側も壁だけ、体育館は作らない）
 const y0OfFloor = (f) => base(f);
 const buildingGroup = new THREE.Group();
 scene.add(buildingGroup);
@@ -753,7 +758,9 @@ for (const f of [1, 2, 3]) {
   }
   const ext = new THREE.Group();
   const cut = new THREE.Group();
-  ext.userData.floor = cut.userData.floor = f;
+  const inner = new THREE.Group();
+  ext.userData.floor = cut.userData.floor = inner.userData.floor = f;
+  const st0 = (sg) => (sg.style.startsWith("gym") ? "gym" : sg.style);
   for (const [bid, list] of Object.entries(segsByBlock)) {
     const b = blockById(bid);
     const holder = inBlock(ext, b);
@@ -804,6 +811,32 @@ for (const f of [1, 2, 3]) {
       const cm = new THREE.Mesh(wallGeometry(l2, base(f), CUT_H, st === "office" ? 1 / (2 * BAY) : 1 / BAY), cutMat(st));
       cm.castShadow = true; cm.receiveShadow = true;
       inBlock(cut, b).add(cm);
+    }
+    // 外壁の内側の面
+    if (bid !== "bridge") {
+      const wallG = [], glassG = [], frameG = [], y0 = base(f), inset = 0.1, th = 0.08;
+      const piece = (list, sg, y, h, t = th, from = 0, to = 1) => {
+        const alongX = sg.n[1] !== 0, len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az) * (to - from);
+        const k = (from + to) / 2, cx = sg.ax + (sg.bx - sg.ax) * k - sg.n[0] * inset, cz = sg.az + (sg.bz - sg.az) * k - sg.n[1] * inset;
+        list.push(new THREE.BoxGeometry(alongX ? len : t, h, alongX ? t : len).translate(cx, y + h / 2, cz));
+      };
+      for (const sg of list) {
+        if (st0(sg) === "gym") continue;
+        if (NO_WINDOW_STYLE.test(sg.style)) { piece(wallG, sg, y0, FH); continue; }
+        const wb = 0.85, wt = 2.65; // 窓の下と上の高さ
+        piece(wallG, sg, y0, wb); piece(wallG, sg, y0 + wt, FH - wt);
+        piece(glassG, sg, y0 + wb, wt - wb, 0.03);
+        piece(frameG, sg, y0 + wb, 0.06, 0.12); piece(frameG, sg, y0 + wt - 0.06, 0.06, 0.12); piece(frameG, sg, y0 + 1.95, 0.04, 0.1);
+        const L = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az), n = Math.max(1, Math.round(L / 1.8));
+        for (let i = 0; i <= n; i++) { const u = i / n, w = 0.06 / L; piece(frameG, sg, y0 + wb, wt - wb, 0.1, Math.max(0, u - w / 2), Math.min(1, u + w / 2)); }
+      }
+      const holderIn = inBlock(inner, b);
+      for (const [geos, mat] of [[wallG, matInnerWall], [glassG, matInnerGlass], [frameG, matInnerFrame]]) {
+        if (!geos.length) continue;
+        const m = new THREE.Mesh(mergeGeometries(geos), mat);
+        m.receiveShadow = true;
+        holderIn.add(m);
+      }
     }
   }
   // 白い丸い階段塔（位置は実際のメートル）
@@ -873,6 +906,8 @@ for (const f of [1, 2, 3]) {
   buildingGroup.add(ext);
   layers.cut[f] = cut;
   buildingGroup.add(cut);
+  layers.inner[f] = inner;
+  buildingGroup.add(inner);
 
   // 屋上（上の階がない部分）
   const roofCells = new Set();
@@ -1884,6 +1919,7 @@ function applyMode() {
     layers.exterior[k].visible = below || k === f;
     layers.roofs[k].visible = below;
     layers.cut[k].visible = false;
+    layers.inner[k].visible = k === f;
     layers.slab[k].visible = k === f;
     layers.rooms[k].visible = k === f;
     setLabelsVisible(layers.labels[k], k === f && labelsOn);

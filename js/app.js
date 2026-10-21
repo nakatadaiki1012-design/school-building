@@ -1133,12 +1133,12 @@ function rustTex() {
   deck(gxe, gxe + dw, zTop, gz1);               // 東
   rail(gx - sw - 0.2, gx, zTop, zTop);
   // 南：保健体育科準備室（西の端）の前が踊り場。そこから東へ下りる外階段
-  const pl = 3.2, sl = 9.4;
-  deck(gx, gx + pl, zBot, zBot + 2.5);
+  const pl = 3.2, sl = 9.4, SW = 3.4; // SW：体育準備室の前の外階段の幅（幅広）
+  deck(gx, gx + pl, zBot, zBot + SW);
   rail(gx + pl, gx + pl + sl, zBot, zBot);
   rail(gx + pl + sl + 2.4, gxe + dw, zBot, zBot); // 上の階段の踊り場のところはあけておく
-  rail(gx, gx, zBot, zBot + 2.5);
-  rail(gx, gx + pl, zBot + 2.5, zBot + 2.5);
+  rail(gx, gx, zBot, zBot + SW);
+  rail(gx, gx + pl, zBot + SW, zBot + SW);
   // 中央棟からの渡り廊下がつながるところは手すりなし（渡り廊下の実際の位置を、体育館の図面の座標に直す）
   const gb = blockById("gym"), brw = blockById("bridge").world;
   const bz0 = (brw[1] - gb.oz) / gb.sz, bz1 = (brw[3] - gb.oz) / gb.sz;
@@ -1162,14 +1162,14 @@ function rustTex() {
   for (let z = zTop + 4.5; z <= gz1; z += 4.5) box(geos2, 0.35, ty, 0.35, gx - sw, ty / 2 - 0.15, z);
   // 南側の2階の入口の上は、3階の床がのびた ひさし
   // （上の外階段のところは、ひさしの南の部分をあける）
-  box(geos2, pl, 0.35, zBot + 2.5 - gz1, gx + pl / 2, 2 * FH - 0.2, (gz1 + zBot + 2.5) / 2);
+  box(geos2, pl, 0.35, zBot + SW - gz1, gx + pl / 2, 2 * FH - 0.2, (gz1 + zBot + SW) / 2);
   box(geos2, sl, 0.35, zBot - gz1, gx + pl + sl / 2, 2 * FH - 0.2, (gz1 + zBot) / 2);
-  box(geos2, gxe + dw - gx - pl - sl, 0.35, zBot + 2.5 - gz1, (gx + pl + sl + gxe + dw) / 2, 2 * FH - 0.2, (gz1 + zBot + 2.5) / 2);
-  stair(geos1, gx + pl + sl, zBot + 1.25, gx + pl, zBot + 1.25, -0.2, ty, 2.3);
+  box(geos2, gxe + dw - gx - pl - sl, 0.35, zBot + SW - gz1, (gx + pl + sl + gxe + dw) / 2, 2 * FH - 0.2, (gz1 + zBot + SW) / 2);
+  stair(geos1, gx + pl + sl, zBot + SW / 2, gx + pl, zBot + SW / 2, -0.2, ty, SW - 0.1);
   // 体育準備室の前の外階段は、1階→2階の階段の真上に、同じ形の2階→3階の階段がある（3階の卓球場へ）
-  deck(gx + pl + sl, gx + pl + sl + 2.4, zBot, zBot + 2.5); // 2階：上の階段の上り口の踊り場
-  rail(gx + pl + sl + 2.4, gx + pl + sl + 2.4, zBot, zBot + 2.5);
-  stair(geos1, gx + pl + sl, zBot + 1.25, gx + pl, zBot + 1.25, ty, 2 * FH, 2.3);
+  deck(gx + pl + sl, gx + pl + sl + 2.4, zBot, zBot + SW); // 2階：上の階段の上り口の踊り場
+  rail(gx + pl + sl + 2.4, gx + pl + sl + 2.4, zBot, zBot + SW);
+  stair(geos1, gx + pl + sl, zBot + SW / 2, gx + pl, zBot + SW / 2, ty, 2 * FH, SW - 0.1);
   stair(geos1, gxe + dw + 1.2, zTop + 2.4 + sl, gxe + dw + 1.2, zTop + 2.4, -0.2, ty, 2.3);
   // 1階の南側の柱（柱が並ぶ吹きさらしの部分）
   for (let x = gx + 9; x < gxe; x += 4.2) box(geos2, 0.5, FH, 0.5, x, FH / 2 - 0.2, gz1 + 0.3);

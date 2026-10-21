@@ -324,6 +324,8 @@ const SHAPES = {
     const legs = [[0.9, 0], [-0.9, 0], [0, 2.25], [0, -2.25]].map(([x, z]) => b(0.08, 0.68, 0.08, x, 0, z));
     return [[MAT.darkWood, merge([top])], [MAT.metal, merge(legs)]];
   })(),
+  // 壁画（写真をそのまま貼る。len で横の長さ）
+  mural: [[new THREE.MeshStandardMaterial({ map: (() => { const t = new THREE.TextureLoader().load("images/mural.jpg"); t.colorSpace = THREE.SRGBColorSpace; return t; })(), roughness: 0.9 }), merge([b(0.03, 2.4, 1, 0, 0.1)])]],
   bench: [[MAT.wood, merge([b(0.4, 0.05, 1.6, 0, 0.42)])], [MAT.metal, merge([b(0.35, 0.42, 0.05, 0, 0, -0.7), b(0.35, 0.42, 0.05, 0, 0, 0.7)])]],
   wallBench: [[MAT.darkWood, merge([b(0.5, 0.42, 1.6)])]], // 壁ぞいの作りつけの木のベンチ
   // 石こうの胸像
@@ -932,6 +934,16 @@ const LAYOUTS = [
       const t = -1.35 + i * 0.9;
       for (const sd of [-1, 1]) o.push(long ? { t: "chair", x: cx + sd * 0.8, z: cz + t, rot: sd > 0 ? 0 : Math.PI } : { t: "chair", x: cx + t, z: cz + sd * 0.8, rot: sd > 0 ? -Math.PI / 2 : Math.PI / 2 });
     }
+  }],
+  // コモンスペース：北の壁に壁画、テーブル2つと長椅子、西のはしに渡り廊下へ少し上がる階段（北へ上る）
+  [/コモンスペース/, (o, R) => {
+    const { x0, x1, z0, z1 } = R, cz = (z0 + z1) / 2 + 0.8;
+    o.push({ t: "mural", x: (x0 + x1) / 2 + 0.6, z: z0 + 0.05, rot: Math.PI / 2, len: x1 - x0 - 1.4 });
+    for (const x of [x0 + (x1 - x0) * 0.42, x0 + (x1 - x0) * 0.72]) {
+      o.push({ t: "table", x, z: cz, rot: Math.PI / 2 });
+      for (const sd of [-1, 1]) o.push({ t: "bench", x, z: cz + sd * 0.75, rot: Math.PI / 2 });
+    }
+    for (let k = 0; k < 4; k++) for (let j = 0; j <= k; j++) o.push({ t: "tier", x: x0 + 0.9, z: z0 + 2.4 - k * 0.4, rot: 0, y: 0.2 * j - 0.15, sx: 1.6, sz: 0.4 });
   }],
   [/らくらくスペース/, (o, R) => {
     const cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2;

@@ -2406,7 +2406,12 @@ function tick(now) {
     controls3d.target.lerpVectors(anim.t0v, anim.t1, e);
     if (k >= 1) anim = null;
   }
-  if (here.visible) here.position.y = hereY(); // 現在地の点は、見ている階の床の高さに
+  if (here.visible) {
+    here.position.y = hereY(); // 現在地の点は、見ている階の床の高さに
+    // 目標の位置へ、少しずつすべるように動かす
+    const dx = hereGoal.x - here.position.x, dz = hereGoal.z - here.position.z;
+    if (Math.abs(dx) + Math.abs(dz) > 0.02) { here.position.x += dx * 0.08; here.position.z += dz * 0.08; poke(); }
+  }
   const cam = useCamera();
   // 方位磁針（画面の上がどの方角か）
   const az = cam === ortho ? 0 : controls3d.getAzimuthalAngle();
@@ -2452,24 +2457,40 @@ function geoToWorld(lat, lng) {
   return new THREE.Vector3(scale * (Math.cos(a) * gx - Math.sin(a) * gz) + x, 0, scale * (Math.sin(a) * gx + Math.cos(a) * gz) + z);
 }
 function hereY() { return state.floor ? base(state.floor) : 0; }
+// GPSのふらつきをおさえる：①誤差の大きい位置は使わない ②最近の数回の位置を、誤差の小さいものほど重く平均する
+// ③平均した位置の変化が誤差の円より小さければ点を動かさない。点は新しい位置へ、なめらかにすべるように動く
+const GEO_MAX_ACC = 30, geoHist = [], hereGoal = new THREE.Vector3();
+let hereShown = false;
 function onGeo(p) {
+  const acc = p.coords.accuracy || 10;
+  if (acc > GEO_MAX_ACC && hereShown) return; // ① 誤差が大きい位置は使わない（まだ何も出ていないときだけは使う）
   const v = geoToWorld(p.coords.latitude, p.coords.longitude);
   const dist = Math.hypot(v.x, v.z + 25);
   if (dist > 400) {
-    here.visible = false; here.getObjectByName("label").visible = false;
+    here.visible = false; here.getObjectByName("label").visible = false; hereShown = false;
     showGeoMsg(`学校の外にいるようです（学校から約${dist >= 1000 ? (dist / 1000).toFixed(1) + "km" : Math.round(dist / 10) * 10 + "m"}）。学校の近くで使ってください。`, 7000);
     return;
   }
-  const r = Math.min(60, Math.max(3, p.coords.accuracy || 10));
+  // ② 最近の位置（10秒以内・5回まで）を、誤差の小さいものほど重く平均する
+  const now = performance.now();
+  geoHist.push({ x: v.x, z: v.z, w: 1 / (acc * acc), t: now });
+  while (geoHist.length > 5 || (geoHist.length > 1 && now - geoHist[0].t > 10000)) geoHist.shift();
+  let sw = 0, ax = 0, az = 0;
+  for (const h of geoHist) { sw += h.w; ax += h.x * h.w; az += h.z * h.w; }
+  ax /= sw; az /= sw;
+  const r = Math.min(60, Math.max(3, acc));
   here.getObjectByName("acc").scale.set(r, 1, r);
-  here.position.set(v.x, hereY(), v.z);
+  // ③ 変化が小さいときは動かさない（誤差の円の半分より近いとき）
+  if (!hereShown) { hereGoal.set(ax, 0, az); here.position.set(ax, hereY(), az); }
+  else if (Math.hypot(ax - hereGoal.x, az - hereGoal.z) > Math.max(2, r * 0.5)) hereGoal.set(ax, 0, az);
+  hereShown = true;
   here.visible = true; here.getObjectByName("label").visible = true;
   poke();
   if (geoFirst) {
     geoFirst = false;
     if (state.view === "2d" && state.floor !== 0) setView("3d");
     const ty = hereY();
-    flyTo(new THREE.Vector3(v.x + 18, ty + 30, v.z + 30), new THREE.Vector3(v.x, ty, v.z), 900);
+    flyTo(new THREE.Vector3(ax + 18, ty + 30, az + 30), new THREE.Vector3(ax, ty, az), 900);
     showGeoMsg(`青い点が今いるところです（誤差 約${Math.round(r)}m）。建物の中ではずれやすく、何階かはわかりません。`, 7000);
   }
 }
@@ -2479,7 +2500,7 @@ function onGeoErr(e) {
 }
 function stopGeo() {
   if (geoWatch !== null) navigator.geolocation.clearWatch(geoWatch);
-  geoWatch = null; here.visible = false; here.getObjectByName("label").visible = false; poke();
+  geoWatch = null; here.visible = false; here.getObjectByName("label").visible = false; hereShown = false; geoHist.length = 0; poke();
   document.getElementById("here-btn").classList.remove("active");
 }
 document.getElementById("here-btn").addEventListener("click", () => {

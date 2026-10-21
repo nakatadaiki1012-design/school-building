@@ -1334,6 +1334,24 @@ export function buildSite(scene, SITE) {
     t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(3, 3);
     group.add(flatPoly(SITE.garden.poly, new THREE.MeshStandardMaterial({ map: t, roughness: 1 }), -0.18, bbG));
     rects.push([bbG.x0, bbG.x1, bbG.z0, bbG.z1]);
+    // 藤棚（航空写真：レンガの小道の東に、平らな長方形の緑のかたまり）。木の柱と格子の上に、藤の葉が平らにしげる
+    const pg = SITE.garden.pergola;
+    if (pg) {
+      const [x0, x1, z0, z1] = pg, h = 2.4, wood = M(0x6e5038, { roughness: 0.9 });
+      const parts = [];
+      for (let x = x0; x <= x1 + 0.01; x += (x1 - x0) / Math.round((x1 - x0) / 2.5)) for (const z of [z0, z1]) parts.push(new THREE.BoxGeometry(0.18, h, 0.18).translate(x, h / 2 - 0.2, z));
+      for (const z of [z0, z1]) parts.push(new THREE.BoxGeometry(x1 - x0 + 0.4, 0.16, 0.14).translate((x0 + x1) / 2, h - 0.2, z));
+      for (let x = x0; x <= x1 + 0.01; x += 0.8) parts.push(new THREE.BoxGeometry(0.08, 0.08, z1 - z0 + 0.6).translate(x, h - 0.08, (z0 + z1) / 2));
+      group.add(new THREE.Mesh(mergeGeometries(parts), wood));
+      // 平らな藤の葉（棚の上）と、ところどころたれ下がる葉
+      const blobs = [];
+      for (let x = x0 + 0.4; x <= x1 - 0.2; x += 1.1) for (let z = z0 + 0.3; z <= z1 - 0.2; z += 1.1) blobs.push([x, z, 0.85]);
+      const leaves = hedgeMass(blobs, 0.7);
+      leaves.position.y = h - 0.55;
+      group.add(leaves);
+      // 棚の下のベンチ
+      for (const x of [x0 + 2, x1 - 2]) { const bn = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.42, 0.4), wood); bn.position.set(x, 0.0, (z0 + z1) / 2); group.add(bn); }
+    }
   }
   // ごみ捨て場（コンクリートの床、緑の網のかこい、屋根）
   if (SITE.garbage) {

@@ -1110,6 +1110,7 @@ function rustTex() {
     }
   };
   const gymExtras = new THREE.Group();
+  const eaves = [];
   const gx = X(7), gz0 = Z(1), gz1 = Z(39), gxe = X(27);
   // 2階の高さで体育館を囲む外廊下（渡り廊下）。東側で中央棟からの渡り廊下につながり、南の2階の玄関まで行ける
   const ty = FH, dw = 3; // 床の高さ、幅
@@ -1162,9 +1163,9 @@ function rustTex() {
   for (let z = zTop + 4.5; z <= gz1; z += 4.5) box(geos2, 0.35, ty, 0.35, gx - sw, ty / 2 - 0.15, z);
   // 南側の2階の入口の上は、3階の床がのびた ひさし
   // （上の外階段のところは、ひさしの南の部分をあける）
-  box(geos2, pl, 0.35, zBot + SW - gz1, gx + pl / 2, 2 * FH - 0.2, (gz1 + zBot + SW) / 2);
-  box(geos2, sl, 0.35, zBot - gz1, gx + pl + sl / 2, 2 * FH - 0.2, (gz1 + zBot) / 2);
-  box(geos2, gxe + dw - gx - pl - sl, 0.35, zBot + SW - gz1, (gx + pl + sl + gxe + dw) / 2, 2 * FH - 0.2, (gz1 + zBot + SW) / 2);
+  box(eaves, pl, 0.35, zBot + SW - gz1, gx + pl / 2, 2 * FH - 0.2, (gz1 + zBot + SW) / 2);
+  box(eaves, sl, 0.35, zBot - gz1, gx + pl + sl / 2, 2 * FH - 0.2, (gz1 + zBot) / 2);
+  box(eaves, gxe + dw - gx - pl - sl, 0.35, zBot + SW - gz1, (gx + pl + sl + gxe + dw) / 2, 2 * FH - 0.2, (gz1 + zBot + SW) / 2);
   stair(geos1, gx + pl + sl, zBot + SW / 2, gx + pl, zBot + SW / 2, -0.2, ty, SW - 0.1);
   // 体育準備室の前の外階段は、1階→2階の階段の真上に、同じ形の2階→3階の階段がある（3階の卓球場へ）
   deck(gx + pl + sl, gx + pl + sl + 2.4, zBot, zBot + SW); // 2階：上の階段の上り口の踊り場
@@ -1192,6 +1193,8 @@ function rustTex() {
       gymExtras.add(arch);
     }
   }
+  // 南の2階の入口の上の庇（3階の通路）は、2階を見ているときはじゃまなので、2階の屋根と同じあつかい
+  { const em = new THREE.Mesh(mergeGeometries(eaves), white); em.castShadow = em.receiveShadow = true; inBlock(layers.roofs[2], blockById("gym")).add(em); }
   const gymHolder = inBlock(layers.exterior[1], blockById("gym"));
   for (const list of [geos1, geos2]) {
     const m = new THREE.Mesh(mergeGeometries(list), white);

@@ -1779,8 +1779,24 @@ function setLabelsVisible(group, v) {
 }
 const visibleDeep = (o) => { for (; o; o = o.parent) if (!o.visible) return false; return true; };
 
+// 3階を見ているとき、体育館（3階は吹き抜け）の下に2階の体育館の床とステージ・ゴールなどを見せる（押せない）
+const gymBelow = (() => {
+  const g = new THREE.Group();
+  const list = ROOMS.filter((r) => r.floor === 2 && r.kind === "room" && /^(体育館|ステージ|ウエイトルーム)$/.test(r.name));
+  for (const r of list) {
+    const m = new THREE.Mesh(r.mesh.geometry, r.mesh.material); // clone は userData（部屋）までコピーしようとするので使わない
+    m.position.copy(r.mesh.position); m.receiveShadow = true;
+    inBlock(g, r.block).add(m);
+  }
+  g.add(buildFurniture(list.map((x) => ({ name: x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd })), y0OfFloor(2)));
+  g.visible = false;
+  scene.add(g);
+  return g;
+})();
+
 function applyMode() {
   const f = state.floor;
+  gymBelow.visible = f === 3;
   for (const k of [1, 2, 3]) {
     const below = f === 0 || k < f;
     // 選んだ階の外壁も、外観と同じもの（窓・レンガ・柱・バルコニー）をそのまま見せる。屋根だけ外して中を見る

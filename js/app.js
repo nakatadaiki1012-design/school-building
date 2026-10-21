@@ -2068,18 +2068,28 @@ window.addEventListener("keydown", (e) => {
   else if (k === "-" || k === "_") { if (cam.isPerspectiveCamera) { const v = cam.position.clone().sub(c.target).multiplyScalar(1.18); if (v.length() < c.maxDistance) cam.position.copy(c.target).add(v); } else { cam.zoom = Math.max(c.minZoom, cam.zoom / 1.2); cam.updateProjectionMatrix(); } }
   else if ((k === "q" || k === "e") && cam.isPerspectiveCamera) { const a = k === "q" ? 0.15 : -0.15; const v = cam.position.clone().sub(c.target).applyAxisAngle(new THREE.Vector3(0, 1, 0), a); cam.position.copy(c.target).add(v); }
   else if (k === "h") document.querySelector('.dir-btns [data-dir="home"]').click();
+  else if (k === "escape") { closePanel(); results.hidden = true; search.blur(); }
   else return;
   e.preventDefault();
 });
 // 押したキーを、左下のキーボードの絵でへこませる
 {
   const alias = { "=": "+", ";": "+", "_": "-" };
-  const flash = (k, on) => document.querySelectorAll(`.kb kbd[data-k="${CSS.escape(alias[k] || k)}"]`).forEach((el) => el.classList.toggle("pressed", on));
+  const flash = (k, on) => document.querySelectorAll(`.key-hint kbd[data-k="${CSS.escape(alias[k] || k)}"]`).forEach((el) => el.classList.toggle("pressed", on));
   window.addEventListener("keydown", (e) => { if (!e.target.closest("input, textarea, select")) flash(e.key.toLowerCase(), true); });
   window.addEventListener("keyup", (e) => flash(e.key.toLowerCase(), false));
-  window.addEventListener("blur", () => document.querySelectorAll(".kb kbd.pressed").forEach((el) => el.classList.remove("pressed")));
+  window.addEventListener("blur", () => document.querySelectorAll(".key-hint kbd.pressed").forEach((el) => el.classList.remove("pressed")));
 }
 const compassEl = document.getElementById("compass");
+// 方位磁針を押すと、見る方向のボタンを開く／閉じる。スマホでは最初は閉じて画面を広く
+{
+  const box = document.querySelector(".dir-box");
+  if (window.innerWidth <= 760) box.classList.add("collapsed");
+  compassEl.title = "上が北（押すと見る方向のボタンを開く／閉じる）";
+  compassEl.addEventListener("click", () => box.classList.toggle("collapsed"));
+  // スマホでは方向を選んだら閉じる
+  box.querySelectorAll(".dir-btns button").forEach((b) => b.addEventListener("click", () => { if (window.innerWidth <= 760) box.classList.add("collapsed"); }));
+}
 
 // ---------- 航空写真 ----------
 const ALIGN_KEY = "asao-aerial-align";
@@ -2095,6 +2105,7 @@ function setAerial(on) {
   aerialBtn.classList.toggle("active", on);
   document.body.classList.toggle("aerial-on", on);
   document.getElementById("aerial-credit").hidden = !on;
+  document.getElementById("align-open").hidden = !on; // 位置合わせは航空写真のときだけ
   if (!on) { alignPanel.hidden = true; return; }
   aerialMsg.textContent = "航空写真を読み込み中…";
   aerial.load().then(() => { aerialMsg.textContent = ""; })

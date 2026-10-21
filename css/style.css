@@ -276,23 +276,28 @@ dialog::backdrop { background: rgba(20, 30, 40, 0.45); }
   .logo { font-size: 22px; }
 }
 
-/* キーボード操作のヒント：左下に小さく薄く、キーボードの形（スマホなどタッチの画面では出さない） */
+/* キーボード操作のヒント：左下に小さく薄く、キーボードの形を1列に（スマホなどタッチの画面では出さない） */
 .key-hint {
   position: fixed; left: 12px; bottom: 10px; z-index: 5;
-  font-size: 10px; color: rgba(31, 41, 51, 0.7);
-  background: rgba(255, 255, 255, 0.55); padding: 6px 8px; border-radius: 10px;
-  pointer-events: none; opacity: 0.85;
+  display: flex; align-items: center; gap: 8px;
+  color: rgba(31, 41, 51, 0.65); background: rgba(255, 255, 255, 0.5);
+  padding: 4px 8px; border-radius: 8px; pointer-events: none;
 }
-.kb { display: flex; gap: 10px; align-items: flex-start; }
-.kb-grp { display: grid; gap: 2px; justify-items: center; }
-.kb-row { display: flex; gap: 2px; }
-.kb kbd, .kb-sp { width: 20px; height: 20px; }
-.kb kbd {
-  display: grid; place-items: center; font: 600 10px/1 system-ui, sans-serif; color: #3a4652;
-  background: linear-gradient(#ffffff, #e9edf1); border: 1px solid #c3ccd5; border-bottom-width: 3px; border-radius: 4px;
+.kb-grp { display: flex; align-items: center; gap: 3px; }
+.kb-col { display: flex; flex-direction: column; gap: 1px; }
+.kb-row { display: flex; gap: 1px; }
+.key-hint kbd {
+  display: grid; place-items: center; min-width: 14px; height: 14px; padding: 0 2px;
+  font: 600 8.5px/1 system-ui, sans-serif; color: #3a4652;
+  background: linear-gradient(#ffffff, #e9edf1); border: 1px solid #c3ccd5; border-bottom-width: 2px; border-radius: 3px;
   transition: transform .08s, background .08s, border-bottom-width .08s;
 }
-.kb kbd.pressed { transform: translateY(2px); border-bottom-width: 1px; background: #cfe3f6; color: #1f6fb2; }
-.kb-cap { font-size: 9px; color: rgba(31, 41, 51, 0.6); white-space: nowrap; }
-.kb-mouse { margin-top: 4px; font-size: 9.5px; color: rgba(31, 41, 51, 0.6); white-space: nowrap; }
+.key-hint kbd.kb-gap { visibility: hidden; }
+.key-hint kbd.pressed { transform: translateY(1px); border-bottom-width: 1px; background: #cfe3f6; color: #1f6fb2; }
+.kb-cap, .kb-mouse { font-size: 8.5px; line-height: 1.25; white-space: nowrap; }
+.kb-mouse { padding-left: 6px; border-left: 1px solid rgba(31, 41, 51, 0.15); }
 @media (pointer: coarse), (max-width: 760px) { .key-hint { display: none; } }
+
+/* 見る方向のボタン：方位磁針を押すと開く／閉じる（スマホは最初は閉じておく） */
+.compass { cursor: pointer; border: 0; padding: 0; }
+.dir-box.collapsed .dir-btns { display: none; }

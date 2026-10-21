@@ -69,37 +69,19 @@
       </div>
     </div>
 
-    <!-- キーボード操作のヒント（パソコンだけ、左下に小さく）。押したキーは光る -->
+    <!-- キーボード操作のヒント（パソコンだけ、左下に小さく1行）。押したキーは光る -->
     <div class="key-hint" aria-hidden="true">
-      <div class="kb">
-        <div class="kb-grp">
-          <div class="kb-row"><kbd data-k="q">Q</kbd><kbd data-k="w">W</kbd><kbd data-k="e">E</kbd></div>
-          <div class="kb-row"><kbd data-k="a">A</kbd><kbd data-k="s">S</kbd><kbd data-k="d">D</kbd></div>
-          <div class="kb-cap">移動・Q E 回る</div>
-        </div>
-        <div class="kb-grp">
-          <div class="kb-row"><span class="kb-sp"></span><kbd data-k="arrowup">↑</kbd><span class="kb-sp"></span></div>
-          <div class="kb-row"><kbd data-k="arrowleft">←</kbd><kbd data-k="arrowdown">↓</kbd><kbd data-k="arrowright">→</kbd></div>
-          <div class="kb-cap">移動</div>
-        </div>
-        <div class="kb-grp">
-          <div class="kb-row"><kbd data-k="+">＋</kbd></div>
-          <div class="kb-row"><kbd data-k="-">−</kbd></div>
-          <div class="kb-cap">ズーム</div>
-        </div>
-        <div class="kb-grp">
-          <div class="kb-row"><kbd data-k="h">H</kbd></div>
-          <div class="kb-row"><span class="kb-sp"></span></div>
-          <div class="kb-cap">全体</div>
-        </div>
-      </div>
-      <div class="kb-mouse">ドラッグ：回す　右ドラッグ：動かす　ホイール：ズーム　ダブルクリック：近づく</div>
+      <span class="kb-grp"><span class="kb-col"><span class="kb-row"><kbd data-k="q">Q</kbd><kbd data-k="w">W</kbd><kbd data-k="e">E</kbd></span><span class="kb-row"><kbd data-k="a">A</kbd><kbd data-k="s">S</kbd><kbd data-k="d">D</kbd></span></span><span class="kb-cap">移動<br>回る</span></span>
+      <span class="kb-grp"><span class="kb-col"><span class="kb-row"><kbd class="kb-gap"></kbd><kbd data-k="arrowup">↑</kbd><kbd class="kb-gap"></kbd></span><span class="kb-row"><kbd data-k="arrowleft">←</kbd><kbd data-k="arrowdown">↓</kbd><kbd data-k="arrowright">→</kbd></span></span><span class="kb-cap">移動</span></span>
+      <span class="kb-grp"><span class="kb-col"><kbd data-k="+">＋</kbd><kbd data-k="-">−</kbd></span><span class="kb-cap">ズーム</span></span>
+      <span class="kb-grp"><span class="kb-col"><kbd data-k="h">H</kbd><kbd data-k="escape">Esc</kbd></span><span class="kb-cap">全体<br>閉じる</span></span>
+      <span class="kb-mouse">ドラッグ 回す<br>右ドラッグ 動かす<br>ダブルクリック 近づく</span>
     </div>
 
     <div class="aerial-box">
       <div class="aerial-row">
         <button id="aerial-btn" class="ghost">🛰️ 航空写真</button>
-        <button id="align-open" class="ghost small">位置合わせ</button>
+        <button id="align-open" class="ghost small" hidden>位置合わせ</button>
       </div>
       <p id="aerial-msg" class="aerial-msg"></p>
       <p id="aerial-credit" class="credit" hidden>航空写真：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a></p>

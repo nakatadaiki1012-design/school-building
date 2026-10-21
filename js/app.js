@@ -622,13 +622,15 @@ const wallMat = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.82, 
 const matStack = new THREE.MeshStandardMaterial({ map: texStack, roughness: 0.8 });
 const matGlassDoor = new THREE.MeshStandardMaterial({ color: 0x3e5a74, roughness: 0.15, metalness: 0.3 });
 const matStackSide = new THREE.MeshStandardMaterial({ color: 0xf2efe8, roughness: 0.85, side: THREE.DoubleSide });
+// フロア表示のときの外壁の高さ。外観と同じ模様の下の部分（レンガ・窓の下半分まで）を見せる
+const CUT_H = 2.2;
 const cutMats = {};
 function cutMat(style) {
   if (!cutMats[style]) {
     const src = (MAT_WALL[style] || MAT_WALL.school).map;
     const t = src.clone();
     t.needsUpdate = true;
-    t.repeat.set(1, 1.3 / FH);
+    t.repeat.set(1, CUT_H / FH);
     cutMats[style] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, side: THREE.DoubleSide });
   }
   return cutMats[style];
@@ -766,7 +768,7 @@ for (const f of [1, 2, 3]) {
     // 切断した壁（フロア表示用）
     // 外の壁は窓の下の部分まで見えるように、外壁の模様の下の方を使う
     for (const [st, l2] of Object.entries(byStyle)) {
-      const cm = new THREE.Mesh(wallGeometry(l2, base(f), 1.3), cutMat(st));
+      const cm = new THREE.Mesh(wallGeometry(l2, base(f), CUT_H, st === "office" ? 1 / (2 * BAY) : 1 / BAY), cutMat(st));
       cm.castShadow = true; cm.receiveShadow = true;
       inBlock(cut, b).add(cm);
     }

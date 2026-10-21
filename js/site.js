@@ -419,7 +419,8 @@ function buildBikes2({ parts, roof = 0x9ea3a6, stair, cut, ...main }) {
     // 写真：まっすぐな階段は建物の内側（東のはしの1列）。2階の床はそこだけない。人だけが使うらせん階段が南の外にくっついている
     const X1 = Math.max(...parts.map((p) => p[1])), Z1 = Math.max(...parts.map((p) => p[3]));
     const SL = 8, SW = 1.6; // 階段の長さ・幅
-    const sc = stair ? [X1 - SW, X1, Z1 - 0.4 - SL, Z1] : null;
+    // 階段の南のはしの2階は床がある（東の外のらせん階段がここにつく）
+    const SB = 1.8, sc = stair ? [X1 - SW, X1, Z1 - SB - SL, Z1 - SB] : null;
     parts.forEach(([x0, x1, z0, z1], i) => {
       const p = buildBikes2({ x0, x1, z0, z1, roof, cut: sc });
       p.position.y += i * 0.01; // 屋根の重なりのちらつきを防ぐ
@@ -429,7 +430,7 @@ function buildBikes2({ parts, roof = 0x9ea3a6, stair, cut, ...main }) {
       const conc = M(0xd9d1c1, { roughness: 0.9 }), steel = M(0xd8c9bf, { roughness: 0.7, metalness: 0.2 });
       const sg = new THREE.Group(); sg.position.y = -0.2; g.add(sg);
       // 内側のまっすぐな階段（南から北へ上る）。下は鉄骨のななめの板で、その下も自転車置き場
-      const n = 16, tread = SL / n, sx = X1 - SW / 2, zb = Z1 - 0.4;
+      const n = 16, tread = SL / n, sx = X1 - SW / 2, zb = Z1 - SB;
       const steps = [];
       for (let i = 0; i < n; i++) steps.push(new THREE.BoxGeometry(SW - 0.1, 0.06, tread + 0.02).translate(sx, 2.7 * (i + 1) / n - 0.03, zb - (i + 0.5) * tread));
       sg.add(new THREE.Mesh(mergeGeometries(steps), conc));
@@ -441,22 +442,21 @@ function buildBikes2({ parts, roof = 0x9ea3a6, stair, cut, ...main }) {
         const r = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.9, hyp), conc);
         r.position.set(x, 1.35 + 0.5, zb - SL / 2); r.rotation.x = ang; sg.add(r);
       }
-      // らせん階段（人だけが通る。南のはしの外、西寄り）
-      const [px0] = parts.find((p) => p[3] === Z1);
-      const ccx = px0 + 1.4, ccz = Z1 + 1.2, R = 1.15, m = 15, turn = Math.PI * 1.5;
+      // らせん階段（人だけが通る。東の外の南寄り。上りきると西を向いて2階へ入る）
+      const ccx = X1 + 1.25, ccz = Z1 - SB / 2, R = 1.15, m = 15, turn = Math.PI * 1.5;
       const wedges = [];
       for (let i = 0; i < m; i++) {
-        const a = Math.PI / 2 - turn * (i + 0.5) / m, y = 2.7 * (i + 1) / m;
+        const a = turn * (i + 0.5) / m, y = 2.7 * (i + 1) / m;
         wedges.push(new THREE.BoxGeometry(R, 0.06, 0.42).rotateY(a).translate(ccx + Math.sin(a) * R / 2, y, ccz + Math.cos(a) * R / 2));
       }
       wedges.push(new THREE.CylinderGeometry(0.08, 0.08, 3.6, 8).translate(ccx, 1.8, ccz));
       sg.add(new THREE.Mesh(mergeGeometries(wedges.map((w) => w.toNonIndexed())), steel));
       const pts = [];
-      for (let i = 0; i <= 40; i++) { const a = Math.PI / 2 - turn * i / 40; pts.push(new THREE.Vector3(ccx + Math.sin(a) * R, 0.9 + 2.7 * i / 40, ccz + Math.cos(a) * R)); }
+      for (let i = 0; i <= 40; i++) { const a = turn * i / 40; pts.push(new THREE.Vector3(ccx + Math.sin(a) * R, 0.9 + 2.7 * i / 40, ccz + Math.cos(a) * R)); }
       sg.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 60, 0.04, 5), M(0xc8ccd0, { metalness: 0.5, roughness: 0.4 })));
       // らせんの外がわの手すりのパネル
       const pans = [];
-      for (let i = 0; i < m; i++) { const a = Math.PI / 2 - turn * (i + 0.5) / m; pans.push(new THREE.BoxGeometry(0.5, 0.75, 0.04).rotateY(a + Math.PI / 2).translate(ccx + Math.sin(a) * R, 2.7 * (i + 1) / m + 0.45, ccz + Math.cos(a) * R).toNonIndexed()); }
+      for (let i = 0; i < m; i++) { const a = turn * (i + 0.5) / m; pans.push(new THREE.BoxGeometry(0.5, 0.75, 0.04).rotateY(a + Math.PI / 2).translate(ccx + Math.sin(a) * R, 2.7 * (i + 1) / m + 0.45, ccz + Math.cos(a) * R).toNonIndexed()); }
       sg.add(new THREE.Mesh(mergeGeometries(pans), M(0x9a958c, { roughness: 0.8 })));
       sg.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     }
@@ -492,20 +492,20 @@ function buildBikes2({ parts, roof = 0x9ea3a6, stair, cut, ...main }) {
   panel(d, x0 + 0.05, cz, false);
   if (ov && ov[1] >= x1 - 0.01) {
     // 東：階段のところは手すり壁なし（階段の手すり壁がある）。2階の床のふち（階段の吹きぬけ側）に手すり壁
-    panel(ov[2] - z0, x1 - 0.05, (z0 + ov[2]) / 2, false); panel(z1 - ov[3], x1 - 0.05, (z1 + ov[3]) / 2, false);
+    panel(ov[2] - z0, x1 - 0.05, (z0 + ov[2]) / 2, false); // 階段の南（らせん階段の出入り口）は手すり壁なし
     const zs = Math.max(ov[2] + 1.2, z0); // 上りきったところはあける
     panel(ov[3] - zs, ov[0], (zs + ov[3]) / 2, false);
   } else panel(d, x1 - 0.05, cz, false);
   // 1階の腰の低いブロック塀（自転車の前輪どめ）
   addBox(w, 0.4, 0.15, cx, 0.2, z0 + 0.1, conc);
-  if (ov && ov[3] >= z1 - 0.01) addBox(ov[0] - x0, 0.4, 0.15, (x0 + ov[0]) / 2, 0.2, z1 - 0.1, conc); // 階段の上り口はあける
+  if (ov && ov[3] >= z1 - 2.5) addBox(ov[0] - x0, 0.4, 0.15, (x0 + ov[0]) / 2, 0.2, z1 - 0.1, conc); // 階段の上り口はあける
   else addBox(w, 0.4, 0.15, cx, 0.2, z1 - 0.1, conc);
   // 自転車（各階2列）。自転車は東西の向きにとめてある
   const n = Math.floor((d - 1) / 0.6);
   const spots = [];
   for (const y of [0.15, 3.0]) for (const xc of [cx - w / 4, cx + w / 4]) for (let i = 0; i < n; i++) {
     const z = z0 + 0.8 + i * 0.6;
-    if (ov && xc + 0.9 > ov[0] && z > ov[2] - 0.3 && z < ov[3]) continue; // 階段のところにはとめない
+    if (ov && xc + 0.9 > ov[0] && z > ov[2] - 0.3 && z < ov[3] + 2) continue; // 階段のところにはとめない
     spots.push([xc, y, z, (i % 2) * Math.PI]);
   }
   g.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });

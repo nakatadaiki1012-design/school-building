@@ -1641,7 +1641,8 @@ for (const f of [1, 2, 3]) {
     if (r.kind === "stairs") {
       const list = [];
       if (r.upTo) stairFlights(r, y, list);
-      if (r.fromBelow) stairFlights(r, y - FH, list, true);
+      // 下の階から上ってくる階段は、行きの段（右側）と下の階の床まで見せる（その階だけ表示したとき、下まで突き抜けないように）
+      if (r.fromBelow) { stairFlights(r, y - FH, list, false); stairFrame(r).add(list, -stairFrame(r).L / 2, stairFrame(r).L / 2, -stairFrame(r).Wd / 2, stairFrame(r).Wd / 2, y - FH - 0.2, y - FH); }
       if (!r.upTo && r.fromBelow) stairGuard(r, y, list);
       if (list.length) {
         const m = new THREE.Mesh(mergeGeometries(list), matStairs);

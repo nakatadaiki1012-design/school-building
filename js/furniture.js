@@ -354,6 +354,8 @@ const SHAPES = {
   ],
   // 引き戸（壁の両側に見えるよう壁より厚め）と、まわりの枠、上の欄間のガラス
   // 廊下側の壁の上の細長い窓（欄間）と、下の小窓。壁より厚くして両側から見える
+  // 事務室の受付の窓（正面玄関から事務室をたずねる窓）：ガラスの引き違い窓と、手前の小さなカウンター
+  receptionWindow: [[MAT.transom, merge([b(1.8, 1.0, 0.26, 0, 1.0)])], [MAT.doorFrame, merge([b(1.9, 0.05, 0.28, 0, 2.0), b(1.9, 0.05, 0.28, 0, 0.98), b(0.05, 1.05, 0.28, -0.93, 0.98), b(0.05, 1.05, 0.28, 0.93, 0.98), b(0.04, 1.0, 0.27, 0, 1.0)])], [MAT.wood, merge([b(2.0, 0.05, 0.6, 0, 0.95)])]],
   hallWindow: [[MAT.transom, merge([b(1.7, 0.42, 0.24, 0, 1.92), b(1.7, 0.32, 0.24, 0, 0.12)])], [MAT.doorFrame, merge([b(1.78, 0.04, 0.26, 0, 2.34), b(1.78, 0.04, 0.26, 0, 1.88), b(0.04, 0.46, 0.26, 0, 1.88)])]],
   // 壁より厚くして、教室の中からも廊下からも見えるようにする
   // 4枚の大きな両引き戸（体育館の入口）。ガラスの入ったアルミの戸
@@ -803,8 +805,9 @@ function weights(out, R) {
   for (let x = x0 + 1.2; x < x1 - 1; x += 2.2) out.push({ t: "weightBench", x, z: (z0 + z1) / 2, rot: Math.PI / 2 });
 }
 
-function shop(out, R) {
+function shop(out, R, reception = false) {
   const { x0, x1, z0, z1 } = R;
+  if (reception) out.push({ t: "receptionWindow", x: (x0 + x1) / 2, z: z0 - 0.2, rot: 0 }); // 正面玄関側（北）の壁に受付の窓
   out.push({ t: "counter", x: (x0 + x1) / 2, z: (z0 + z1) / 2, rot: Math.PI / 2 });
 }
 
@@ -900,7 +903,7 @@ const LAYOUTS = [
   [/卓球場/, pingpong],
   [/ウエイトルーム/, weights],
   [/^体育館$/, gym],
-  [/受付カウンター/, shop],
+  [/受付カウンター/, (o, R) => shop(o, R, true)],
   // ここから下は、図面では中身がわからない部屋に、それらしい物を少しだけ置く
   [/倉庫|器具庫|器具室|保管室/, (o, R) => { along(o, "rack", R.x0 + 0.3, R.z0 + 0.9, R.z1 - 0.9, 1.6, 0); along(o, "rack", R.x1 - 0.3, R.z0 + 0.9, R.z1 - 0.9, 1.6, Math.PI); }],
   [/^(?!職員).*更衣室|部室/, (o, R) => { along(o, "tallLocker", R.x0 + 0.3, R.z0 + 0.6, R.z1 - 0.6, 0.92, 0); if (R.x1 - R.x0 > 3) o.push({ t: "bench", x: (R.x0 + R.x1) / 2 + 0.3, z: (R.z0 + R.z1) / 2, rot: 0 }); }],
@@ -991,10 +994,10 @@ export function buildFurniture(rooms, y) {
     // "n2" のように2をつけると、その壁の前と後ろ（両はし寄り）に2つ
     for (const dd of r.doors || []) {
       const [d0, t = "door"] = dd.split(":");
-      const d = d0[0], two = d0.endsWith("2");
+      const d = d0[0], two = d0.endsWith("2"), at = d0.includes("@") ? Number(d0.split("@")[1]) : 0; // "n@-0.35"：壁の長さに対する位置（まんなか0、はし±0.5）
       const p = { n: [r.cx, r.cz - r.d / 2, 0], s: [r.cx, r.cz + r.d / 2, 0], e: [r.cx + r.w / 2, r.cz, Math.PI / 2], w: [r.cx - r.w / 2, r.cz, Math.PI / 2] }[d];
       const along = d === "n" || d === "s", half = (along ? r.w : r.d) / 2 - 1.3;
-      for (const o of two ? [-half, half] : [0]) items.push({ t, x: p[0] + (along ? o : 0), z: p[1] + (along ? 0 : o), rot: p[2] });
+      for (const o of two ? [-half, half] : [at * (along ? r.w : r.d)]) items.push({ t, x: p[0] + (along ? o : 0), z: p[1] + (along ? 0 : o), rot: p[2] });
     }
     const fn = LAYOUTS.find(([re]) => re.test(r.name));
     if (!fn) continue;

@@ -1578,6 +1578,9 @@ function stairGuard(r, y, list) {
   add(list, L / 2 - 0.1, L / 2 + 0.05, -Wd / 2, Wd / 2, y, y + 1.1);
 }
 
+// 生徒や来校者が入らない部屋（準備室・倉庫・設備の部屋など）：うすく小さく表示し、押しても反応しない
+const STAFF_ONLY = /準備室|印刷室|保管室|倉庫|器具庫|器具室|電気室|受水槽|給湯室|技能員室|放送室|資料室|整理室|職員トイレ|職員更衣室|放送$/;
+const isStaffOnly = (r) => r.kind !== "stairs" && STAFF_ONLY.test(r.kind === "part" ? r.parent.name : r.name);
 const styleOf = (r) => ROOM_STYLE.find((s) => s.name === r.name && s.floor === r.floor && (s.r0 === undefined || s.r0 === r.r0));
 // 部屋の仕切りの壁の高さ（天井まで描くと中が見えにくいので、ドアの上が少し見える高さ）
 const WALL_H = 2.45;
@@ -1628,7 +1631,8 @@ for (const f of [1, 2, 3]) {
     r.mesh = tile;
     r.baseColor = color.clone();
     inBlock(grp, r.block).add(tile);
-    pickables.push(tile);
+    if (!isStaffOnly(r)) pickables.push(tile); // 入れない部屋は押せない
+    else if (r.kind !== "part") { mat.color.lerp(new THREE.Color(0xe9e7e2), 0.6); } // 色もうすく
 
     // 建物の中の階段：上の階へ上がる折り返し階段（行きの段・踊り場・帰りの段）
     // その階から上る段と、下の階から上ってきた段（上り切ったところ）の両方を見せる。いちばん上の階では吹き抜けに手すり
@@ -1692,7 +1696,7 @@ for (const f of [1, 2, 3]) {
     // ラベル
     const div = document.createElement("div");
     const small = r.w < 4.2 || r.d < 3;
-    div.className = `room-label cat-${r.cat}${small ? " small" : ""}${r.grade ? " hr" : ""}${r.kind === "stairs" ? " stairs" : ""}`;
+    div.className = `room-label cat-${r.cat}${small ? " small" : ""}${r.grade ? " hr" : ""}${r.kind === "stairs" ? " stairs" : ""}${isStaffOnly(r) ? " staff" : ""}`;
     div.textContent = shortName(r);
     if (r.d > r.w * 1.6 && small && !r.grade) div.classList.add("vertical");
     div.addEventListener("pointerdown", (e) => e.stopPropagation());
@@ -1908,7 +1912,7 @@ function selectRoom(r, { fly = true } = {}) {
 }
 
 function showWing(w) {
-  const rooms = ROOMS.filter((r) => r.wing === w && r.kind === "room" && r.cat !== "open");
+  const rooms = ROOMS.filter((r) => r.wing === w && r.kind === "room" && r.cat !== "open" && !isStaffOnly(r));
   const byFloor = [1, 2, 3].map((f) => {
     const list = rooms.filter((r) => r.floor === f).sort((a, b) => a.name.localeCompare(b.name, "ja"));
     if (!list.length) return "";
@@ -1999,7 +2003,7 @@ const norm = (s) => s.normalize("NFKC").toLowerCase().replace(/\s/g, "").replace
 search.addEventListener("input", () => {
   const q = norm(search.value);
   if (!q) { results.hidden = true; return; }
-  const list = ROOMS.filter((r) => r.kind === "room" && r.cat !== "open")
+  const list = ROOMS.filter((r) => r.kind === "room" && r.cat !== "open" && !isStaffOnly(r))
     .filter((r) => {
       const n = norm(r.name);
       const alt = r.grade ? `${r.grade}-${r.cls}${r.grade}年${r.cls}組` : "";

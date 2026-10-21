@@ -316,3 +316,6 @@ dialog::backdrop { background: rgba(20, 30, 40, 0.45); }
   .topbar:has(.search-box.collapsed) .top-actions { margin-left: 0; gap: 6px; }
   .search-icon { width: 34px; height: 34px; font-size: 14px; }
 }
+
+/* 生徒や来校者が入らない部屋の名前：小さくうすく、押せない */
+.room-label.staff { font-size: 9px; font-weight: 500; padding: 1px 4px; opacity: 0.55; background: rgba(255,255,255,0.6); pointer-events: none; cursor: default; }

@@ -1688,7 +1688,7 @@ for (const w of WINGS) {
 }
 // まわりの施設のラベル
 for (const it of SITE_INFO) {
-  if (!SITE[it.key]) continue;
+  if (it.key && !SITE[it.key]) continue; // key のない項目は、いつも表示する
   const div = document.createElement("div");
   div.className = "wing-label site";
   div.textContent = it.name;

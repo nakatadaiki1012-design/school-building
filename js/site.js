@@ -599,25 +599,25 @@ function buildParking({ x0, x1, z0, z1, cx, cz, len, depth, rot }) {
 // アスファルト：細かい粒（骨材）、ゆるい色むら、ところどころの補修あと・ひび（1枚の模様が 6m 四方）
 export const texAsphalt = (() => {
   const t = canvasTex(512, 512, (c, W, H) => {
-    c.fillStyle = "#64676a"; c.fillRect(0, 0, W, H);
+    c.fillStyle = "#6b6e71"; c.fillRect(0, 0, W, H);
     // 大きな色むら（タイヤの通るところが少し濃い、雨のあと など）
     for (let i = 0; i < 14; i++) {
       const x = Math.random() * W, y = Math.random() * H, r = 60 + Math.random() * 140;
       const g = c.createRadialGradient(x, y, 0, x, y, r);
       const d = Math.random() < 0.5;
-      g.addColorStop(0, d ? "rgba(40,42,46,0.16)" : "rgba(150,150,145,0.12)"); g.addColorStop(1, "rgba(0,0,0,0)");
+      g.addColorStop(0, d ? "rgba(40,42,46,0.06)" : "rgba(150,150,145,0.05)"); g.addColorStop(1, "rgba(0,0,0,0)");
       c.fillStyle = g; c.fillRect(x - r, y - r, r * 2, r * 2);
     }
     // 骨材の粒
     for (let i = 0; i < 26000; i++) {
       const v = Math.random();
-      c.fillStyle = v < 0.45 ? `rgba(25,25,28,${0.15 + Math.random() * 0.3})` : v < 0.9 ? `rgba(175,175,170,${0.1 + Math.random() * 0.25})` : `rgba(210,200,185,${0.3 + Math.random() * 0.3})`;
+      c.fillStyle = v < 0.45 ? `rgba(25,25,28,${0.05 + Math.random() * 0.12})` : v < 0.9 ? `rgba(175,175,170,${0.04 + Math.random() * 0.1})` : `rgba(210,200,185,${0.1 + Math.random() * 0.15})`; // 粒はうすめ
       const sz = 1 + Math.random() * 1.6;
       c.fillRect(Math.random() * W, Math.random() * H, sz, sz);
     }
     // 補修あと（少し濃い四角）とひび
-    for (let i = 0; i < 2; i++) { c.fillStyle = "rgba(35,37,40,0.12)"; c.fillRect(Math.random() * W, Math.random() * H, 50 + Math.random() * 80, 30 + Math.random() * 60); }
-    c.strokeStyle = "rgba(30,30,30,0.3)"; c.lineWidth = 1;
+    for (let i = 0; i < 2; i++) { c.fillStyle = "rgba(35,37,40,0.05)"; c.fillRect(Math.random() * W, Math.random() * H, 50 + Math.random() * 80, 30 + Math.random() * 60); }
+    c.strokeStyle = "rgba(30,30,30,0.12)"; c.lineWidth = 1;
     for (let i = 0; i < 5; i++) { let x = Math.random() * W, y = Math.random() * H; c.beginPath(); c.moveTo(x, y); for (let k = 0; k < 8; k++) { x += Math.random() * 18 - 9; y += Math.random() * 18 - 5; c.lineTo(x, y); } c.stroke(); }
   });
   t.wrapS = t.wrapT = THREE.RepeatWrapping;

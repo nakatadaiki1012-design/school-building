@@ -163,7 +163,16 @@ ortho.up.set(0, 0, -1);
 const controls3d = new OrbitControls(persp, labelRenderer.domElement);
 controls3d.enableDamping = true;
 controls3d.maxPolarAngle = Math.PI * 0.48;
-controls3d.minDistance = 12;
+controls3d.minDistance = 6;
+// 操作しやすく：地面にそって動かす、マウスの位置に向かってズーム、少しなめらかに止まる
+controls3d.screenSpacePanning = false;
+controls3d.zoomToCursor = true;
+controls3d.dampingFactor = 0.12;
+controls3d.rotateSpeed = 0.7;
+controls3d.panSpeed = 1.1;
+controls3d.zoomSpeed = 1.2;
+controls3d.touches = { ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN };
+controls3d.keyPanSpeed = 25;
 controls3d.maxDistance = 220;
 controls3d.target.set(0, 4, 0);
 
@@ -171,6 +180,7 @@ const controls2d = new OrbitControls(ortho, labelRenderer.domElement);
 controls2d.enableRotate = false;
 controls2d.screenSpacePanning = true;
 controls2d.minZoom = 0.6;
+controls2d.zoomToCursor = true;
 controls2d.maxZoom = 8;
 controls2d.enabled = false;
 controls2d.mouseButtons = { LEFT: THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
@@ -357,12 +367,12 @@ const texGrass = canvasTex(512, 512, (g, w, h) => {
   for (let i = 0; i < 18; i++) {
     const x = Math.random() * w, y = Math.random() * h, r = 50 + Math.random() * 120;
     const gr = g.createRadialGradient(x, y, 0, x, y, r);
-    gr.addColorStop(0, Math.random() < 0.5 ? "rgba(60,85,35,0.22)" : "rgba(170,180,100,0.18)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+    gr.addColorStop(0, Math.random() < 0.5 ? "rgba(60,85,35,0.08)" : "rgba(170,180,100,0.07)"); gr.addColorStop(1, "rgba(0,0,0,0)");
     g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
   }
   for (let i = 0; i < 40000; i++) {
-    const l = 26 + Math.random() * 30;
-    g.fillStyle = `hsla(${78 + Math.random() * 28},${30 + Math.random() * 20}%,${l}%,0.85)`;
+    const l = 38 + Math.random() * 18; // 模様はうすめ
+    g.fillStyle = `hsla(${80 + Math.random() * 20},${30 + Math.random() * 14}%,${l}%,0.45)`;
     const x = Math.random() * w, y = Math.random() * h;
     g.fillRect(x, y, 1.2, 1.5 + Math.random() * 2.5); // 細長い葉
   }
@@ -1774,7 +1784,7 @@ function setFloor(f, { keepCamera = false } = {}) {
   applyMode();
   useCamera();
   if (!keepCamera) {
-    if (f === 0) flyTo(new THREE.Vector3(75, 120, 120), new THREE.Vector3(0, 0, -35));
+    if (f === 0) flyTo(new THREE.Vector3(75, 120, 120), new THREE.Vector3(0, 0, -35)); // HOME と同じ
     else if (state.view === "3d") flyTo(new THREE.Vector3(10, base(f) + 85, 70), new THREE.Vector3(0, base(f), 4));
     else fit2d();
   }
@@ -1991,14 +2001,76 @@ document.getElementById("furniture-toggle").addEventListener("change", (e) => {
 
 // ---------- 見る方向 ----------
 const DIRS = {
+  home: [55, 75, 95],
   n: [0, 95, -175], s: [0, 95, 125], e: [160, 95, -25], w: [-160, 95, -25], top: [0, 230, -24.9],
 };
+const HOME = [new THREE.Vector3(75, 120, 120), new THREE.Vector3(0, 0, -35)]; // はじめの外観の見え方（「全体」でもどる）
 document.querySelectorAll(".dir-btns button").forEach((b) => b.addEventListener("click", () => {
   if (state.view === "2d" && state.floor !== 0) setView("3d");
+  if (b.dataset.dir === "home") { const ty = state.floor ? base(state.floor) : 0; flyTo(HOME[0].clone().setY(HOME[0].y + ty), HOME[1].clone().setY(ty), 900); return; }
   const [x, y, z] = DIRS[b.dataset.dir];
   const ty = state.floor ? base(state.floor) : 0;
-  flyTo(new THREE.Vector3(x, y + ty, z), new THREE.Vector3(0, ty, -25), 900);
+  flyTo(new THREE.Vector3(x, y + ty, z), new THREE.Vector3(0, ty + (b.dataset.dir === "home" ? 4 : 0), b.dataset.dir === "home" ? 0 : -25), 900);
 }));
+
+// ---------- 操作しやすく ----------
+// 見ている中心が学校から遠くへ行きすぎないようにする
+const LIMIT = { x0: -130, x1: 140, z0: -170, z1: 120 };
+function clampTarget() {
+  for (const c of [controls3d, controls2d]) {
+    const t = c.target, cam = c.object;
+    const nx = THREE.MathUtils.clamp(t.x, LIMIT.x0, LIMIT.x1), nz = THREE.MathUtils.clamp(t.z, LIMIT.z0, LIMIT.z1);
+    if (nx !== t.x || nz !== t.z) { cam.position.x += nx - t.x; cam.position.z += nz - t.z; t.x = nx; t.z = nz; }
+  }
+}
+controls3d.addEventListener("change", clampTarget);
+controls2d.addEventListener("change", clampTarget);
+// ダブルクリック・ダブルタップ：その場所に近づく
+{
+  let lastTap = 0, lastXY = [0, 0];
+  const zoomAt = (cx, cy) => {
+    if (state.view === "2d" && state.floor !== 0) { controls2d.object.zoom = Math.min(controls2d.maxZoom, controls2d.object.zoom * 1.8); controls2d.object.updateProjectionMatrix(); return; }
+    const rect = renderer.domElement.getBoundingClientRect();
+    ndc.set(((cx - rect.left) / rect.width) * 2 - 1, -((cy - rect.top) / rect.height) * 2 + 1);
+    ray.setFromCamera(ndc, persp);
+    const hit = ray.intersectObjects(scene.children, true).find((h) => visibleDeep(h.object) && h.object.isMesh);
+    const p = hit ? hit.point : ray.ray.at(persp.position.distanceTo(controls3d.target), new THREE.Vector3());
+    const dir = persp.position.clone().sub(p);
+    const d = Math.max(controls3d.minDistance + 2, dir.length() * 0.45);
+    flyTo(p.clone().add(dir.setLength(d)), p, 500);
+  };
+  // （回転の操作がポインタをつかむので dblclick が来ないことがある。2回目の指・クリックを自分で数える）
+  let downXY = null;
+  labelRenderer.domElement.addEventListener("pointerdown", (e) => { downXY = [e.clientX, e.clientY]; });
+  labelRenderer.domElement.addEventListener("pointerup", (e) => {
+    if (!downXY || Math.hypot(e.clientX - downXY[0], e.clientY - downXY[1]) > 8) { lastTap = 0; return; } // ドラッグは数えない
+    const now = e.timeStamp; // 入力の時刻（画面の描画が重くてもずれない）
+    if (now - lastTap < 400 && Math.hypot(e.clientX - lastXY[0], e.clientY - lastXY[1]) < 30) { zoomAt(e.clientX, e.clientY); lastTap = 0; return; }
+    lastTap = now; lastXY = [e.clientX, e.clientY];
+  });
+}
+// キーボード：矢印・WASDで移動、+ - でズーム、Q E で回る、H で全体にもどる
+window.addEventListener("keydown", (e) => {
+  if (e.target.closest("input, textarea, select") || e.metaKey || e.ctrlKey || e.altKey) return;
+  const c = state.view === "2d" && state.floor !== 0 ? controls2d : controls3d, cam = c.object;
+  const k = e.key.toLowerCase();
+  const fwd = new THREE.Vector3(); cam.getWorldDirection(fwd); fwd.y = 0;
+  if (fwd.lengthSq() < 1e-6) fwd.set(0, 0, -1);
+  fwd.normalize();
+  const right = new THREE.Vector3(-fwd.z, 0, fwd.x);
+  const step = cam.isPerspectiveCamera ? Math.max(1.5, cam.position.distanceTo(c.target) * 0.04) : 4 / cam.zoom;
+  const move = (v) => { cam.position.add(v); c.target.add(v); clampTarget(); };
+  if (k === "arrowup" || k === "w") move(fwd.multiplyScalar(step));
+  else if (k === "arrowdown" || k === "s") move(fwd.multiplyScalar(-step));
+  else if (k === "arrowleft" || k === "a") move(right.multiplyScalar(-step));
+  else if (k === "arrowright" || k === "d") move(right.multiplyScalar(step));
+  else if (k === "+" || k === "=" || k === ";") { if (cam.isPerspectiveCamera) { const v = cam.position.clone().sub(c.target).multiplyScalar(0.85); if (v.length() > c.minDistance) cam.position.copy(c.target).add(v); } else { cam.zoom = Math.min(c.maxZoom, cam.zoom * 1.2); cam.updateProjectionMatrix(); } }
+  else if (k === "-" || k === "_") { if (cam.isPerspectiveCamera) { const v = cam.position.clone().sub(c.target).multiplyScalar(1.18); if (v.length() < c.maxDistance) cam.position.copy(c.target).add(v); } else { cam.zoom = Math.max(c.minZoom, cam.zoom / 1.2); cam.updateProjectionMatrix(); } }
+  else if ((k === "q" || k === "e") && cam.isPerspectiveCamera) { const a = k === "q" ? 0.15 : -0.15; const v = cam.position.clone().sub(c.target).applyAxisAngle(new THREE.Vector3(0, 1, 0), a); cam.position.copy(c.target).add(v); }
+  else if (k === "h") document.querySelector('.dir-btns [data-dir="home"]').click();
+  else return;
+  e.preventDefault();
+});
 const compassEl = document.getElementById("compass");
 
 // ---------- 航空写真 ----------

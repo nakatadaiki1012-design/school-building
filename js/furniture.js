@@ -942,7 +942,9 @@ const LAYOUTS = [
   // コモンスペース：北の壁に壁画、テーブル2つと長椅子、西のはしに渡り廊下へ少し上がる階段（北へ上る）
   [/コモンスペース/, (o, R) => {
     const { x0, x1, z0, z1 } = R, cz = (z0 + z1) / 2 + 0.8;
-    o.push({ t: "mural", x: (x0 + x1 - 0.3) / 2, z: z0 + 0.05, rot: Math.PI / 2, len: x1 - 0.3 - x0 }); // 階段の上もふくめて壁いっぱい
+    // 壁画は音楽準備室の南の壁の分だけ（図面で準備室は c33〜39、コモンスペースは c33〜41 なので西から 7/9）
+    const xm = x0 + (x1 - x0) * 7 / 9 - 0.1;
+    o.push({ t: "mural", x: (x0 + xm) / 2, z: z0 + 0.05, rot: Math.PI / 2, len: xm - x0 });
     for (const x of [x0 + (x1 - x0) * 0.28, x0 + (x1 - x0) * 0.5]) { // テーブルは西寄り（階段の手前）
       o.push({ t: "table", x, z: cz, rot: Math.PI / 2 });
       for (const sd of [-1, 1]) o.push({ t: "bench", x, z: cz + sd * 0.75, rot: Math.PI / 2 });

@@ -363,6 +363,16 @@ const SHAPES = {
   // 壁より厚くして、教室の中からも廊下からも見えるようにする
   // 4枚の大きな両引き戸（体育館の入口）。ガラスの入ったアルミの戸
   door4: [[MAT.gray, merge([b(0.95, 2.2, 0.3, -1.42, 0, -0.03), b(0.95, 2.2, 0.3, -0.47, 0, 0.03), b(0.95, 2.2, 0.3, 0.47, 0, 0.03), b(0.95, 2.2, 0.3, 1.42, 0, -0.03)])], [MAT.transom, merge([-1.42, -0.47, 0.47, 1.42].map((x) => b(0.7, 1.4, 0.34, x, 0.6)))], [MAT.metal, merge([b(4.0, 0.1, 0.36, 0, 2.2), b(0.1, 2.3, 0.36, -1.95), b(0.1, 2.3, 0.36, 1.95)])]],
+  // 内側に開く押し扉（1枚。取っ手と細い窓つき）。床に、開くときに通る弧をうすく描く（部屋の内側 +z）
+  swing: [
+    [MAT.door, merge([b(0.92, 2.0, 0.3, 0, 0)])],
+    [MAT.doorFrame, merge([b(1.02, 0.07, 0.34, 0, 2.0), b(0.06, 2.07, 0.34, -0.49), b(0.06, 2.07, 0.34, 0.49), b(0.1, 0.03, 0.4, 0.33, 0.98)])],
+    [MAT.transom, merge([b(0.14, 0.7, 0.32, 0.18, 1.1)])],
+    [new THREE.MeshBasicMaterial({ color: 0x9a948a, transparent: true, opacity: 0.55 }), merge([
+      new THREE.RingGeometry(0.88, 0.92, 16, 1, -Math.PI / 2, Math.PI / 2).rotateX(-Math.PI / 2).translate(-0.46, 0.02, 0.2).toNonIndexed(),
+      new THREE.BoxGeometry(0.03, 0.01, 0.9).translate(-0.46, 0.02, 0.65).toNonIndexed(),
+    ].map((g) => g.index ? g.toNonIndexed() : g))],
+  ],
   // 2枚の引き戸（少し前後にずらして重ねる）
   door: [[MAT.door, merge([b(0.9, 1.95, 0.3, -0.45, 0, -0.02), b(0.9, 1.95, 0.3, 0.45, 0, 0.02)])], [MAT.doorFrame, merge([b(1.96, 0.07, 0.34, 0, 1.95), b(0.07, 2.02, 0.34, -0.95), b(0.07, 2.02, 0.34, 0.95), b(0.03, 1.95, 0.35, 0)])], [MAT.transom, merge([b(1.8, 0.35, 0.26, 0, 2.03)])]],
   curtainPanel: [[MAT.curtain, merge([b(0.7, 2.05, 0.05, 0, 0.3)])]],
@@ -415,7 +425,7 @@ const alongX = (out, t, z, x0, x1, step, rot = Math.PI / 2) => {
 // 普通教室：前（-x側）に黒板と教卓、後ろにロッカー、机は 6列 × 7行
 // 普通教室は40人（6列×7行から、いちばん後ろの両はしの2席を除く）
 // cols：横の列の数、rows：縦の列の数、back：後ろに空けるスペース（部屋の奥行きに対する割合）
-function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back = 0 } = {}) {
+function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back = 0, doorT = "door" } = {}) {
   const { x0, x1, z0, z1 } = R;
   out.push({ t: "blackboard", x: x0 + 0.12, z: (z0 + z1) / 2, rot: 0 });
   // 教壇は窓側の壁からドア側の壁まで、部屋の幅いっぱい
@@ -432,8 +442,8 @@ function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back
   out.push({ t: "laptop", x: x0 + 1.35, z: (z0 + z1) / 2 + 0.2, rot: 0, y: 0.18 });
   // 廊下側（北）の前と後ろの引き戸
   // 前のドアは少し前寄り（教壇に少しかかる）
-  out.push({ t: "door", x: x0 + 1.6, z: z0 - 0.2, rot: 0 }); // 壁のまんなか。教壇に少しかかる
-  out.push({ t: "door", x: x1 - 1.2, z: z0 - 0.2, rot: 0 });
+  out.push({ t: doorT, x: x0 + 1.6, z: z0 - 0.2, rot: 0 }); // 壁のまんなか。教壇に少しかかる
+  out.push({ t: doorT, x: x1 - 1.2, z: z0 - 0.2, rot: 0 });
   // 2つのドアのあいだの、廊下側の窓
   for (let x = x0 + 3.5; x < x1 - 2.9; x += 1.85) out.push({ t: "hallWindow", x, z: z0 - 0.2, rot: 0 });
   // 窓側（南）のカーテン（柱のところにまとめてある）
@@ -851,7 +861,7 @@ const LAYOUTS = [
   [/視聴覚/, theater],
   // 音楽室：横8列×縦5列の机、黒板は北側、前のすみにピアノ
   [/練習室/, (o, R) => { o.push({ t: "piano", x: (R.x0 + R.x1) / 2 - 0.5, z: (R.z0 + R.z1) / 2, rot: 0 }); o.push({ t: "chair", x: (R.x0 + R.x1) / 2 + 1.2, z: (R.z0 + R.z1) / 2, rot: 0 }); }],
-  [/音楽室/, (o, R) => { classroom(o, R, { cols: 8, rows: 5, seats: 40, eboard: false }); o.push({ t: "piano", x: R.x0 + 1.6, z: R.z0 + 1.2, rot: 0 }); }],
+  [/音楽室/, (o, R) => { classroom(o, R, { cols: 8, rows: 5, seats: 40, eboard: false, doorT: "swing" }); o.push({ t: "piano", x: R.x0 + 1.6, z: R.z0 + 1.2, rot: 0 }); }],
   [/美術教室/, artIslands],
   [/工芸教室/, (o, R) => artroom(o, R, true)],
   [/^窯$/, (o, R) => o.push({ t: "kiln", x: (R.x0 + R.x1) / 2, z: (R.z0 + R.z1) / 2, rot: 0 })],
@@ -1012,11 +1022,12 @@ export function buildFurniture(rooms, y) {
     }
     // 外への出入口の両引き戸（doors: 向きのリスト）。壁のまんなかに置く
     // "s:door4" のように書くと、4枚の大きな両引き戸
+    // "e:swing" は内側に開く押し扉
     // "n2" のように2をつけると、その壁の前と後ろ（両はし寄り）に2つ
     for (const dd of r.doors || []) {
       const [d0, t = "door"] = dd.split(":");
       const d = d0[0], two = d0.endsWith("2"), at = d0.includes("@") ? Number(d0.split("@")[1]) : 0; // "n@-0.35"：壁の長さに対する位置（まんなか0、はし±0.5）
-      const p = { n: [r.cx, r.cz - r.d / 2, 0], s: [r.cx, r.cz + r.d / 2, 0], e: [r.cx + r.w / 2, r.cz, Math.PI / 2], w: [r.cx - r.w / 2, r.cz, Math.PI / 2] }[d];
+      const p = { n: [r.cx, r.cz - r.d / 2, 0], s: [r.cx, r.cz + r.d / 2, Math.PI], e: [r.cx + r.w / 2, r.cz, -Math.PI / 2], w: [r.cx - r.w / 2, r.cz, Math.PI / 2] }[d]; // 向き：ドアの +z が部屋の内側
       const along = d === "n" || d === "s", half = (along ? r.w : r.d) / 2 - 1.3;
       for (const o of two ? [-half, half] : [at * (along ? r.w : r.d)]) items.push({ t, x: p[0] + (along ? o : 0), z: p[1] + (along ? 0 : o), rot: p[2] });
     }

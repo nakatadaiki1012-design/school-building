@@ -41,11 +41,14 @@ function toDrawing(x, z) {
   return b ? [(x - b.ox) / b.sx, (z - b.oz) / b.sz] : [x, z];
 }
 // parent の中に、その棟の変換をかけたグループを作る（同じ棟なら使い回す）
+// 体育館は、2階・3階の床が校舎の床より高い（1階の武道場の天井が高い）。その差（m）
+const GYM_LIFT = 1.05;
 function inBlock(parent, b) {
   const map = (parent.userData.blocks ||= {});
   if (!map[b.id]) {
     const g = new THREE.Group();
-    g.position.set(b.ox, 0, b.oz);
+    // 2階より上の階のグループ（userData.floor が2以上）に入る体育館の部分は、GYM_LIFT だけ高くする
+    g.position.set(b.ox, b.id === "gym" && (parent.userData.floor ?? 0) >= 2 ? GYM_LIFT : 0, b.oz);
     g.scale.set(b.sx, 1, b.sz);
     parent.add(g);
     map[b.id] = g;
@@ -643,8 +646,7 @@ const matGlassDoor = new THREE.MeshStandardMaterial({ color: 0x3e5a74, roughness
 const matStackSide = new THREE.MeshStandardMaterial({ color: 0xf2efe8, roughness: 0.85, side: THREE.DoubleSide });
 // フロア表示のときの外壁の高さ。外観と同じ模様の下の部分（レンガ・窓の下半分まで）を見せる
 const CUT_H = 2.2;
-// コモンスペースから渡り廊下へ上がる高さ（階段7段）
-const BR_RISE = 1.05;
+
 const cutMats = {};
 function cutMat(style) {
   if (!cutMats[style]) {
@@ -751,6 +753,7 @@ for (const f of [1, 2, 3]) {
   }
   const ext = new THREE.Group();
   const cut = new THREE.Group();
+  ext.userData.floor = cut.userData.floor = f;
   for (const [bid, list] of Object.entries(segsByBlock)) {
     const b = blockById(bid);
     const holder = inBlock(ext, b);
@@ -760,8 +763,8 @@ for (const f of [1, 2, 3]) {
       // 渡り廊下：下半分だけの腰壁で、上半分は開いている（柱が屋根を支える）
       // 床（下から見える厚い板）と、厚みのある腰壁
       const rc = rectOf({ c0: 27, r0: 19, c1: 32, r1: 21 });
-      // 2階の渡り廊下は、コモンスペースの階段を上がった高さ（中央棟側で +BR_RISE）から、体育館側へゆるく下る
-      const lift = (x) => (f === 2 ? BR_RISE * THREE.MathUtils.clamp((x - rc.x0) / (rc.x1 - rc.x0), 0, 1) : 0);
+      // 2階の渡り廊下は、体育館の2階と同じ高さ（校舎より GYM_LIFT 高い。コモンスペースから階段で上がる）
+      const lift = () => (f === 2 ? GYM_LIFT : 0); // 体育館の2階と同じ高さで、まっすぐ
       const shear = (g) => { const p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setY(i, p.getY(i) + lift(p.getX(i))); g.computeVertexNormals(); return g; };
       const fg = new THREE.BoxGeometry(rc.x1 - rc.x0, 0.4, rc.z1 - rc.z0, 4, 1, 1);
       fg.translate((rc.x0 + rc.x1) / 2, base(f) - 0.2, (rc.z0 + rc.z1) / 2);
@@ -787,7 +790,8 @@ for (const f of [1, 2, 3]) {
       }
     } else {
       for (const [st, l2] of Object.entries(byStyle)) {
-        const m = new THREE.Mesh(wallGeometry(l2, base(f), FH, st === "office" ? 1 / (2 * BAY) : 1 / BAY), MAT_WALL[st] || MAT_WALL.school);
+        const wh = bid === "gym" && f === 1 ? FH + GYM_LIFT : FH; // 体育館の1階は天井が高い
+        const m = new THREE.Mesh(wallGeometry(l2, base(f), wh, st === "office" ? 1 / (2 * BAY) : 1 / BAY), MAT_WALL[st] || MAT_WALL.school);
         m.castShadow = true; m.receiveShadow = true;
         holder.add(m);
       }
@@ -879,6 +883,7 @@ for (const f of [1, 2, 3]) {
     if (f === 3 || !OCC[f + 1].has(k)) roofCells.add(k);
   }
   const roof = new THREE.Group();
+  roof.userData.floor = f;
   // 屋根の種類：中央棟の北半分は黒っぽい屋根（古い太陽光パネル）、ほかは明るい灰色。棟ごとに分ける
   const groups = {};
   for (const k of roofCells) {
@@ -929,6 +934,7 @@ for (const f of [1, 2, 3]) {
 
   // 床（フロア表示用）
   const slab = new THREE.Group();
+  slab.userData.floor = f;
   const slabSets = {};
   for (const [k, st] of OCC[f]) {
     const [c, r] = k.split(",").map(Number);
@@ -1066,6 +1072,7 @@ const gymRoof = (() => {
   });
   return g;
 })();
+gymRoof.position.y += GYM_LIFT;
 inBlock(buildingGroup, blockById("gym")).add(gymRoof);
 
 // さびた金属の屋根の模様
@@ -1123,7 +1130,7 @@ function rustTex() {
   const eaves = [];
   const gx = X(7), gz0 = Z(1), gz1 = Z(39), gxe = X(27);
   // 2階の高さで体育館を囲む外廊下（渡り廊下）。東側で中央棟からの渡り廊下につながり、南の2階の玄関まで行ける
-  const ty = FH, dw = 3; // 床の高さ、幅
+  const ty = FH + GYM_LIFT, dw = 3; // 床の高さ（体育館の2階は校舎より高い）、幅
   const zTop = gz0 + 2, zBot = gz1 + 2.5;
   const deck = (x0, x1, z0, z1) => box(geos2, x1 - x0, 0.3, z1 - z0, (x0 + x1) / 2, ty - 0.15, (z0 + z1) / 2);
   // 外廊下の腰壁（写真では高め、約1.6m）
@@ -1180,15 +1187,15 @@ function rustTex() {
   // 体育準備室の前の外階段は、1階→2階の階段の真上に、同じ形の2階→3階の階段がある（3階の卓球場へ）
   deck(gx + pl + sl, gx + pl + sl + 2.4, zBot, zBot + SW); // 2階：上の階段の上り口の踊り場
   rail(gx + pl + sl + 2.4, gx + pl + sl + 2.4, zBot, zBot + SW);
-  stair(geos1, gx + pl + sl, zBot + SW / 2, gx + pl, zBot + SW / 2, ty, 2 * FH, SW - 0.1);
+  stair(geos1, gx + pl + sl, zBot + SW / 2, gx + pl, zBot + SW / 2, ty, 2 * FH + GYM_LIFT, SW - 0.1);
   stair(geos1, gxe + dw + 1.2, zTop + 2.4 + sl, gxe + dw + 1.2, zTop + 2.4, -0.2, ty, 2.3);
   // 1階の南側の柱（柱が並ぶ吹きさらしの部分）
-  for (let x = gx + 9; x < gxe; x += 4.2) box(geos2, 0.5, FH, 0.5, x, FH / 2 - 0.2, gz1 + 0.3);
+  for (let x = gx + 9; x < gxe; x += 4.2) box(geos2, 0.5, ty, 0.5, x, ty / 2 - 0.2, gz1 + 0.3);
   // その奥の茶色い壁と、柱のあいだのアーチ（写真：大きなアーチが並び、奥が茶色）
   {
     const brown = new THREE.MeshStandardMaterial({ color: 0x7a4b38, roughness: 0.9 });
-    const back = new THREE.Mesh(new THREE.BoxGeometry(gxe - gx - 8.5, FH - 0.2, 0.3), brown);
-    back.position.set((gx + 8.5 + gxe) / 2, FH / 2 - 0.3, gz1 - 2.5);
+    const back = new THREE.Mesh(new THREE.BoxGeometry(gxe - gx - 8.5, ty - 0.2, 0.3), brown);
+    back.position.set((gx + 8.5 + gxe) / 2, ty / 2 - 0.3, gz1 - 2.5);
     back.receiveShadow = true;
     gymExtras.add(back);
     for (let x = gx + 9; x + 4.2 <= gxe + 0.1; x += 4.2) {
@@ -1478,8 +1485,9 @@ for (const [c0, r0, c1, r1] of COLUMN_AREAS) {
     // 1階に建物があるところには立てない
     const c = Math.floor(x / CW + C_MID), r = Math.floor(z / RH + R_MID);
     if (OCC[1].has(key(c, r))) continue;
-    const g = new THREE.BoxGeometry(0.5, FH, 0.5);
-    g.translate(x, FH / 2 - 0.2, z);
+    const ch = b.id === "gym" ? FH + GYM_LIFT : FH; // 体育館の2階を支える柱は高い
+    const g = new THREE.BoxGeometry(0.5, ch, 0.5);
+    g.translate(x, ch / 2 - 0.2, z);
     geos.push(g);
   }
   if (!geos.length) continue;
@@ -1554,7 +1562,7 @@ scene.add(trees);
 
 // ---------- 部屋（フロア表示） ----------
 // 折り返し階段の形。上り始めの向き dir（0=東, 90=南, 180=西, 270=北）。上り口から見て右側が上り、左側が下り（左側通行で下り）
-function stairFrame(r) {
+function stairFrame(r, H = FH) {
   const st = STAIRS.find((x) => x.name === r.name);
   const A = THREE.MathUtils.degToRad(st && st.dir !== undefined ? st.dir : r.w >= r.d ? 0 : 90);
   const ca = Math.round(Math.cos(A)), sa = Math.round(Math.sin(A)); // 90度ごと
@@ -1566,7 +1574,7 @@ function stairFrame(r) {
     g.translate(r.cx + cu * ca - cv * sa, (y0 + y1) / 2, r.cz + cu * sa + cv * ca);
     list.push(g);
   };
-  const n = 11, land = Math.min(1.6, L * 0.28), run = L - land - 0.2, tread = run / n, rise = FH / 2 / n;
+  const n = 11, land = Math.min(1.6, L * 0.28), run = L - land - 0.2, tread = run / n, rise = H / 2 / n;
   return { add, L, Wd, n, tread, rise, a0: -L / 2 + 0.1, landU: L / 2 - 0.1 - land };
 }
 // まっすぐな階段（折り返しなし）：壁の幅いっぱいに段がならび、上りきったところが踊り場
@@ -1577,16 +1585,18 @@ function straightFlight(r, y, list) {
   for (let i = 0; i < n; i++) add(list, a0 + i * tread, a0 + (i + 1) * tread, -Wd / 2 + 0.05, Wd / 2 - 0.05, y + rise * (i + 1) - 0.35, y + rise * (i + 1));
   return { add, L, Wd, landU: a0 + run };
 }
-function stairFlights(r, y, list, upperOnly = false) {
+// H：その階から上の階までの高さ（体育館の1階→2階は高い）
+const flightH = (r, fromFloor) => (r.block?.id === "gym" && fromFloor === 1 ? FH + GYM_LIFT : FH);
+function stairFlights(r, y, list, upperOnly = false, H = FH) {
   if (isStraight(r)) { straightFlight(r, y, list); return; }
-  const { add, L, Wd, n, tread, rise, a0, landU } = stairFrame(r);
+  const { add, L, Wd, n, tread, rise, a0, landU } = stairFrame(r, H);
   for (let i = 0; i < n; i++) {
     if (!upperOnly) add(list, a0 + i * tread, a0 + (i + 1) * tread, 0.06, Wd / 2 - 0.1, y, y + rise * (i + 1)); // 上り（右側）
-    const top = y + FH / 2 + rise * (i + 1);
+    const top = y + H / 2 + rise * (i + 1);
     add(list, landU - (i + 1) * tread, landU - i * tread, -Wd / 2 + 0.1, -0.06, top - 0.35, top);              // 踊り場から上の階へ（左側）
   }
-  add(list, landU, L / 2 - 0.1, -Wd / 2 + 0.1, Wd / 2 - 0.1, y + FH / 2 - 0.25, y + FH / 2);                  // 踊り場
-  add(list, a0, landU, -0.06, 0.06, upperOnly ? y + FH / 2 : y, y + FH);                                      // まんなかの壁
+  add(list, landU, L / 2 - 0.1, -Wd / 2 + 0.1, Wd / 2 - 0.1, y + H / 2 - 0.25, y + H / 2);                  // 踊り場
+  add(list, a0, landU, -0.06, 0.06, upperOnly ? y + H / 2 : y, y + H);                                      // まんなかの壁
 }
 // いちばん上の階：上り切ったところの床と、吹き抜けのまわりの手すり壁
 function stairGuard(r, y, list) {
@@ -1622,6 +1632,7 @@ const matGlassFrame = new THREE.MeshStandardMaterial({ color: 0x26282b, roughnes
 for (const f of [1, 2, 3]) {
   const grp = new THREE.Group();
   const lbl = new THREE.Group();
+  grp.userData.floor = lbl.userData.floor = f;
   const walls = {}; // 棟ごと
   for (const r of ROOMS.filter((x) => x.floor === f)) {
     const y = base(f);
@@ -1666,9 +1677,9 @@ for (const f of [1, 2, 3]) {
     // その階から上る段と、下の階から上ってきた段（上り切ったところ）の両方を見せる。いちばん上の階では吹き抜けに手すり
     if (r.kind === "stairs") {
       const list = [];
-      if (r.upTo) stairFlights(r, y, list);
+      if (r.upTo) stairFlights(r, y, list, false, flightH(r, f));
       // 下の階から上ってくる階段は、行きの段（右側）と下の階の床まで見せる（その階だけ表示したとき、下まで突き抜けないように）
-      if (r.fromBelow) { stairFlights(r, y - FH, list, false); stairFrame(r).add(list, -stairFrame(r).L / 2, stairFrame(r).L / 2, -stairFrame(r).Wd / 2, stairFrame(r).Wd / 2, y - FH - 0.2, y - FH); }
+      if (r.fromBelow) { const Hb = flightH(r, f - 1); stairFlights(r, y - Hb, list, false, Hb); stairFrame(r).add(list, -stairFrame(r).L / 2, stairFrame(r).L / 2, -stairFrame(r).Wd / 2, stairFrame(r).Wd / 2, y - Hb - 0.2, y - Hb); }
       if (!r.upTo && r.fromBelow) stairGuard(r, y, list);
       if (list.length) {
         const m = new THREE.Mesh(mergeGeometries(list), matStairs);
@@ -1758,11 +1769,12 @@ for (const f of [1, 2, 3]) {
     return best ? [/被服室|コンピューター|調理室|実験室|美術教室|工芸教室/.test(x.name) ? best + "2" : best] : null;
   };
   // 家具（伸び縮みさせず、航空写真に合わせたあとの部屋の大きさで置く）
-  const furn = buildFurniture(
-    ROOMS.filter((x) => x.floor === f && (x.kind === "room" || x.kind === "part"))
-      .map((x) => ({ name: x.kind === "part" ? (x.parent.name === "事務室" ? "受付カウンター" : x.parent.name + "（L字）") : x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd, vending: x.kind === "part" ? null : styleOf(x)?.vending, vendingN: styleOf(x)?.vendingN, vendingShift: styleOf(x)?.vendingShift, doors: x.kind === "part" ? null : styleOf(x)?.doors || autoDoors(x) })),
-    y0OfFloor(f),
-  );
+  const toItem = (x) => ({ name: x.kind === "part" ? (x.parent.name === "事務室" ? "受付カウンター" : x.parent.name + "（L字）") : x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd, vending: x.kind === "part" ? null : styleOf(x)?.vending, vendingN: styleOf(x)?.vendingN, vendingShift: styleOf(x)?.vendingShift, doors: x.kind === "part" ? null : styleOf(x)?.doors || autoDoors(x) });
+  const onFloor = ROOMS.filter((x) => x.floor === f && (x.kind === "room" || x.kind === "part"));
+  const inGym = (x) => f >= 2 && x.block.id === "gym";
+  const furn = new THREE.Group();
+  furn.add(buildFurniture(onFloor.filter((x) => !inGym(x)).map(toItem), y0OfFloor(f)));
+  if (onFloor.some(inGym)) furn.add(buildFurniture(onFloor.filter(inGym).map(toItem), y0OfFloor(f) + GYM_LIFT)); // 体育館は高い
   layers.furniture[f] = furn;
   grp.add(furn);
   layers.rooms[f] = grp;
@@ -1827,13 +1839,14 @@ const belowGroup = (floor, test) => {
 const entranceBelow = belowGroup(1, (r) => r.name === "昇降口");
 const gymBelow = (() => {
   const g = new THREE.Group();
+  g.userData.floor = 2;
   const list = ROOMS.filter((r) => r.floor === 2 && r.kind === "room" && /^(体育館|ステージ|ウエイトルーム)$/.test(r.name));
   for (const r of list) {
     const m = new THREE.Mesh(r.mesh.geometry, r.mesh.material); // clone は userData（部屋）までコピーしようとするので使わない
     m.position.copy(r.mesh.position); m.receiveShadow = true;
     inBlock(g, r.block).add(m);
   }
-  g.add(buildFurniture(list.map((x) => ({ name: x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd })), y0OfFloor(2)));
+  g.add(buildFurniture(list.map((x) => ({ name: x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd })), y0OfFloor(2) + GYM_LIFT));
   g.visible = false;
   scene.add(g);
   return g;

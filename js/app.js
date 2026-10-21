@@ -845,7 +845,7 @@ for (const f of [1, 2, 3]) {
   const roofCells = new Set();
   for (const [k, st] of OCC[f]) {
     if (st === "gym" && f === 3) continue;
-    if (f === 2 && blockAtCell(...k.split(",").map(Number)).id === "art") continue; // 図書室の棟は2階の上に寄棟の屋根（別に作る）
+    if (f === 2 && blockAtCell(...k.split(",").map(Number)).id === "art" && Number(k.split(",")[1]) <= 58) continue; // 図書室の棟は2階の上に寄棟の屋根（別に作る）。南の廊下・階段・トイレの帯は平らな屋上
     if (f === 3 && st === "high") continue;
     if (f === 3 || !OCC[f + 1].has(k)) roofCells.add(k);
   }
@@ -941,7 +941,8 @@ for (const f of [1, 2, 3]) {
 
 // 図書室の棟のピンク色の寄棟屋根
 {
-  const rc = rectOf({ c0: 9, r0: 44, c1: 22, r1: 62 });
+  // 寄棟は教室・図書室の部分だけ（南の廊下・階段・トイレの帯は3階まであるので、平らな屋上にする）
+  const rc = rectOf({ c0: 9, r0: 44, c1: 22, r1: 58 });
   const ov = 0.5, y = 2 * FH, rise = 3.2; // 2階の上
   const x0 = rc.x0 - ov, x1 = rc.x1 + ov, z0 = rc.z0 - ov, z1 = rc.z1 + ov;
   const h = (z1 - z0) / 2, zc = (z0 + z1) / 2;
@@ -1561,6 +1562,7 @@ for (const f of [1, 2, 3]) {
       else if (st === "tile") map.repeat.set(r.w / 1.2, r.d / 1.2);
       else map.repeat.set(r.w / 4, r.d / 4);
       if (/ステージ/.test(r.name)) tint = new THREE.Color(0xc99560); // ステージの木の床
+      else if (/卓球場/.test(r.name)) { map = null; tint = new THREE.Color(0x2e6aa0); } // 卓球場の床は青い樹脂の床
       else if (/コンピューター/.test(r.name)) tint = new THREE.Color(0x4a74c9); // コンピューター教室の床は青
       else if (/教室/.test(r.name) && st === "wood") tint = new THREE.Color(0xeadfc8); // 教室の床はうすいベージュ
     }

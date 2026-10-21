@@ -595,6 +595,7 @@ function meeting(out, R) {
   const long = x1 - x0 >= z1 - z0;
   const L0 = long ? x0 : z0, L1 = long ? x1 : z1, S0 = long ? z0 : x0, S1 = long ? z1 : x1;
   const n = Math.max(1, Math.floor((L1 - L0 - 1.6) / 1.85));
+  out.push({ t: "blackboard", x: x0 + 0.12, z: (z0 + z1) / 2, rot: 0 }); // 西の壁に黒板
   for (const f of [0.3, 0.7]) {
     const s = S0 + (S1 - S0) * f;
     for (let i = 0; i < n; i++) {

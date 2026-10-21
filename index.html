@@ -81,10 +81,12 @@
 
     <div class="aerial-box">
       <div class="aerial-row">
+        <button id="here-btn" class="ghost here-btn" title="スマホのGPSで、今いる場所を表示（もう一度押すと消える）">📍 現在地</button>
         <button id="aerial-btn" class="ghost">🛰️ 航空写真</button>
         <button id="align-open" class="ghost small" hidden>位置合わせ</button>
       </div>
       <p id="aerial-msg" class="aerial-msg"></p>
+      <p id="geo-msg" class="aerial-msg geo-msg" role="status"></p>
       <p id="aerial-credit" class="credit" hidden>航空写真：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a></p>
       <div id="align-panel" hidden>
         <p class="muted">校舎と航空写真の建物が重なるように調整してください（1階を「2D」で見ると合わせやすいです）。</p>

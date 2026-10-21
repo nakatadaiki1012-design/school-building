@@ -347,6 +347,8 @@ const SHAPES = {
   entryFloor: [[MAT.wood, merge([b(1, 0.03, 1)])]],
   fusuma: [[MAT.fusuma, merge([b(0.9, 1.8, 0.04, 0, 0.35)])], [MAT.darkWood, merge([b(0.92, 0.04, 0.06, 0, 2.15), b(0.03, 1.8, 0.06, -0.45, 0.35)])]],
   // 教室の小物
+  // 壁にかけた横長の絵（3枚つづき。青い海のような絵）
+  painting: [[new THREE.MeshStandardMaterial({ roughness: 0.8, map: (() => { const c = document.createElement("canvas"); c.width = 192; c.height = 48; const g = c.getContext("2d"); const gr = g.createLinearGradient(0, 0, 192, 48); gr.addColorStop(0, "#1f5f80"); gr.addColorStop(0.45, "#6fb3c8"); gr.addColorStop(1, "#d9e6e6"); g.fillStyle = gr; g.fillRect(0, 0, 192, 48); g.fillStyle = "rgba(40,50,60,0.5)"; g.beginPath(); g.ellipse(40, 44, 40, 20, 0, Math.PI, 2 * Math.PI); g.fill(); g.fillStyle = "rgba(255,255,255,0.6)"; g.fillRect(63, 0, 1, 48); g.fillRect(127, 0, 1, 48); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })() }), merge([b(0.04, 0.7, 2.8, 0, 1.2)])]],
   bulletin: [[MAT.cork, merge([b(0.03, 0.9, 2.4, 0, 1.25)])], [MAT.darkWood, merge([b(0.05, 0.05, 2.5, 0, 2.15), b(0.05, 0.05, 2.5, 0, 1.2)])]],
   clock: [[MAT.clock, (() => { const g = new THREE.CylinderGeometry(0.17, 0.17, 0.05, 24); g.rotateZ(-Math.PI / 2); g.translate(0.03, 2.45, 0); return g; })()]],
   tv: [[MAT.black, merge([b(0.08, 0.62, 1.05, 0.06, 1.75), b(0.05, 0.3, 0.1, 0.02, 2.35)])]],
@@ -929,6 +931,21 @@ const LAYOUTS = [
   // ラウンジ：壁ぞいにL字の木のベンチ、まんなかに長いテーブル2つとベンチ（写真）
   [/ラウンジ/, (o, R) => {
     const { x0, x1, z0, z1 } = R;
+    if (R.floor === 2) {
+      // 2階のラウンジ（写真）：西の壁と北の窓の下に作りつけの木のベンチ。西の壁に横長の絵、東の壁に掲示板。
+      // テーブル2つは少しずらして置き、それぞれ両側にベンチ
+      along(o, "wallBench", x0 + 0.25, z0 + 0.4, z1 - 0.4, 1.6, 0);
+      alongX(o, "wallBench", z0 + 0.25, x0 + 0.8, x1 - 0.5, 1.6, Math.PI / 2);
+      o.push({ t: "painting", x: x0 + 0.02, z: z0 + (z1 - z0) * 0.45, rot: 0 });
+      for (const f of [0.3, 0.68]) o.push({ t: "bulletin", x: x1 + 0.12, z: z0 + (z1 - z0) * f, rot: 0 });
+      const w = x1 - x0;
+      for (const [fx, fz] of [[0.6, 0.38], [0.45, 0.72]]) {
+        const x = x0 + w * fx, z = z0 + (z1 - z0) * fz;
+        o.push({ t: "table", x, z, rot: 0 });
+        for (const sd of [-1, 1]) o.push({ t: "bench", x: x + sd * 0.85, z, rot: 0 });
+      }
+      return;
+    }
     along(o, "wallBench", x0 + 0.25, z0 + 0.4, z1 - 0.6, 1.6, 0);
     alongX(o, "wallBench", z0 + 0.25, x0 + 0.8, x1 - 0.4, 1.6, Math.PI / 2);
     const cx = (x0 + x1) / 2 + 0.2;
@@ -1062,7 +1079,7 @@ export function buildFurniture(rooms, y) {
         it.rot = (it.rot || 0) - Math.PI / 2;
       }
     } else {
-      fn[1](list, { x0: r.cx - r.w / 2 + 0.2, x1: r.cx + r.w / 2 - 0.2, z0: r.cz - r.d / 2 + 0.2, z1: r.cz + r.d / 2 - 0.2 });
+      fn[1](list, { x0: r.cx - r.w / 2 + 0.2, x1: r.cx + r.w / 2 - 0.2, z0: r.cz - r.d / 2 + 0.2, z1: r.cz + r.d / 2 - 0.2, floor: r.floor });
     }
     items.push(...list);
   }

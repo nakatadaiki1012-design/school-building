@@ -1780,7 +1780,7 @@ for (const f of [1, 2, 3]) {
     return best ? [/被服室|コンピューター|調理室|実験室|美術教室|工芸教室/.test(x.name) ? best + "2" : best] : null;
   };
   // 家具（伸び縮みさせず、航空写真に合わせたあとの部屋の大きさで置く）
-  const toItem = (x) => ({ name: x.kind === "part" ? (x.parent.name === "事務室" ? "受付カウンター" : x.parent.name + "（L字）") : x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd, vending: x.kind === "part" ? null : styleOf(x)?.vending, vendingN: styleOf(x)?.vendingN, vendingShift: styleOf(x)?.vendingShift, doors: x.kind === "part" ? null : styleOf(x)?.doors || autoDoors(x) });
+  const toItem = (x) => ({ floor: f, name: x.kind === "part" ? (x.parent.name === "事務室" ? "受付カウンター" : x.parent.name + "（L字）") : x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd, vending: x.kind === "part" ? null : styleOf(x)?.vending, vendingN: styleOf(x)?.vendingN, vendingShift: styleOf(x)?.vendingShift, doors: x.kind === "part" ? null : styleOf(x)?.doors || autoDoors(x) });
   const onFloor = ROOMS.filter((x) => x.floor === f && (x.kind === "room" || x.kind === "part"));
   const inGym = (x) => f >= 2 && x.block.id === "gym";
   const furn = new THREE.Group();
@@ -2137,6 +2137,7 @@ const DIRS = {
 };
 const HOME = [new THREE.Vector3(75, 120, 120), new THREE.Vector3(0, 0, -35)]; // はじめの外観の見え方（「全体」でもどる）
 document.querySelectorAll(".dir-btns button").forEach((b) => b.addEventListener("click", () => {
+  if (!b.dataset.dir) return; // 「現在地」は別
   if (state.view === "2d" && state.floor !== 0) setView("3d");
   if (b.dataset.dir === "home") { const ty = state.floor ? base(state.floor) : 0; flyTo(HOME[0].clone().setY(HOME[0].y + ty), HOME[1].clone().setY(ty), 900); return; }
   const [x, y, z] = DIRS[b.dataset.dir];
@@ -2352,6 +2353,7 @@ function tick(now) {
     controls3d.target.lerpVectors(anim.t0v, anim.t1, e);
     if (k >= 1) anim = null;
   }
+  if (here.visible) here.position.y = hereY(); // 現在地の点は、見ている階の床の高さに
   const cam = useCamera();
   // 方位磁針（画面の上がどの方角か）
   const az = cam === ortho ? 0 : controls3d.getAzimuthalAngle();
@@ -2366,6 +2368,73 @@ function tick(now) {
   }
   requestAnimationFrame(tick);
 }
+
+// ---------- 現在地（スマホのGPS） ----------
+// GPSの緯度・経度を、航空写真と同じ位置合わせ（align）で模型の座標に直して、青い点で表示する。
+// 何階にいるかはGPSではわからないので、点は今見ている階の床の高さに出す
+const here = new THREE.Group();
+here.visible = false;
+{
+  const dot = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.3, 24), new THREE.MeshBasicMaterial({ color: 0x1a73e8, depthTest: false }));
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 0.95, 0.25, 24), new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false }));
+  dot.position.y = 0.2; rim.position.y = 0.15;
+  const acc = new THREE.Mesh(new THREE.CircleGeometry(1, 48).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x1a73e8, transparent: true, opacity: 0.18, depthWrite: false, depthTest: false }));
+  acc.position.y = 0.05; acc.name = "acc";
+  const div = document.createElement("div");
+  div.className = "here-label"; div.textContent = "現在地";
+  const label = new CSS2DObject(div); label.position.y = 2.2;
+  here.add(acc, rim, dot, label);
+  acc.renderOrder = 10; rim.renderOrder = 11; dot.renderOrder = 12; // 屋根や壁にかくれないよう、いちばん上に描く
+}
+scene.add(here);
+const geoMsg = document.getElementById("geo-msg");
+let geoWatch = null, geoFirst = true, geoTimer = 0;
+const showGeoMsg = (t, ms = 5000) => { geoMsg.textContent = t; clearTimeout(geoTimer); if (ms) geoTimer = setTimeout(() => { geoMsg.textContent = ""; }, ms); };
+function geoToWorld(lat, lng) {
+  const k = 111319.49;
+  const lx = (lng - SCHOOL.lng) * k * Math.cos((SCHOOL.lat * Math.PI) / 180), lz = -(lat - SCHOOL.lat) * k;
+  aerial.holder.updateMatrixWorld();
+  return aerial.holder.localToWorld(new THREE.Vector3(lx, 0, lz));
+}
+function hereY() { return state.floor ? base(state.floor) : 0; }
+function onGeo(p) {
+  const v = geoToWorld(p.coords.latitude, p.coords.longitude);
+  const dist = Math.hypot(v.x, v.z + 25);
+  if (dist > 400) {
+    here.visible = false;
+    showGeoMsg(`学校の外にいるようです（学校から約${dist >= 1000 ? (dist / 1000).toFixed(1) + "km" : Math.round(dist / 10) * 10 + "m"}）。学校の近くで使ってください。`, 7000);
+    return;
+  }
+  const r = Math.min(60, Math.max(3, p.coords.accuracy || 10));
+  here.getObjectByName("acc").scale.set(r, 1, r);
+  here.position.set(v.x, hereY(), v.z);
+  here.visible = true;
+  poke();
+  if (geoFirst) {
+    geoFirst = false;
+    if (state.view === "2d" && state.floor !== 0) setView("3d");
+    const ty = hereY();
+    flyTo(new THREE.Vector3(v.x + 18, ty + 30, v.z + 30), new THREE.Vector3(v.x, ty, v.z), 900);
+    showGeoMsg(`青い点が今いるところです（誤差 約${Math.round(r)}m）。建物の中ではずれやすく、何階かはわかりません。`, 7000);
+  }
+}
+function onGeoErr(e) {
+  stopGeo();
+  showGeoMsg(e.code === 1 ? "位置情報の使用が許可されていません。ブラウザの設定で、このページの位置情報を「許可」にしてください。" : "現在地を取得できませんでした。屋外や窓の近くで、もう一度ためしてください。", 8000);
+}
+function stopGeo() {
+  if (geoWatch !== null) navigator.geolocation.clearWatch(geoWatch);
+  geoWatch = null; here.visible = false; poke();
+  document.getElementById("here-btn").classList.remove("active");
+}
+document.getElementById("here-btn").addEventListener("click", () => {
+  if (geoWatch !== null) { stopGeo(); showGeoMsg("現在地の表示をやめました。", 2500); return; }
+  if (!navigator.geolocation) { showGeoMsg("このブラウザでは現在地を使えません。"); return; }
+  geoFirst = true;
+  showGeoMsg("現在地をさがしています…", 0);
+  document.getElementById("here-btn").classList.add("active");
+  geoWatch = navigator.geolocation.watchPosition(onGeo, onGeoErr, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+});
 
 // ---------- はじめの表示 ----------
 // 動かない屋外の部品を、材質ごとにまとめて軽くする

@@ -343,7 +343,7 @@ export const SITE = {
 };
 
 export const SITE_INFO = [
-  { key: "ground", name: "グラウンド", x: -10, z: -90, desc: "体育の授業や運動部の活動に使うグラウンドです。北西の角に野球のダイヤモンドとバックネットがあり、サッカーもできる広さです。" },
+  { key: "ground", name: "グラウンド", x: -10, z: -90, desc: "グラウンドの風景です。授業のほか、野球部やサッカー部、陸上競技部などが活動場所として使用しています。", photos: ["images/ground-a.jpg", "images/ground-b.jpg"] },
   { key: "tennis", name: "テニスコート", x: 74, z: -50, desc: "グラウンドの東側にある、砂のテニスコートです（2区画）。" },
   { key: "pool", name: "プール", x: -58, z: -36, desc: "25mプールです。体育の水泳の選択授業のほか、水泳部の活動場所として使われています。", photos: ["images/pool-a.jpg", "images/pool-b.jpg"] },
   { key: "bikes", name: "駐輪場", x: -28, z: -45.5, desc: "体育館の北側にある、赤い屋根の細長い駐輪場です。自転車通学の生徒が使います。" },

@@ -425,7 +425,7 @@ export const ROOM_EDITS = [
   // 正面玄関は、2号館の階段のすぐとなりまで広い空間になっている
   { name: "正面玄関", floor: 1, set: { c0: 60, desc: "正面玄関です。ご来校の際はこちらからお入りください。" } },
   // 美術教室と工芸教室を南へ広げる：美術室横の玄関は南の階段のほうへ寄せ、美術準備室は男子トイレのほうへ寄せる
-  { name: "工芸教室", floor: 1, set: { c0: 10, r1: 54 } },
+  { name: "工芸教室", floor: 1, set: { c0: 10, r1: 54, desc: "工芸室です。美術の授業で、陶芸に挑戦します。作品を完成させるための焼き窯が設置されています。", photos: ["images/kogei-1.jpg", "images/kogei-2.jpg", "images/kogei-3.jpg", "images/kogei-4.jpg"] } },
   { name: "美術教室", floor: 1, set: { r1: 55, desc: "美術室です。2年生は美術の授業で半分に分かれて、美術や陶芸に取り組みます。美術部が普段の活動に使用しています。", photos: ["images/bijutsu-1.jpg", "images/bijutsu-2.jpg", "images/bijutsu-3.jpg", "images/bijutsu-4.jpg"] } },
   { name: "美術準備室", floor: 1, set: { r0: 55, r1: 58 } },
   { name: "玄関", floor: 1, at: 20, set: { r0: 56, r1: 58 } },

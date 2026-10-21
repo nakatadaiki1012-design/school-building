@@ -275,3 +275,12 @@ dialog::backdrop { background: rgba(20, 30, 40, 0.45); }
   .brand { flex: 0 1 auto; padding: 4px 12px 4px 8px; }
   .logo { font-size: 22px; }
 }
+
+/* キーボード操作のヒント：左下に小さく薄く（スマホなどタッチの画面では出さない） */
+.key-hint {
+  position: fixed; left: 12px; bottom: 10px; z-index: 5; margin: 0;
+  font-size: 11px; line-height: 1.5; color: rgba(31, 41, 51, 0.7);
+  background: rgba(255, 255, 255, 0.6); padding: 4px 8px; border-radius: 8px;
+  pointer-events: none;
+}
+@media (pointer: coarse), (max-width: 760px) { .key-hint { display: none; } }

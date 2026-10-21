@@ -2116,11 +2116,6 @@ document.getElementById("align-reset").addEventListener("click", () => {
 });
 showAlign();
 
-// 凡例
-// 縦が短い画面では、色の見かたを最初は閉じておく
-if (window.innerHeight < 760) document.querySelector(".legend").removeAttribute("open");
-document.getElementById("legend-list").innerHTML = Object.values(CATEGORIES)
-  .map((c) => `<li><span class="dot" style="background:${c.color}"></span>${c.label}</li>`).join("");
 
 // 地図・学校情報
 const mapDlg = document.getElementById("map-dialog");

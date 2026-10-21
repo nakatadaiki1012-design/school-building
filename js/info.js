@@ -164,6 +164,7 @@ export const PHOTOS = [
   [/^音楽室$/, "images/music.jpg"],
   [/^ラウンジ$/, "images/lounge3.jpg", 3], // 3つめの数字を書くと、その階の部屋だけ
   [/^正面玄関$/, "images/genkan.jpg"],
+  [/^体育館$/, "images/gym.jpg"],
   [/^卓球場$/, ["images/takkyu-a.jpg", "images/takkyu-b.jpg"]],
   [/^社会科教室$/, ["images/shakai-1.jpg", "images/shakai-2.jpg", "images/shakai-3.jpg", "images/shakai-4.jpg"]],
   [/^選択第[１1]教室$/, ["images/sentaku1-a.jpg", "images/sentaku1-b.jpg"]], // 写真が何枚かあるときは並べて書く
@@ -449,6 +450,7 @@ export const ROOM_EDITS = [
   { name: "放送室", floor: 2, set: { name: "放送室（ミキサー室）", r1: 55.5 } },
   // 社会科教室の西のバルコニーはせまい
   { name: "バルコニー", floor: 3, at: 33, set: { c0: 34 } },
+  { name: "体育館", floor: 2, set: { desc: "体育館です。バスケットボールやバレーボールのコートが2面取れる広さです。" } },
   { name: "卓球場", floor: 3, set: { desc: "卓球場です。体育の授業や、卓球部の活動場所として使われています。" } },
   { name: "社会科教室", floor: 3, set: { desc: "地歴公民の授業などで使われています。埴輪の模型や地球儀などの資料が置かれています。" } },
   { name: "選択第１教室", floor: 3, set: { desc: "数学の少人数授業、委員会などの集まり、その他部活動の活動場所などで使われています。" } },

@@ -103,7 +103,7 @@ function buildGround(cfg) {
   const S = 6; // 1m = 6px
   const P = (x, z) => [(x - bb.x0) * S, (z - bb.z0) * S];
   const tex = canvasTex(Math.ceil((bb.x1 - bb.x0) * S), Math.ceil((bb.z1 - bb.z0) * S), (c, W, H) => {
-    c.fillStyle = "#c2b7a1"; c.fillRect(0, 0, W, H); // 航空写真では白っぽいベージュの砂の土
+    c.fillStyle = "#a9a8a2"; c.fillRect(0, 0, W, H); // 写真：灰色の土（全天候型のような灰色）
     for (let i = 0; i < 30000; i++) {
       c.fillStyle = `rgba(${Math.random() > 0.5 ? "255,255,255" : "60,50,40"},${Math.random() * 0.07})`;
       c.fillRect(Math.random() * W, Math.random() * H, 2, 2);
@@ -120,7 +120,7 @@ function buildGround(cfg) {
     const [bx, bz] = P(b.x, b.z);
     // 写真では内野の土が大きくぼんやり茶色い（ふちをぼかす）
     const gr = c.createRadialGradient(bx, bz, b.r * S * 0.3, bx, bz, b.r * S * 1.25);
-    gr.addColorStop(0, "rgba(150,112,78,0.85)"); gr.addColorStop(0.7, "rgba(158,122,88,0.6)"); gr.addColorStop(1, "rgba(158,122,88,0)");
+    gr.addColorStop(0, "rgba(140,118,96,0.6)"); gr.addColorStop(0.7, "rgba(145,125,104,0.4)"); gr.addColorStop(1, "rgba(145,125,104,0)");
     c.fillStyle = gr;
     c.beginPath(); c.arc(bx, bz, b.r * S * 1.25, 0, Math.PI * 2); c.fill();
     // ダイヤモンドとファウルライン
@@ -145,7 +145,19 @@ function buildGround(cfg) {
     const [sx, sz] = P(sc.x, sc.z);
     c.save();
     c.translate(sx, sz); c.rotate((-(sc.rot || 0) * Math.PI) / 180);
-    c.strokeStyle = "rgba(255,255,255,0.55)"; c.lineWidth = 1.5;
+    // 陸上のトラック（写真：コートのまわりを大きなカーブの白線が回る）。直線と両はしの半円、内側と外側の2本
+    {
+      const tw = sc.w * S * 0.62, tr = (sc.d * S) / 2 + 1 * S;
+      c.strokeStyle = "rgba(255,255,255,0.8)"; c.lineWidth = 2;
+      for (const off of [0, 4 * S]) {
+        const r = tr + off;
+        c.beginPath();
+        c.moveTo(-tw / 2, -r); c.lineTo(tw / 2, -r); c.arc(tw / 2, 0, r, -Math.PI / 2, Math.PI / 2);
+        c.lineTo(-tw / 2, r); c.arc(-tw / 2, 0, r, Math.PI / 2, Math.PI * 1.5);
+        c.stroke();
+      }
+    }
+    c.strokeStyle = "rgba(255,255,255,0.4)"; c.lineWidth = 1.2;
     const w = sc.w * S, d = sc.d * S;
     c.strokeRect(-w / 2, -d / 2, w, d);
     c.beginPath(); c.moveTo(0, -d / 2); c.lineTo(0, d / 2); c.stroke();

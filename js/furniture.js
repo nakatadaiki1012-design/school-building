@@ -614,6 +614,10 @@ function library(out, R) {
     along(out, "shelf", x - 0.2, z0 + 1.5, z1 - 1.5, 0.92, 0);
     along(out, "shelf", x + 0.2, z0 + 1.5, z1 - 1.5, 0.92, Math.PI);
   }
+  // 北の壁ぞいの本棚（まんなかの窓のところはあける）
+  const xw = x0 + (x1 - x0) * 0.5;
+  alongX(out, "shelf", z0 + 0.25, x0 + 0.5, xw - 1.4, 0.92, -Math.PI / 2);
+  alongX(out, "shelf", z0 + 0.25, xw + 1.4, x1 - 0.8, 0.92, -Math.PI / 2);
   // 西側の閲覧テーブル
   grid(out, "bigTable", x0 + 1.8, xm - 1.2, z0 + 2.2, z1 - 2.2, 2, 3, 0);
   for (const o of out.filter((p) => p.t === "bigTable" && p.x >= x0 && p.x <= x1 && p.z >= z0 && p.z <= z1)) {

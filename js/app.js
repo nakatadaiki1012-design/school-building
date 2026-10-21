@@ -300,6 +300,7 @@ function makeSchoolTex(p) {
 const texSchool = makeSchoolTex(PALETTE.white);
 // 窓のない白い壁（練習室の北など）
 const texPlain = canvasTex(W, H, (g) => { wallBase(g, PALETTE.white); });
+const texPlainArt = canvasTex(W, H, (g) => { wallBase(g, { base: "#e9dfcf", band: "#ddd2c0", line: "#cfc3ae", tile: false }); }); // 美術・図書館棟の色
 // 美術・図書館棟はうすいベージュの壁（写真）
 const texArtWing = makeSchoolTex({ base: "#e9dfcf", band: "#ddd2c0", line: "#cfc3ae", tile: false });
 
@@ -721,6 +722,7 @@ const MAT_WALL = {
   gym2: wallMat(texGymLow),
   gym3: wallMat(texGymHigh),
   plain: wallMat(texPlain),
+  plainart: wallMat(texPlainArt),
 };
 
 const layers = { exterior: {}, roofs: {}, cut: {}, slab: {}, rooms: {}, labels: {}, furniture: {}, inner: {} };
@@ -739,7 +741,7 @@ for (const f of [1, 2, 3]) {
     const b = blockAtCell(c, r).id;
     const side = d.dr < 0 ? "n" : d.dr > 0 ? "s" : d.dc < 0 ? "w" : "e";
     if (WALL_OPENINGS.some(([ff, c0, r0, c1, r1, dir]) => ff === f && inCells(c, r, [c0, r0, c1, r1]) && (!dir || dir === side))) return "open|" + b;
-    if ((FACADE.plain || []).some(([ff, c0, r0, c1, r1, dir]) => ff === f && side === dir && inCells(c, r, [c0, r0, c1, r1]))) return "plain|" + b; // 窓のない壁
+    if ((FACADE.plain || []).some(([ff, c0, r0, c1, r1, dir]) => ff === f && side === dir && inCells(c, r, [c0, r0, c1, r1]))) return (b === "art" ? "plainart|" : "plain|") + b; // 窓のない壁
     if (style === "gym") return "gym" + f + "|" + b;
     if (style === "high") return "high|" + b;
     if (OPEN_COURTS.some((rc) => inCells(c + d.dc, r + d.dr, rc))) return "school|" + b; // 光庭のまわりは白

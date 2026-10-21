@@ -1188,6 +1188,17 @@ function rustTex() {
   deck(gx + pl + sl, gx + pl + sl + 2.4, zBot, zBot + SW); // 2階：上の階段の上り口の踊り場
   rail(gx + pl + sl + 2.4, gx + pl + sl + 2.4, zBot, zBot + SW);
   stair(geos1, gx + pl + sl, zBot + SW / 2, gx + pl, zBot + SW / 2, ty, 2 * FH + GYM_LIFT, SW - 0.1);
+  // 3階の卓球場の入口：外階段を上りきった踊り場の前に、ガラスの引き戸2枚と、その上の壁
+  {
+    const y3 = 2 * FH + GYM_LIFT, dx0 = X(7), dx1 = X(9), dwid = dx1 - dx0;
+    for (const k of [0, 1]) {
+      const dr = new THREE.Mesh(new THREE.BoxGeometry(dwid / 2 - 0.08, 2.2, 0.08), matGlassDoor);
+      dr.position.set(dx0 + dwid / 4 + k * dwid / 2, y3 + 1.1, gz1 - 0.1 + k * 0.08);
+      gymExtras.add(dr);
+    }
+    box(geos2, dwid, 0.12, 0.2, dx0 + dwid / 2, y3 + 2.25, gz1 - 0.05); // ドアの上の枠
+    box(geos2, dwid, FH - 2.3, 0.3, dx0 + dwid / 2, y3 + 2.3 + (FH - 2.3) / 2, gz1 - 0.05); // ドアの上の壁
+  }
   stair(geos1, gxe + dw + 1.2, zTop + 2.4 + sl, gxe + dw + 1.2, zTop + 2.4, -0.2, ty, 2.3);
   // 1階の南側の柱（柱が並ぶ吹きさらしの部分）
   for (let x = gx + 9; x < gxe; x += 4.2) box(geos2, 0.5, ty, 0.5, x, ty / 2 - 0.2, gz1 + 0.3);

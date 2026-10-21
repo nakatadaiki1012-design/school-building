@@ -940,16 +940,14 @@ const LAYOUTS = [
   // コモンスペース：北の壁に壁画、テーブル2つと長椅子、西のはしに渡り廊下へ少し上がる階段（北へ上る）
   [/コモンスペース/, (o, R) => {
     const { x0, x1, z0, z1 } = R, cz = (z0 + z1) / 2 + 0.8;
-    o.push({ t: "mural", x: (x0 + 2.9 + x1 - 0.3) / 2, z: z0 + 0.05, rot: Math.PI / 2, len: x1 - 0.3 - x0 - 2.9 }); // 階段の東から
-    for (const x of [x0 + (x1 - x0) * 0.2, x0 + (x1 - x0) * 0.45]) { // テーブルは西寄り
+    o.push({ t: "mural", x: (x0 + x1 - 0.3) / 2, z: z0 + 0.05, rot: Math.PI / 2, len: x1 - 0.3 - x0 }); // 階段の上もふくめて壁いっぱい
+    for (const x of [x0 + (x1 - x0) * 0.28, x0 + (x1 - x0) * 0.5]) { // テーブルは西寄り（階段の手前）
       o.push({ t: "table", x, z: cz, rot: Math.PI / 2 });
       for (const sd of [-1, 1]) o.push({ t: "bench", x, z: cz + sd * 0.75, rot: Math.PI / 2 });
     }
-    // 渡り廊下へ少し上がる階段：準備室の西どなりを北へ3段上がり、上は渡り廊下と同じ高さ（+0.6m）の通路
-    const sw = 2.6, sxc = x0 + sw / 2 + 0.1, tread = 0.4, nStep = 3, zs = z0 + 0.6;
-    for (let k = 0; k < nStep; k++) o.push({ t: "step", x: sxc, z: zs - (k + 0.5) * tread, rot: 0, y: -0.15, sx: sw, sy: k + 1, sz: tread });
-    const zl0 = zs - nStep * tread, zl1 = z0 - 3.9;
-    o.push({ t: "step", x: sxc, z: (zl0 + zl1) / 2, rot: 0, y: -0.15, sx: sw, sy: nStep, sz: zl0 - zl1 });
+    // 渡り廊下へ少し上がる階段：壁画の壁にくっついて、西へ3段上がり、そのまま渡り廊下へ（幅は渡り廊下と同じ 4.6m）
+    const bw = 4.6, tread = 0.45;
+    for (let k = 0; k < 3; k++) o.push({ t: "step", x: x0 + (2.5 - k) * tread, z: z0 + bw / 2 + 0.05, rot: 0, y: -0.15, sx: tread, sy: k + 1, sz: bw });
   }],
   [/らくらくスペース/, (o, R) => {
     const cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2;

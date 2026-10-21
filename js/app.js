@@ -1990,6 +1990,11 @@ labelRenderer.domElement.addEventListener("pointerup", (e) => {
 // ---------- 検索 ----------
 const search = document.getElementById("search");
 const results = document.getElementById("results");
+// 虫めがねを押すと入力欄を開く。空のまま外をさわると、また閉じる
+const searchBox = document.querySelector(".search-box");
+const openSearch = () => { searchBox.classList.remove("collapsed"); search.focus(); };
+document.getElementById("search-open").addEventListener("click", openSearch);
+search.addEventListener("blur", () => setTimeout(() => { if (!search.value && !searchBox.contains(document.activeElement)) searchBox.classList.add("collapsed"); }, 150));
 const norm = (s) => s.normalize("NFKC").toLowerCase().replace(/\s/g, "").replace(/[ー－‐-]/g, "-");
 search.addEventListener("input", () => {
   const q = norm(search.value);
@@ -2077,7 +2082,8 @@ controls2d.addEventListener("change", clampTarget);
 }
 // キーボード：矢印・WASDで移動、+ - でズーム、Q E で回る、H で全体にもどる
 window.addEventListener("keydown", (e) => {
-  if (e.target.closest("input, textarea, select") || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target.closest("input, textarea, select")) { if (e.key === "Escape") { search.value = ""; results.hidden = true; search.blur(); } return; }
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
   const c = state.view === "2d" && state.floor !== 0 ? controls2d : controls3d, cam = c.object;
   const k = e.key.toLowerCase();
   const fwd = new THREE.Vector3(); cam.getWorldDirection(fwd); fwd.y = 0;
@@ -2095,6 +2101,7 @@ window.addEventListener("keydown", (e) => {
   else if ((k === "q" || k === "e") && cam.isPerspectiveCamera) { const a = k === "q" ? 0.15 : -0.15; const v = cam.position.clone().sub(c.target).applyAxisAngle(new THREE.Vector3(0, 1, 0), a); cam.position.copy(c.target).add(v); }
   else if (k === "h") document.querySelector('.dir-btns [data-dir="home"]').click();
   else if (k === "escape") { closePanel(); results.hidden = true; search.blur(); }
+  else if (k === "/") openSearch();
   else return;
   e.preventDefault();
 });

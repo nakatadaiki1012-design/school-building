@@ -301,3 +301,18 @@ dialog::backdrop { background: rgba(20, 30, 40, 0.45); }
 /* 見る方向のボタン：方位磁針を押すと開く／閉じる（スマホは最初は閉じておく） */
 .compass { cursor: pointer; border: 0; padding: 0; }
 .dir-box.collapsed .dir-btns { display: none; }
+
+/* 部屋さがし：ふだんは虫めがねのボタンだけ。押すと入力欄が開く */
+.search-icon { width: 38px; height: 38px; padding: 0; display: grid; place-items: center; font-size: 16px; box-shadow: 0 2px 12px rgba(20, 40, 60, 0.16); }
+.search-box.collapsed { flex: 0 0 auto; }
+.search-box.collapsed #search, .search-box.collapsed #results { display: none; }
+.search-box:not(.collapsed) .search-icon { display: none; }
+@media (max-width: 760px) {
+  /* 閉じているときは、タイトル・虫めがね・地図・？を1列に */
+  .topbar:has(.search-box.collapsed) { flex-wrap: nowrap; gap: 6px; }
+  .topbar:has(.search-box.collapsed) .brand { flex: 1 1 auto; min-width: 0; }
+  .topbar:has(.search-box.collapsed) .brand h1 { overflow: hidden; text-overflow: ellipsis; }
+  .search-box.collapsed { order: 0; flex-basis: auto; margin-left: 0; }
+  .topbar:has(.search-box.collapsed) .top-actions { margin-left: 0; gap: 6px; }
+  .search-icon { width: 34px; height: 34px; font-size: 14px; }
+}

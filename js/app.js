@@ -743,7 +743,7 @@ const MAT_WALL = {
   plainart: wallMat(texPlainArt),
 };
 
-const layers = { exterior: {}, roofs: {}, cut: {}, slab: {}, rooms: {}, labels: {}, furniture: {}, inner: {} };
+const layers = { exterior: {}, roofs: {}, cut: {}, slab: {}, rooms: {}, labels: {}, furniture: {}, inner: {}, wallsBelow: {} };
 // 外壁の内側の面（フロア表示のときだけ）：腰壁＋ガラスの窓（STUDY HALL のガラスと同じ）＋上の壁。外壁は外向きの面しかないので、中から見ると柱だけが見えてしまうため
 const matInnerWall = new THREE.MeshStandardMaterial({ color: 0xf4f0e6, roughness: 0.9 });
 const matInnerGlass = new THREE.MeshStandardMaterial({ color: 0x9cc4dc, roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
@@ -1777,6 +1777,7 @@ for (const f of [1, 2, 3]) {
   const lbl = new THREE.Group();
   grp.userData.floor = lbl.userData.floor = f;
   const walls = {}; // 棟ごと
+  const wallsBelow = new THREE.Group(); wallsBelow.userData.floor = f; wallsBelow.visible = false;
   for (const r of ROOMS.filter((x) => x.floor === f)) {
     const y = base(f);
     const isOpen = r.cat === "open";
@@ -1908,7 +1909,12 @@ for (const f of [1, 2, 3]) {
     const pm = new THREE.Mesh(mergeGeometries(list), matPartition);
     pm.castShadow = true; pm.receiveShadow = true;
     inBlock(grp, blockById(bid)).add(pm);
+    // 上の階から吹き抜けをのぞいたときにも見えるように、同じ壁を別のグループにも入れておく
+    const pm2 = new THREE.Mesh(pm.geometry, matPartition);
+    inBlock(wallsBelow, blockById(bid)).add(pm2);
   }
+  layers.wallsBelow[f] = wallsBelow;
+  scene.add(wallsBelow);
   // 廊下に面した入口のドア：教室の家具の置き方にドアがない部屋は、廊下（部屋のない建物の中）に面した辺にドアをつける
   const NO_DOOR = /年\d+組|選択|オーラル|社会科教室|音楽室|昇降口|玄関|ホール|吹抜|バルコニー|光庭|体育館|ステージ|ラウンジ|らくらく|STUDY HALL|部室|窯|倉庫|受水槽|電気室/;
   const roomCells = new Set();
@@ -2025,7 +2031,8 @@ function applyMode() {
     layers.exterior[k].visible = below || k === f;
     layers.roofs[k].visible = below;
     layers.cut[k].visible = false;
-    layers.inner[k].visible = k === f;
+    layers.inner[k].visible = f !== 0 && k <= f;
+    layers.wallsBelow[k].visible = f !== 0 && k === f - 1; // すぐ下の階の部屋の壁（吹き抜けから見える） // 下の階の外壁の内側も見せる（吹き抜けから下をのぞいたとき、壁や窓が消えないように）
     layers.slab[k].visible = k === f;
     layers.rooms[k].visible = k === f;
     setLabelsVisible(layers.labels[k], k === f && labelsOn);

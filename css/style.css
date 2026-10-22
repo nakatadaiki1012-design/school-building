@@ -349,4 +349,5 @@ body.exploring .explore-pad { display: grid; }
 .explore-pad .ex-end { grid-column: 1; grid-row: 3; font-size: 13px; font-weight: 700; }
 body.exploring .dir-box, body.exploring .key-hint { display: none; }
 .room-label.far, .wing-label.far { display: none !important; }
-body.exploring .geo-msg { margin-bottom: 200px; }
+body.exploring .aerial-box { bottom: 270px; } /* 探検中はスマホ用のボタンの上に */
+body.exploring .aerial-box .geo-msg { order: -1; } /* 説明はボタンの上に */

@@ -406,7 +406,7 @@ const SHAPES = {
   microscope: [[M(0xf2f2ee), merge([b(0.14, 0.04, 0.18, 0, 0.78), b(0.05, 0.25, 0.06, 0.05, 0.8)])], [MAT.black, merge([b(0.12, 0.02, 0.12, 0, 0.92), new THREE.CylinderGeometry(0.025, 0.025, 0.14, 8).rotateZ(0.5).translate(0.02, 1.1, 0)])]],
   sinkCounter: [[M(0xd9d6cf), merge([b(0.6, 0.85, 1.8)])], [M(0xb8bcc0, { metalness: 0.5 }), merge([b(0.45, 0.02, 0.7, 0, 0.86)])]],
   magazineRack: [[M(0xd8d2c0), merge([b(0.35, 1.9, 1.0)])], [MAT.books, merge([0.3, 0.65, 1.0, 1.35, 1.7].map((h) => b(0.06, 0.28, 0.9, -0.18, h)))]],
-  pamphletCart: [[M(0xf0ece0), merge([b(0.6, 0.03, 0.9, 0, 0.3), b(0.6, 0.03, 0.9, 0, 0.6), ...legs(0.6, 0.9, 1.0, 0.03)])], [MAT.books, merge([b(0.5, 0.35, 0.85, 0, 0.95).rotateZ(-0.3)])]],
+  pamphletCart: [[M(0xf0ece0), merge([b(0.6, 0.03, 0.9, 0, 0.3), b(0.6, 0.03, 0.9, 0, 0.6), ...legs(0.6, 0.9, 1.0, 0.03)])], [MAT.paper, merge([b(0.5, 0.3, 0.85, 0, 0.95).rotateZ(-0.3)])], [new THREE.MeshStandardMaterial({ map: (() => { const c = document.createElement("canvas"); c.width = 64; c.height = 64; const g = c.getContext("2d"); const cs = ["#2d6cdf", "#e94f3b", "#f3b73a", "#3aa66b", "#7a4cc9", "#e85fa0"]; for (let i = 0; i < 8; i++) { g.fillStyle = cs[i % cs.length]; g.fillRect(0, i * 8, 64, 7); } const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })(), roughness: 0.8 }), merge([b(0.52, 0.04, 0.86, 0, 1.1).rotateZ(-0.3)])]],
   cookIsland: [[M(0xf4f2ec), merge([b(1.2, 0.8, 1.8)])], [M(0xe8d5c4), merge([b(1.22, 0.45, 0.5, 0, 0.15, -0.5), b(1.22, 0.45, 0.5, 0, 0.15, 0.5)])], [M(0xb8bcc0, { metalness: 0.6, roughness: 0.3 }), merge([b(1.25, 0.04, 1.85, 0, 0.8)])], [MAT.black, merge([b(0.7, 0.03, 0.45, 0, 0.84, -0.55), b(0.6, 0.06, 0.5, 0, 0.82, 0.5)])]],
   longTable: [[M(0xeceae4), merge([b(0.6, 0.04, 1.75, 0, 0.7)])], [MAT.metal, merge(legs(0.55, 1.7, 0.7, 0.03))]],
   greenStool: [[M(0x5f9a3c), merge([new THREE.CylinderGeometry(0.17, 0.17, 0.06, 12).translate(0, 0.6, 0)])], [MAT.metal, merge([b(0.03, 0.6, 0.03, 0.1, 0, 0.1), b(0.03, 0.6, 0.03, -0.1, 0, -0.1), b(0.03, 0.6, 0.03, 0.1, 0, -0.1), b(0.03, 0.6, 0.03, -0.1, 0, 0.1)])]],
@@ -418,6 +418,7 @@ const SHAPES = {
   cubby: [[M(0xb07a4a), merge([b(0.4, 1.8, 0.92)])], [M(0x5a3a22), merge([0.35, 0.8, 1.25].map((h) => b(0.38, 0.38, 0.88, 0.02, h)))]],
   // ゆるいスロープ（幅1.5m）：灰色の石の板と、両はしの金属のふち
   ramp: [[M(0x8f8f88, { roughness: 0.5 }), merge([b(1.5, 0.06, 0.9, 0, 0.04).rotateX(0.08)])], [MAT.metal, merge([b(0.05, 0.08, 0.9, 0.75, 0.05).rotateX(0.08), b(0.05, 0.08, 0.9, -0.75, 0.05).rotateX(0.08)])]],
+  bustShelf: [[MAT.wood, merge([b(0.4, 1.2, 1.15), b(0.42, 0.04, 1.2, 0, 1.2)])]],
   hallWindow: [[MAT.transom, merge([b(1.7, 0.42, 0.24, 0, 1.92), b(1.7, 0.32, 0.24, 0, 0.12)])], [MAT.doorFrame, merge([b(1.78, 0.04, 0.26, 0, 2.34), b(1.78, 0.04, 0.26, 0, 1.88), b(0.04, 0.46, 0.26, 0, 1.88)])]],
   // 壁より厚くして、教室の中からも廊下からも見えるようにする
   // 4枚の大きな両引き戸（体育館の入口）。ガラスの入ったアルミの戸
@@ -801,7 +802,7 @@ function artIslands(out, R) {
   out.push({ t: "teacherDesk", x: x0 + 1.0, z: cz + 2.2, rot: 0 });
   // 後ろ：緑の掲示板と、石こう像の棚、乾燥棚
   out.push({ t: "greenBoard", x: x1 - 0.08, z: cz - 0.6, rot: Math.PI });
-  for (const k of [-2.4, -1.2, 0]) out.push({ t: "lowShelf", x: x1 - 0.35, z: cz + k, rot: 0 }, { t: "bust", x: x1 - 0.35, z: cz + k - 0.25, rot: Math.PI, y: 1.2 }, { t: "bust", x: x1 - 0.35, z: cz + k + 0.25, rot: Math.PI, y: 1.2 });
+  for (const k of [-2.4, -1.2, 0]) out.push({ t: "bustShelf", x: x1 - 0.35, z: cz + k, rot: 0 }, { t: "bust", x: x1 - 0.35, z: cz + k - 0.25, rot: Math.PI, y: 1.2 }, { t: "bust", x: x1 - 0.35, z: cz + k + 0.25, rot: Math.PI, y: 1.2 });
   out.push({ t: "rack", x: x1 - 0.4, z: cz + 1.3, rot: 0 });
   const xa = x0 + 2.4, xb = x1 - 1.4, za = z0 + 1.2, zb = z1 - 0.9;
   for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {

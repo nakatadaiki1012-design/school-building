@@ -3,7 +3,7 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { ROOMS_RAW } from "./data.js";
-import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY, ROOM_EDITS, EXTRA_ROOMS, ROOM_SPLITS, ROOM_STYLE, WALL_OPENINGS, PHOTOS, GEO_ALIGN } from "./info.js";
+import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY, ROOM_EDITS, EXTRA_ROOMS, ROOM_SPLITS, ROOM_STYLE, WALL_OPENINGS, PHOTOS, GEO_ALIGN, SEARCH_ALIASES, VENDING_NOTE } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
 import { buildTrees, buildColumnTrees, hedgeBox, hedgeMass, matHedge, bakeStatic } from "./nature.js";
 import { buildSite, createAerial, flatPoly, polyBounds, inPoly, buildTerrain, setSlope, texAsphalt, texPavers, worldUV } from "./site.js";
@@ -2071,7 +2071,7 @@ const gymBelow = (() => {
 function applyMode() {
   shadowsDirty();
   const f = state.floor;
-  if (ex.on && f && ex.lastF !== f) { placeExplorer(f, ex.x, ex.z); }
+  if (ex.on && f && ex.lastF !== f) { placeExplorer(f, ex.x, ex.z); ex.yaw = bestYaw(f, ex.yaw); }
   ex.lastF = f;
   gymBelow.visible = f === 3;
   entranceBelow.visible = f === 2;
@@ -2343,28 +2343,39 @@ const searchBox = document.querySelector(".search-box");
 const openSearch = () => { searchBox.classList.remove("collapsed"); search.focus(); };
 document.getElementById("search-open").addEventListener("click", openSearch);
 search.addEventListener("blur", () => setTimeout(() => { if (!search.value && !searchBox.contains(document.activeElement)) searchBox.classList.add("collapsed"); }, 150));
-const norm = (s) => s.normalize("NFKC").toLowerCase().replace(/\s/g, "").replace(/[ー－‐-]/g, "-");
+// カタカナはひらがなにそろえ、空白・長音の違いをなくして比べる
+const norm = (s) => s.normalize("NFKC").toLowerCase().replace(/[\u30a1-\u30f6]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60)).replace(/\s/g, "").replace(/[ー－‐-]/g, "");
+// 部屋ごとの検索のことば（名前・読みがな・分類・紹介文の一部）
+const searchText = (r) => {
+  const alias = SEARCH_ALIASES.filter(([re]) => re.test(r.name)).map(([, a]) => a).join(" ");
+  const alt = r.grade ? `${r.grade}-${r.cls} ${r.grade}年${r.cls}組 ${r.grade}の${r.cls}` : "";
+  const vend = styleOf(r)?.vending ? VENDING_NOTE : "";
+  return norm(`${r.name} ${alt} ${alias} ${CATEGORIES[r.cat].label} ${vend} ${r.desc || ""}`);
+};
+const SITE_READINGS = { グラウンド: "ぐらうんど こうてい うんどうじょう", テニスコート: "てにすこーと てにす", プール: "ぷーる すいえい", 駐輪場: "ちゅうりんじょう じてんしゃ", 中庭: "なかにわ どうぞう", ピロティ: "ぴろてぃ", 昇降口前: "しょうこうぐち" };
+const SITE_SEARCH = SITE_INFO.filter((it) => !it.key || SITE[it.key]).map((it) => ({ it, text: norm(`${it.name} ${it.desc || ""} ${Object.entries(SITE_READINGS).filter(([k]) => it.name.includes(k)).map(([, v]) => v).join(" ")}`) }));
 search.addEventListener("input", () => {
   const q = norm(search.value);
   if (!q) { results.hidden = true; return; }
-  const list = ROOMS.filter((r) => r.kind === "room" && r.cat !== "open" && !isStaffOnly(r))
-    .filter((r) => {
-      const n = norm(r.name);
-      const alt = r.grade ? `${r.grade}-${r.cls}${r.grade}年${r.cls}組` : "";
-      return n.includes(q) || alt.includes(q) || norm(CATEGORIES[r.cat].label).includes(q);
-    })
-    .slice(0, 30);
-  results.innerHTML = list.length
+  const rooms = ROOMS.filter((r) => r.kind === "room" && r.cat !== "open" && !isStaffOnly(r));
+  // 名前に入っているものを先に、読みがなや紹介文に入っているものをあとに
+  const byName = rooms.filter((r) => norm(r.name).includes(q) || (r.grade && norm(`${r.grade}-${r.cls}${r.grade}年${r.cls}組`).includes(q)));
+  const byText = rooms.filter((r) => !byName.includes(r) && searchText(r).includes(q));
+  const list = [...byName, ...byText].slice(0, 30);
+  const sites = SITE_SEARCH.filter(({ text }) => text.includes(q)).slice(0, 6);
+  results.innerHTML = list.length || sites.length
     ? list.map((r) => `<li><button data-room="${r.id}"><span class="dot" style="background:${CATEGORIES[r.cat].color}"></span>${r.name}<span class="fl">${r.floor}階${r.wing ? "・" + r.wing.name : ""}</span></button></li>`).join("")
+      + sites.map(({ it }, i) => `<li><button data-site="${SITE_INFO.indexOf(it)}"><span class="dot" style="background:#cfe3c4"></span>${it.name}<span class="fl">屋外</span></button></li>`).join("")
     : `<li class="none">見つかりませんでした</li>`;
   results.hidden = false;
 });
 results.addEventListener("click", (e) => {
-  const b = e.target.closest("button[data-room]");
+  const b = e.target.closest("button[data-room], button[data-site]");
   if (!b) return;
   results.hidden = true;
   search.value = "";
   search.blur();
+  if (b.dataset.site !== undefined) { if (ex.on) setExplore(false); showSite(SITE_INFO[Number(b.dataset.site)]); return; }
   selectRoom(ROOM_BY_ID[b.dataset.room]);
 });
 document.addEventListener("click", (e) => { if (!e.target.closest(".search-box")) results.hidden = true; });
@@ -2432,6 +2443,7 @@ controls2d.addEventListener("change", clampTarget);
 }
 // キーボード：矢印・WASDで移動、+ - でズーム、Q E で回る、H で全体にもどる
 window.addEventListener("keydown", (e) => {
+  if (document.querySelector("dialog[open]")) return; // 使い方などの画面が開いているときは、キーはそちらに
   if (e.target.closest("input, textarea, select")) { if (e.key === "Escape") { search.value = ""; results.hidden = true; search.blur(); } return; }
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   const c = state.view === "2d" && state.floor !== 0 ? controls2d : controls3d, cam = c.object;
@@ -2536,6 +2548,8 @@ document.getElementById("school-info").innerHTML = `
   <a href="${SCHOOL.site}" target="_blank" rel="noopener">学校の公式サイト</a></p>`;
 document.querySelectorAll("[data-close]").forEach((b) => b.addEventListener("click", () => b.closest("dialog").close()));
 document.getElementById("help-btn").addEventListener("click", () => document.getElementById("help-dialog").showModal());
+// はじめて開いたときだけ、使い方を1回出す
+try { if (!localStorage.getItem("asao-seen")) { localStorage.setItem("asao-seen", "1"); setTimeout(() => { if (!location.hash) document.getElementById("help-dialog").showModal(); }, 1200); } } catch { /* 保存できない環境 */ }
 
 // ---------- 画面サイズ・描画ループ ----------
 function resize() {
@@ -2839,15 +2853,28 @@ function floorY(x, z, f) {
   return base(f) + (f >= 2 && blockAtCell(c, r).id === "gym" ? GYM_LIFT : 0);
 }
 function placeExplorer(f, nearX, nearZ) {
-  // いちばん近い、歩ける場所へ
+  // いちばん近い、歩ける場所へ。部屋の中より廊下（部屋でないます目）を先に探す（壁の目の前からはじまらないように）
+  const inRoom = new Set();
+  for (const q of ROOMS) if (q.floor === f && q.kind === "room" && q.cat !== "open" && !styleOf(q)?.noFloor) for (let c = Math.floor(q.c0); c <= Math.ceil(q.c1); c++) for (let r = Math.floor(q.r0); r <= Math.ceil(q.r1); r++) inRoom.add(key(c, r));
   let best = null, bd = Infinity;
-  for (const k of exploreCells(f)) {
-    const [c, r] = k.split(",").map(Number);
-    const [x, z] = toWorld(X(c + 0.5), Z(r + 0.5), blockAtCell(c, r));
-    const d = (x - nearX) ** 2 + (z - nearZ) ** 2;
-    if (d < bd && canStand(x, z, f)) { bd = d; best = [x, z]; }
+  for (const pass of [0, 1]) {
+    for (const k of exploreCells(f)) {
+      if (pass === 0 && inRoom.has(k)) continue;
+      const [c, r] = k.split(",").map(Number);
+      const [x, z] = toWorld(X(c + 0.5), Z(r + 0.5), blockAtCell(c, r));
+      const d = (x - nearX) ** 2 + (z - nearZ) ** 2;
+      if (d < bd && canStand(x, z, f)) { bd = d; best = [x, z]; }
+    }
+    if (best) break;
   }
   if (best) { ex.x = best[0]; ex.z = best[1]; ex.y = floorY(ex.x, ex.z, f); }
+}
+// いちばん遠くまで歩ける向き（壁の目の前を向いてはじまらないように）。pref：できればこの向き
+function bestYaw(f, pref) {
+  const reach = (yaw) => { let d = 0; for (; d < 30; d += 0.5) if (!canStand(ex.x - Math.sin(yaw) * d, ex.z - Math.cos(yaw) * d, f)) break; return d; };
+  let best = pref, bd = reach(pref);
+  for (let i = 0; i < 16; i++) { const y = (i * Math.PI) / 8, d = reach(y); if (d > bd + 2) { bd = d; best = y; } }
+  return best;
 }
 function setExplore(on) {
   if (on === ex.on) return;
@@ -2863,11 +2890,11 @@ function setExplore(on) {
       setFloor(1, { keepCamera: true });
       const sh = ROOMS.find((r) => r.name === "昇降口" && r.floor === 1 && r.r0 === 47);
       placeExplorer(1, sh ? sh.wx : 0, sh ? sh.wz : 0);
-      ex.yaw = 0;
+      ex.yaw = bestYaw(1, 0);
     } else {
       placeExplorer(state.floor, controls3d.target.x, controls3d.target.z);
       const d = controls3d.target.clone().sub(persp.position);
-      ex.yaw = Math.atan2(-d.x, -d.z);
+      ex.yaw = bestYaw(state.floor, Math.atan2(-d.x, -d.z));
     }
     ex.pitch = -0.05;
     controls3d.enabled = false;
@@ -2896,6 +2923,15 @@ function updateExplore(dt) {
     else if (canStand(ex.x, ex.z + mz, f)) ex.z += mz;
   }
   ex.y += (floorY(ex.x, ex.z, f) - ex.y) * Math.min(1, dt * 8);
+  // いまいる場所の名前（部屋の中ならその部屋、そうでなければ廊下）を上に出す
+  if (!ex.noteT || performance.now() - ex.noteT > 300) {
+    ex.noteT = performance.now();
+    const here = ROOMS.find((r) => r.floor === f && r.kind === "room" && r.cat !== "open" && Math.abs(ex.x - r.wx) <= r.ww / 2 && Math.abs(ex.z - r.wz) <= r.wd / 2);
+    const nm = here ? (here.grade ? `${here.grade}-${here.cls} 教室` : here.name) : "廊下";
+    const t = `校内探検 ${f}階：${nm}`;
+    const fn = document.getElementById("floor-note");
+    if (fn.textContent !== t) fn.textContent = t;
+  }
   const eye = new THREE.Vector3(ex.x, ex.y + EYE, ex.z);
   persp.position.copy(eye);
   const look = new THREE.Vector3(-Math.sin(ex.yaw) * Math.cos(ex.pitch), Math.sin(ex.pitch), -Math.cos(ex.yaw) * Math.cos(ex.pitch));

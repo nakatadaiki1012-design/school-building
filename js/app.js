@@ -2042,6 +2042,7 @@ const gymBelow = (() => {
 function applyMode() {
   shadowsDirty();
   const f = state.floor;
+  if (typeof walkOn !== "undefined" && walkOn && walkers[0]?.f !== f) spawnWalkers(f);
   gymBelow.visible = f === 3;
   entranceBelow.visible = f === 2;
   for (const k of [1, 2, 3]) {
@@ -2586,6 +2587,8 @@ function tick(now) {
     const dx = hereGoal.x - here.position.x, dz = hereGoal.z - here.position.z;
     if (Math.abs(dx) + Math.abs(dz) > 0.02) { here.position.x += dx * 0.08; here.position.z += dz * 0.08; poke(); }
   }
+  if (walkers.length) { const dt = Math.min(0.1, (now - (lastWalkT || now)) / 1000); updateWalkers(dt); activeUntil = now + 100; }
+  lastWalkT = now;
   const cam = useCamera();
   // 方位磁針（画面の上がどの方角か）
   const az = cam === ortho ? 0 : controls3d.getAzimuthalAngle();
@@ -2745,6 +2748,116 @@ document.getElementById("here-btn").addEventListener("click", () => {
   showGeoMsg("現在地をさがしています…", 0);
   document.getElementById("here-btn").classList.add("active");
   geoWatch = navigator.geolocation.watchPosition(onGeo, onGeoErr, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+});
+
+// ---------- 歩く人 ----------
+// 見ている階の廊下（部屋のないところ）を、人形がのんびり歩きまわる。歩くのは廊下のます目の上だけなので、床から外れない
+const walkers = [];
+function makePerson(uniform) {
+  const skin = new THREE.MeshStandardMaterial({ color: 0xf0c8a8, roughness: 0.8 });
+  const cloth = new THREE.MeshStandardMaterial({ color: uniform, roughness: 0.8 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x2a2c30, roughness: 0.8 });
+  const g = new THREE.Group();
+  const limb = (w, h, mat, x, y) => { const pivot = new THREE.Group(); pivot.position.set(x, y, 0); const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), mat); m.position.y = -h / 2; m.castShadow = true; pivot.add(m); g.add(pivot); return pivot; };
+  const legL = limb(0.13, 0.8, dark, -0.09, 0.8), legR = limb(0.13, 0.8, dark, 0.09, 0.8);
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.55, 0.22), cloth); body.position.y = 1.08; body.castShadow = true;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), skin); head.position.y = 1.5; head.castShadow = true;
+  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.135, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2), dark); hair.position.y = 1.52;
+  const armL = limb(0.1, 0.55, cloth, -0.25, 1.33), armR = limb(0.1, 0.55, cloth, 0.25, 1.33);
+  g.add(body, head, hair);
+  g.userData = { legL, legR, armL, armR };
+  return g;
+}
+function walkCells(f) {
+  // その階の、部屋・階段・吹き抜け・体育館ではない、建物の中のます目
+  const busy = new Set();
+  for (const q of ROOMS) {
+    if (q.floor !== f) continue;
+    const st = styleOf(q);
+    if (q.kind === "room" && (st?.noFloor || /^(ホール|土間)$/.test(q.name))) continue; // 床が廊下と同じ場所は歩ける
+    for (let c = Math.floor(q.c0); c <= Math.ceil(q.c1); c++) for (let r = Math.floor(q.r0); r <= Math.ceil(q.r1); r++) busy.add(key(c, r));
+  }
+  const ok = new Set();
+  for (const [k, st] of OCC[f]) {
+    if (st === "gym" || busy.has(k)) continue;
+    const [c, r] = k.split(",").map(Number);
+    if (blockAtCell(c, r).id === "gym" || blockAtCell(c, r).id === "bridge") continue;
+    ok.add(k);
+  }
+  return ok;
+}
+function cellWorld(k, f) {
+  const [c, r] = k.split(",").map(Number);
+  const [x, z] = toWorld(X(c + 0.5), Z(r + 0.5), blockAtCell(c, r));
+  return new THREE.Vector3(x, base(f), z);
+}
+function pathTo(cells, from, to) {
+  const prev = new Map([[from, null]]), q = [from];
+  while (q.length) {
+    const k = q.shift();
+    if (k === to) break;
+    const [c, r] = k.split(",").map(Number);
+    for (const n of [key(c + 1, r), key(c - 1, r), key(c, r + 1), key(c, r - 1)]) if (cells.has(n) && !prev.has(n)) { prev.set(n, k); q.push(n); }
+  }
+  if (!prev.has(to)) return null;
+  const path = [];
+  for (let k = to; k; k = prev.get(k)) path.unshift(k);
+  return path;
+}
+const walkCache = {};
+function spawnWalkers(f) {
+  for (const w of walkers) scene.remove(w.g);
+  walkers.length = 0;
+  if (!f) return;
+  const cells = (walkCache[f] ||= [...walkCells(f)]);
+  if (!cells.length) return;
+  const set = new Set(cells);
+  const colors = [0x22304a, 0x22304a, 0x3a3f46, 0x7a1f2b, 0x22304a];
+  for (let i = 0; i < 5; i++) {
+    const g = makePerson(colors[i]);
+    const start = cells[Math.floor(Math.random() * cells.length)];
+    g.position.copy(cellWorld(start, f));
+    scene.add(g);
+    walkers.push({ g, f, set, cells, at: start, path: [], t: Math.random() * 10, speed: 1.1 + Math.random() * 0.4 });
+  }
+}
+function updateWalkers(dt) {
+  for (const w of walkers) {
+    if (!w.path.length) {
+      // 次の行き先：遠すぎない、つながっているます目をえらぶ
+      for (let tries = 0; tries < 8 && !w.path.length; tries++) {
+        const to = w.cells[Math.floor(Math.random() * w.cells.length)];
+        const p = pathTo(w.set, w.at, to);
+        if (p && p.length > 3 && p.length < 60) w.path = p.slice(1);
+      }
+      if (!w.path.length) continue;
+    }
+    const target = cellWorld(w.path[0], w.f);
+    const d = target.clone().sub(w.g.position); d.y = 0;
+    const step = w.speed * dt;
+    if (d.length() <= step) { w.g.position.x = target.x; w.g.position.z = target.z; w.at = w.path.shift(); }
+    else {
+      d.normalize();
+      w.g.position.addScaledVector(d, step);
+      const a = Math.atan2(d.x, d.z);
+      let da = a - w.g.rotation.y; da = Math.atan2(Math.sin(da), Math.cos(da));
+      w.g.rotation.y += da * Math.min(1, dt * 8);
+    }
+    w.g.position.y = base(w.f);
+    // 手足を前後にふる
+    w.t += dt * w.speed * 5.5;
+    const sw = Math.sin(w.t) * 0.55, u = w.g.userData;
+    u.legL.rotation.x = sw; u.legR.rotation.x = -sw; u.armL.rotation.x = -sw * 0.8; u.armR.rotation.x = sw * 0.8;
+  }
+}
+let walkOn = false, lastWalkT = 0;
+document.getElementById("walk-btn").addEventListener("click", () => {
+  walkOn = !walkOn;
+  document.getElementById("walk-btn").classList.toggle("active", walkOn);
+  if (walkOn && !state.floor) { setFloor(1); }
+  spawnWalkers(walkOn ? state.floor : 0);
+  showGeoMsg(walkOn ? "見ている階の廊下を、人が歩いています（階を切りかえると、その階を歩きます）" : "歩く人を消しました", 4000);
+  poke();
 });
 
 // ---------- はじめの表示 ----------

@@ -730,6 +730,15 @@ const layers = { exterior: {}, roofs: {}, cut: {}, slab: {}, rooms: {}, labels: 
 const matInnerWall = new THREE.MeshStandardMaterial({ color: 0xf4f0e6, roughness: 0.9 });
 const matInnerGlass = new THREE.MeshStandardMaterial({ color: 0x9cc4dc, roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
 const matInnerFrame = new THREE.MeshStandardMaterial({ color: 0xc9ccce, roughness: 0.5, metalness: 0.4 }); // アルミの窓枠
+// 和室（作法室）の窓の内側は障子
+const texShoji = canvasTex(128, 128, (g, w, h) => {
+  g.fillStyle = "#f6f1e3"; g.fillRect(0, 0, w, h);
+  g.fillStyle = "#b08a5a";
+  for (let x = 0; x <= w; x += w / 4) g.fillRect(Math.min(x, w - 3), 0, 3, h);
+  for (let y = 0; y <= h; y += h / 6) g.fillRect(0, Math.min(y, h - 3), w, 3);
+});
+const matShoji = new THREE.MeshStandardMaterial({ map: texShoji, roughness: 0.9 });
+const SHOJI_ROOMS = /作法室/;
 const NO_WINDOW_STYLE = /^(brick|gym|plain)/; // レンガの壁・体育館は窓なし（レンガは内側も壁だけ、体育館は作らない）
 const y0OfFloor = (f) => base(f);
 const buildingGroup = new THREE.Group();
@@ -740,7 +749,8 @@ for (const f of [1, 2, 3]) {
   const facade = (c, r, d, style) => {
     const b = blockAtCell(c, r).id;
     const side = d.dr < 0 ? "n" : d.dr > 0 ? "s" : d.dc < 0 ? "w" : "e";
-    if (WALL_OPENINGS.some(([ff, c0, r0, c1, r1, dir]) => ff === f && inCells(c, r, [c0, r0, c1, r1]) && (!dir || dir === side))) return "open|" + b;
+    const op = WALL_OPENINGS.find(([ff, c0, r0, c1, r1, dir]) => ff === f && inCells(c, r, [c0, r0, c1, r1]) && (!dir || dir === side));
+    if (op) return (op[6] === "rail" ? "rail|" : "open|") + b; // "rail"：壁のかわりに手すり壁だけ（バルコニー）
     if ((FACADE.plain || []).some(([ff, c0, r0, c1, r1, dir]) => ff === f && side === dir && inCells(c, r, [c0, r0, c1, r1]))) return (b === "art" ? "plainart|" : "plain|") + b; // 窓のない壁
     if (style === "gym") return "gym" + f + "|" + b;
     if (style === "high") return "high|" + b;
@@ -755,11 +765,12 @@ for (const f of [1, 2, 3]) {
     return "school|" + b;
   };
   const segs = boundarySegments(OCC[f], facade);
-  const segsByBlock = {};
+  const segsByBlock = {}, railSegs = {};
   for (const sg of segs) {
     const [st, b] = sg.style.split("|");
     sg.style = st;
     if (st === "open") continue;
+    if (st === "rail") { (railSegs[b] ||= []).push(sg); continue; }
     (segsByBlock[b] ||= []).push(sg);
   }
   const ext = new THREE.Group();
@@ -767,6 +778,12 @@ for (const f of [1, 2, 3]) {
   const inner = new THREE.Group();
   ext.userData.floor = cut.userData.floor = inner.userData.floor = f;
   const st0 = (sg) => (sg.style.startsWith("gym") ? "gym" : sg.style);
+  // バルコニーの外側の手すり壁（高さ1.1m、白）
+  for (const [bid, list] of Object.entries(railSegs)) {
+    const gs = list.map((sg) => { const alongX = sg.n[1] !== 0, len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az); return new THREE.BoxGeometry(alongX ? len : 0.2, 1.1, alongX ? 0.2 : len).translate((sg.ax + sg.bx) / 2 - sg.n[0] * 0.1, base(f) + 0.55, (sg.az + sg.bz) / 2 - sg.n[1] * 0.1); });
+    const m = new THREE.Mesh(mergeGeometries(gs), matRelief); m.castShadow = m.receiveShadow = true;
+    inBlock(ext, blockById(bid)).add(m);
+  }
   for (const [bid, list] of Object.entries(segsByBlock)) {
     const b = blockById(bid);
     const holder = inBlock(ext, b);
@@ -826,8 +843,42 @@ for (const f of [1, 2, 3]) {
         const k = (from + to) / 2, cx = sg.ax + (sg.bx - sg.ax) * k - sg.n[0] * inset, cz = sg.az + (sg.bz - sg.az) * k - sg.n[1] * inset;
         list.push(new THREE.BoxGeometry(alongX ? len : t, h, alongX ? t : len).translate(cx, y + h / 2, cz));
       };
+      const shojiG = [];
+      const inShoji = (sg) => {
+        const mx = (sg.ax + sg.bx) / 2 - sg.n[0] * 0.3, mz = (sg.az + sg.bz) / 2 - sg.n[1] * 0.3;
+        const c = Math.floor(mx / CW + C_MID), r = Math.floor(mz / RH + R_MID);
+        return ROOMS.some((q) => q.floor === f && SHOJI_ROOMS.test(q.name) && inCells(c, r, [q.c0, q.r0, q.c1, q.r1]));
+      };
+      // 障子の部屋にかかる壁は、部屋の境目で切り分ける（長い壁は1本にまとまっているため）
+      const parts = [];
       for (const sg of list) {
-        if (st0(sg) === "gym") continue;
+        const L = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az), n = Math.max(1, Math.round(L / (sg.n[1] !== 0 ? CW : RH)));
+        let start = 0, prev = null;
+        for (let i = 0; i <= n; i++) {
+          const cur = i < n ? inShoji({ ...sg, ax: sg.ax + (sg.bx - sg.ax) * i / n, az: sg.az + (sg.bz - sg.az) * i / n, bx: sg.ax + (sg.bx - sg.ax) * (i + 1) / n, bz: sg.az + (sg.bz - sg.az) * (i + 1) / n }) : null;
+          if (i > 0 && cur !== prev) {
+            parts.push({ ...sg, shoji: prev, ax: sg.ax + (sg.bx - sg.ax) * start / n, az: sg.az + (sg.bz - sg.az) * start / n, bx: sg.ax + (sg.bx - sg.ax) * i / n, bz: sg.az + (sg.bz - sg.az) * i / n });
+            start = i;
+          }
+          prev = cur;
+        }
+      }
+      for (const sg of parts) {
+        if (!NO_WINDOW_STYLE.test(sg.style) && sg.shoji) { // 障子：窓のところに障子をはめる
+          piece(wallG, sg, y0, 0.85); piece(wallG, sg, y0 + 2.65, FH - 2.65);
+          const L = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az), alongX = sg.n[1] !== 0;
+          const cx = (sg.ax + sg.bx) / 2 - sg.n[0] * 0.14, cz = (sg.az + sg.bz) / 2 - sg.n[1] * 0.14;
+          const g = new THREE.BoxGeometry(alongX ? L : 0.04, 1.8, alongX ? 0.04 : L).translate(cx, y0 + 0.85 + 0.9, cz);
+          const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, uv.getX(i) * Math.max(1, Math.round(L / 0.9)));
+          shojiG.push(g);
+          continue;
+        }
+        if (st0(sg) === "gym") { // 体育館：下半分は壁、上半分はガラス窓
+          piece(wallG, sg, y0, FH / 2); piece(glassG, sg, y0 + FH / 2, FH / 2 - 0.1, 0.03); piece(frameG, sg, y0 + FH / 2, 0.08, 0.12); piece(frameG, sg, y0 + FH - 0.1, 0.08, 0.12);
+          const L = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az), n = Math.max(1, Math.round(L / 2.4));
+          for (let i = 0; i <= n; i++) { const u = i / n, w = 0.06 / L; piece(frameG, sg, y0 + FH / 2, FH / 2 - 0.1, 0.1, Math.max(0, u - w / 2), Math.min(1, u + w / 2)); }
+          continue;
+        }
         if (NO_WINDOW_STYLE.test(sg.style)) { piece(wallG, sg, y0, FH); continue; }
         const wb = 0.85, wt = 2.65; // 窓の下と上の高さ
         piece(wallG, sg, y0, wb); piece(wallG, sg, y0 + wt, FH - wt);
@@ -837,7 +888,7 @@ for (const f of [1, 2, 3]) {
         for (let i = 0; i <= n; i++) { const u = i / n, w = 0.06 / L; piece(frameG, sg, y0 + wb, wt - wb, 0.1, Math.max(0, u - w / 2), Math.min(1, u + w / 2)); }
       }
       const holderIn = inBlock(inner, b);
-      for (const [geos, mat] of [[wallG, matInnerWall], [glassG, matInnerGlass], [frameG, matInnerFrame]]) {
+      for (const [geos, mat] of [[wallG, matInnerWall], [glassG, matInnerGlass], [frameG, matInnerFrame], [shojiG, matShoji]]) {
         if (!geos.length) continue;
         const m = new THREE.Mesh(mergeGeometries(geos), mat);
         m.receiveShadow = true;

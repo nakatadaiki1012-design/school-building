@@ -1812,8 +1812,9 @@ for (const f of [1, 2, 3]) {
       // 建物の外に面した辺は、外壁があるので部屋の壁を立てない（外壁から少しはみ出して、レンガの壁に白い帯が見えてしまうため）
       const ca = Math.floor(r.c0), cb = Math.ceil(r.c1), outSide = (side) => {
         const ks = [];
-        if (side === "n" || side === "s") for (let c = ca; c <= cb; c++) ks.push(key(c, side === "n" ? r.r0 - 1 : r.r1 + 1));
-        else for (let rr = r.r0; rr <= r.r1; rr++) ks.push(key(side === "w" ? ca - 1 : cb + 1, rr));
+        const ra = Math.floor(r.r0), rb = Math.ceil(r.r1); // 区画の途中で終わる部屋（録音室など）も、ます目に合わせて調べる
+        if (side === "n" || side === "s") for (let c = ca; c <= cb; c++) ks.push(key(c, side === "n" ? ra - 1 : rb + 1));
+        else for (let rr = ra; rr <= rb; rr++) ks.push(key(side === "w" ? ca - 1 : cb + 1, rr));
         return ks.every((k) => !OCC[f].has(k));
       };
       // 外に面した辺に向かってのびる壁は、外壁の内側で止める（はしが外壁から少し出て白い線に見えないように）

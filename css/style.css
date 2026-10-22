@@ -336,3 +336,17 @@ dialog::backdrop { background: rgba(20, 30, 40, 0.45); }
 .here-btn.active { background: #1a73e8 !important; color: #fff !important; }
 .geo-msg { max-width: 280px; }
 .here-label { background: #1a73e8; color: #fff; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.3); pointer-events: none; }
+
+/* 校内探検（一人称視点）のボタン */
+.explore-pad { display: none; position: fixed; right: 16px; bottom: 76px; z-index: 30; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(3, 56px); gap: 6px; }
+body.exploring .explore-pad { display: grid; }
+.explore-pad button { border: 0; border-radius: 14px; background: rgba(255,255,255,0.88); box-shadow: 0 2px 8px rgba(0,0,0,0.25); font-size: 24px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.explore-pad button:active { background: #1a73e8; color: #fff; }
+.explore-pad [data-f="1"] { grid-column: 2; grid-row: 1; }
+.explore-pad [data-t="1"] { grid-column: 1; grid-row: 2; }
+.explore-pad [data-t="-1"] { grid-column: 3; grid-row: 2; }
+.explore-pad [data-f="-1"] { grid-column: 2; grid-row: 3; }
+.explore-pad .ex-end { grid-column: 1; grid-row: 3; font-size: 13px; font-weight: 700; }
+body.exploring .dir-box, body.exploring .key-hint { display: none; }
+.room-label.far, .wing-label.far { display: none !important; }
+body.exploring .geo-msg { margin-bottom: 200px; }

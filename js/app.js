@@ -2043,18 +2043,19 @@ const gymBelow = (() => {
 function applyMode() {
   shadowsDirty();
   const f = state.floor;
-  if (typeof walkOn !== "undefined" && walkOn && walkers[0]?.f !== f) spawnWalkers(f);
+  if (ex.on && f && ex.lastF !== f) { placeExplorer(f, ex.x, ex.z); }
+  ex.lastF = f;
   gymBelow.visible = f === 3;
   entranceBelow.visible = f === 2;
   for (const k of [1, 2, 3]) {
     const below = f === 0 || k < f;
     // 選んだ階の外壁も、外観と同じもの（窓・レンガ・柱・バルコニー）をそのまま見せる。屋根だけ外して中を見る
     layers.exterior[k].visible = below || k === f;
-    layers.roofs[k].visible = below;
+    layers.roofs[k].visible = below || (ex.on && k === f); // 探検中は天井（屋根）も見せる
     layers.cut[k].visible = false;
     layers.inner[k].visible = f !== 0 && k <= f;
     layers.wallsBelow[k].visible = f !== 0 && k === f - 1; // すぐ下の階の部屋の壁（吹き抜けから見える） // 下の階の外壁の内側も見せる（吹き抜けから下をのぞいたとき、壁や窓が消えないように）
-    layers.slab[k].visible = k === f;
+    layers.slab[k].visible = k === f || (ex.on && k === f + 1); // 探検中は上の階の床＝天井
     layers.rooms[k].visible = k === f;
     setLabelsVisible(layers.labels[k], k === f && labelsOn);
   }
@@ -2069,18 +2070,20 @@ function applyMode() {
 
 function useCamera() {
   const is2d = state.view === "2d" && state.floor !== 0;
-  controls3d.enabled = !is2d;
+  controls3d.enabled = !is2d && !ex.on;
   controls2d.enabled = is2d;
   return is2d ? ortho : persp;
 }
 
 let floorCamInit = false; // いちど見たら、階を切り替えても見ている角度・場所はそのまま
 function setFloor(f, { keepCamera = false } = {}) {
+  if (f === 0 && ex.on) setExplore(false); // 外観にしたら探検はおわり
   const prev = state.floor;
   state.floor = f;
   if (f === 0) state.view = "3d";
   applyMode();
   useCamera();
+  if (ex.on) return; // 探検中は、カメラは自分の目
   if (!keepCamera && floorCamInit && state.view === "3d") {
     // 角度と場所はそのままで、見る高さだけ新しい階に合わせる
     const dy = (f ? base(f) : 0) - (prev ? base(prev) : 0);
@@ -2298,7 +2301,6 @@ labelRenderer.domElement.addEventListener("pointerup", (e) => {
     closePanel(); // 何もないところを押したら、紹介を閉じる
     return;
   }
-  if (walkOn && walkPlayerTo(ray)) return; // 歩く人を出しているときは、廊下をタップするとそこへ歩く
   const hits = ray.intersectObjects(pickables.filter((m) => m.userData.room.floor === state.floor), false);
   if (hits.length) selectRoom(hits[0].object.userData.room, { fly: false });
   else closePanel(); // 部屋のないところを押したら、紹介を閉じる
@@ -2531,9 +2533,13 @@ function declutter() {
     if (!g.visible) continue;
     const objs = [];
     g.traverse((o) => { if (o.isCSS2DObject) objs.push(o); });
+    const wp = new THREE.Vector3();
     for (const o of objs) {
       const el = o.element;
       if (el.style.display === "none") continue;
+      // 校内探検中は、近くの部屋の名前だけ出す
+      el.classList.toggle("far", ex.on && o.getWorldPosition(wp).distanceTo(persp.position) > 14);
+      if (el.classList.contains("far")) continue;
       const r = ROOMS.find((x) => x.label === el);
       const prio = el.classList.contains("selected") ? 1e9 : r ? (r.grade ? 1e6 : 0) + r.w * r.d : 1e5;
       items.push({ el, prio, rect: el.getBoundingClientRect() });
@@ -2551,7 +2557,7 @@ function declutter() {
 
 // 軽くするため、画面が止まっているときは描き直さない。
 // カメラが動いたとき、操作の直後（1.5秒）、アニメーション中だけ描く（念のため1秒に1回は描く）
-let activeUntil = 0, lastDraw = 0;
+let activeUntil = 0, lastDraw = 0, lastExT = 0;
 const camKey = new Float64Array(18);
 const poke = () => { activeUntil = performance.now() + 1500; };
 for (const ev of ["pointerdown", "wheel", "keydown", "click", "touchstart", "touchmove", "resize"]) window.addEventListener(ev, poke, { passive: true, capture: true });
@@ -2589,13 +2595,13 @@ function tick(now) {
     const dx = hereGoal.x - here.position.x, dz = hereGoal.z - here.position.z;
     if (Math.abs(dx) + Math.abs(dz) > 0.02) { here.position.x += dx * 0.08; here.position.z += dz * 0.08; poke(); }
   }
-  if (walkers.length) { const dt = Math.min(0.25, (now - (lastWalkT || now)) / 1000); updateWalkers(dt); activeUntil = now + 100; }
-  lastWalkT = now;
+  if (ex.on) { updateExplore(Math.min(0.1, (now - (lastExT || now)) / 1000)); activeUntil = now + 100; }
+  lastExT = now;
   const cam = useCamera();
   // 方位磁針（画面の上がどの方角か）
   const az = cam === ortho ? 0 : controls3d.getAzimuthalAngle();
   compassEl.style.transform = `rotate(${THREE.MathUtils.radToDeg(az)}deg)`;
-  (cam === ortho ? controls2d : controls3d).update();
+  if (!ex.on) (cam === ortho ? controls2d : controls3d).update();
   cam.updateMatrixWorld();
   const camMoved = cameraChanged(cam);
   if (camMoved || anim) {
@@ -2752,170 +2758,142 @@ document.getElementById("here-btn").addEventListener("click", () => {
   geoWatch = navigator.geolocation.watchPosition(onGeo, onGeoErr, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
 });
 
-// ---------- 歩く人 ----------
-// 見ている階の廊下（部屋のないところ）を、人形がのんびり歩きまわる。歩くのは廊下のます目の上だけなので、床から外れない
-const walkers = [];
-function makePerson(uniform) {
-  const skin = new THREE.MeshStandardMaterial({ color: 0xf0c8a8, roughness: 0.8 });
-  const cloth = new THREE.MeshStandardMaterial({ color: uniform, roughness: 0.8 });
-  const dark = new THREE.MeshStandardMaterial({ color: 0x2a2c30, roughness: 0.8 });
-  const g = new THREE.Group();
-  const limb = (w, h, mat, x, y) => { const pivot = new THREE.Group(); pivot.position.set(x, y, 0); const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, w), mat); m.position.y = -h / 2; m.castShadow = true; pivot.add(m); g.add(pivot); return pivot; };
-  const legL = limb(0.13, 0.8, dark, -0.09, 0.8), legR = limb(0.13, 0.8, dark, 0.09, 0.8);
-  const body = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.55, 0.22), cloth); body.position.y = 1.08; body.castShadow = true;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), skin); head.position.y = 1.5; head.castShadow = true;
-  const hair = new THREE.Mesh(new THREE.SphereGeometry(0.135, 12, 10, 0, Math.PI * 2, 0, Math.PI / 2), dark); hair.position.y = 1.52;
-  const armL = limb(0.1, 0.55, cloth, -0.25, 1.33), armR = limb(0.1, 0.55, cloth, 0.25, 1.33);
-  g.add(body, head, hair);
-  g.userData = { legL, legR, armL, armR };
-  return g;
-}
-function walkCells(f) {
-  // その階の、部屋・階段・吹き抜け・体育館ではない、建物の中のます目
-  const busy = new Set();
-  for (const q of ROOMS) {
-    if (q.floor !== f) continue;
-    const st = styleOf(q);
-    if (q.kind === "room" && (st?.noFloor || /^(ホール|土間)$/.test(q.name))) continue; // 床が廊下と同じ場所は歩ける
-    for (let c = Math.floor(q.c0); c <= Math.ceil(q.c1); c++) for (let r = Math.floor(q.r0); r <= Math.ceil(q.r1); r++) busy.add(key(c, r));
-  }
+// ---------- 校内探検（一人称視点） ----------
+// 自分の目の高さで、校舎の中を歩いて見てまわる。歩けるのは建物の床の上だけ（外や吹き抜け・階段の穴には落ちない）。
+// 部屋の仕切りの壁は通りぬけられる。階を変えるときは左の階のボタン
+const EYE = 1.55;
+const ex = { on: false, x: 0, z: 0, y: 0, yaw: 0, pitch: -0.05, keys: new Set(), pad: { f: 0, t: 0 }, saved: null, cells: {} };
+function exploreCells(f) {
+  if (ex.cells[f]) return ex.cells[f];
+  const hole = new Set();
+  for (const sr of STAIRS) if (sr.floors.includes(f - 1) && sr.floors.includes(f)) for (let c = sr.c0; c <= sr.c1; c++) for (let r = sr.r0; r <= sr.r1; r++) hole.add(key(c, r));
+  for (const q of ROOMS_RAW) if (q.floor === f && (q.name === "吹抜" || /光庭/.test(q.name))) for (let c = q.c0; c <= q.c1; c++) for (let r = q.r0; r <= q.r1; r++) hole.add(key(c, r));
   const ok = new Set();
   for (const [k, st] of OCC[f]) {
-    if (st === "gym" || busy.has(k)) continue;
+    if (hole.has(k)) continue;
     const [c, r] = k.split(",").map(Number);
-    if (blockAtCell(c, r).id === "gym" || blockAtCell(c, r).id === "bridge") continue;
+    if (f === 3 && st === "gym" && !GYM_GALLERY.some((g) => inCells(c, r, g)) && r < 33) continue; // 3階の体育館は吹き抜け
     ok.add(k);
   }
-  return ok;
+  return (ex.cells[f] = ok);
 }
-function cellWorld(k, f) {
-  const [c, r] = k.split(",").map(Number);
-  const [x, z] = toWorld(X(c + 0.5), Z(r + 0.5), blockAtCell(c, r));
-  return new THREE.Vector3(x, base(f), z);
-}
-function pathTo(cells, from, to) {
-  const prev = new Map([[from, null]]), q = [from];
-  while (q.length) {
-    const k = q.shift();
-    if (k === to) break;
-    const [c, r] = k.split(",").map(Number);
-    for (const n of [key(c + 1, r), key(c - 1, r), key(c, r + 1), key(c, r - 1)]) if (cells.has(n) && !prev.has(n)) { prev.set(n, k); q.push(n); }
-  }
-  if (!prev.has(to)) return null;
-  const path = [];
-  for (let k = to; k; k = prev.get(k)) path.unshift(k);
-  return path;
-}
-const walkCache = {};
-function spawnWalkers(f) {
-  for (const w of walkers) { scene.remove(w.g); w.g.traverse((o) => { if (o.isCSS2DObject) o.element.remove(); }); }
-  walkers.length = 0;
-  if (!f) return;
-  const cells = (walkCache[f] ||= [...walkCells(f)]);
-  if (!cells.length) return;
-  const set = new Set(cells);
-  const colors = [0x22304a, 0x22304a, 0x3a3f46, 0x7a1f2b, 0x22304a];
-  for (let i = 0; i < 5; i++) {
-    const g = makePerson(i === 0 ? 0xc0392b : colors[i]);
-    if (i === 0) {
-      // 操作できる人：赤い服と、足もとの青い輪、頭の上の「あなた」
-      const ring = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.48, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x1a73e8, transparent: true, opacity: 0.8, depthWrite: false }));
-      ring.position.y = 0.04; g.add(ring);
-      const div = document.createElement("div"); div.className = "here-label"; div.textContent = "あなた";
-      const lb = new CSS2DObject(div); lb.position.y = 2.0; g.add(lb);
-    }
-    const start = cells[Math.floor(Math.random() * cells.length)];
-    g.position.copy(cellWorld(start, f));
-    scene.add(g);
-    walkers.push({ g, f, set, cells, at: start, path: [], t: Math.random() * 10, speed: i === 0 ? 1.6 : 1.1 + Math.random() * 0.4, player: i === 0 });
-  }
-}
-function updateWalkers(dt) {
-  for (const w of walkers) {
-    if (w.player) {
-      // 操作する人：矢印キー（またはWASD）でまっすぐ動かす。押していないときは、タップした場所へ向かう
-      const k = walkKeys, mx = (k.has("arrowright") || k.has("d") ? 1 : 0) - (k.has("arrowleft") || k.has("a") ? 1 : 0), mz = (k.has("arrowdown") || k.has("s") ? 1 : 0) - (k.has("arrowup") || k.has("w") ? 1 : 0);
-      if (mx || mz) {
-        // 画面の向きに合わせる（上キー＝画面の奥）
-        const az = controls3d.getAzimuthalAngle(), fx = -Math.sin(az), fz = -Math.cos(az), rx = Math.cos(az), rz = -Math.sin(az);
-        const dir = new THREE.Vector3(rx * mx - fx * mz, 0, rz * mx - fz * mz).normalize();
-        const np = w.g.position.clone().addScaledVector(dir, w.speed * dt);
-        const nk = nearestWalkCell(w, np.x, np.z, 0.75);
-        if (nk) { w.g.position.copy(np); w.at = nk; } // 廊下の外へは出られない
-        w.path = [];
-        w.g.rotation.y = Math.atan2(dir.x, dir.z);
-        w.g.position.y = base(w.f);
-        w.t += dt * w.speed * 5.5;
-        const sw = Math.sin(w.t) * 0.55, u = w.g.userData;
-        u.legL.rotation.x = sw; u.legR.rotation.x = -sw; u.armL.rotation.x = -sw * 0.8; u.armR.rotation.x = sw * 0.8;
-        continue;
-      }
-      if (!w.path.length) { const u = w.g.userData; u.legL.rotation.x = u.legR.rotation.x = u.armL.rotation.x = u.armR.rotation.x = 0; continue; } // 止まって待つ
-    }
-    if (!w.path.length) {
-      // 次の行き先：遠すぎない、つながっているます目をえらぶ
-      for (let tries = 0; tries < 8 && !w.path.length; tries++) {
-        const to = w.cells[Math.floor(Math.random() * w.cells.length)];
-        const p = pathTo(w.set, w.at, to);
-        if (p && p.length > 3 && p.length < 60) w.path = p.slice(1);
-      }
-      if (!w.path.length) continue;
-    }
-    const target = cellWorld(w.path[0], w.f);
-    const d = target.clone().sub(w.g.position); d.y = 0;
-    const step = w.speed * dt;
-    if (d.length() <= step) { w.g.position.x = target.x; w.g.position.z = target.z; w.at = w.path.shift(); }
-    else {
-      d.normalize();
-      w.g.position.addScaledVector(d, step);
-      const a = Math.atan2(d.x, d.z);
-      let da = a - w.g.rotation.y; da = Math.atan2(Math.sin(da), Math.cos(da));
-      w.g.rotation.y += da * Math.min(1, dt * 8);
-    }
-    w.g.position.y = base(w.f);
-    // 手足を前後にふる
-    w.t += dt * w.speed * 5.5;
-    const sw = Math.sin(w.t) * 0.55, u = w.g.userData;
-    u.legL.rotation.x = sw; u.legR.rotation.x = -sw; u.armL.rotation.x = -sw * 0.8; u.armR.rotation.x = sw * 0.8;
-  }
-}
-// いちばん近い、歩けるます目（maxD メートルより遠ければ null）
-function nearestWalkCell(w, x, z, maxD = Infinity) {
-  let best = null, bd = maxD * maxD;
-  for (const k of w.cells) { const p = cellWorld(k, w.f), d = (p.x - x) ** 2 + (p.z - z) ** 2; if (d < bd) { bd = d; best = k; } }
-  return best;
-}
-// タップした場所へ、操作する人を歩かせる（廊下のところをタップしたとき）。歩かせたら true
-function walkPlayerTo(ray) {
-  const w = walkers.find((x) => x.player);
-  if (!w) return false;
-  const hit = new THREE.Vector3();
-  if (!ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -base(w.f)), hit)) return false;
-  const to = nearestWalkCell(w, hit.x, hit.z, 1.6);
-  if (!to) return false;
-  const p = pathTo(w.set, nearestWalkCell(w, w.g.position.x, w.g.position.z) || w.at, to);
-  if (!p) return false;
-  w.path = p.slice(1);
-  poke();
+const cellAt = (x, z) => { const [dx, dz] = toDrawing(x, z); return [Math.floor(dx / CW + C_MID), Math.floor(dz / RH + R_MID)]; };
+function canStand(x, z, f) {
+  // 体の大きさ（半径0.25m）の四すみが、どれも歩ける床の上にあるか
+  const cells = exploreCells(f);
+  for (const [ox, oz] of [[0.25, 0.25], [-0.25, 0.25], [0.25, -0.25], [-0.25, -0.25]]) { const [c, r] = cellAt(x + ox, z + oz); if (!cells.has(key(c, r))) return false; }
   return true;
 }
-const walkKeys = new Set();
-window.addEventListener("keydown", (e) => {
-  if (!walkOn || e.target.closest?.("input, textarea")) return;
-  const k = e.key.toLowerCase();
-  if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(k)) { walkKeys.add(k); e.preventDefault(); e.stopImmediatePropagation(); }
-}, true);
-window.addEventListener("keyup", (e) => walkKeys.delete(e.key.toLowerCase()), true);
-window.addEventListener("blur", () => walkKeys.clear());
-let walkOn = false, lastWalkT = 0;
-document.getElementById("walk-btn").addEventListener("click", () => {
-  walkOn = !walkOn;
-  document.getElementById("walk-btn").classList.toggle("active", walkOn);
-  if (walkOn && !state.floor) { setFloor(1); }
-  spawnWalkers(walkOn ? state.floor : 0);
-  showGeoMsg(walkOn ? "赤い服の「あなた」を動かせます：廊下をタップするとそこへ歩きます（パソコンは矢印キーでも）。ほかの人は自由に歩きます" : "歩く人を消しました", 4000);
+function floorY(x, z, f) {
+  const [c, r] = cellAt(x, z);
+  return base(f) + (f >= 2 && blockAtCell(c, r).id === "gym" ? GYM_LIFT : 0);
+}
+function placeExplorer(f, nearX, nearZ) {
+  // いちばん近い、歩ける場所へ
+  let best = null, bd = Infinity;
+  for (const k of exploreCells(f)) {
+    const [c, r] = k.split(",").map(Number);
+    const [x, z] = toWorld(X(c + 0.5), Z(r + 0.5), blockAtCell(c, r));
+    const d = (x - nearX) ** 2 + (z - nearZ) ** 2;
+    if (d < bd && canStand(x, z, f)) { bd = d; best = [x, z]; }
+  }
+  if (best) { ex.x = best[0]; ex.z = best[1]; ex.y = floorY(ex.x, ex.z, f); }
+}
+function setExplore(on) {
+  if (on === ex.on) return;
+  ex.on = on;
+  document.getElementById("walk-btn").classList.toggle("active", on);
+  document.body.classList.toggle("exploring", on);
+  if (on) {
+    ex.saved = [persp.position.clone(), controls3d.target.clone()];
+    if (state.view === "2d") setView("3d");
+    closePanel();
+    if (!state.floor) {
+      // 外観からはじめたときは、1階の南の昇降口から、北（中庭のほう）を向いてスタート
+      setFloor(1, { keepCamera: true });
+      const sh = ROOMS.find((r) => r.name === "昇降口" && r.floor === 1 && r.r0 === 47);
+      placeExplorer(1, sh ? sh.wx : 0, sh ? sh.wz : 0);
+      ex.yaw = 0;
+    } else {
+      placeExplorer(state.floor, controls3d.target.x, controls3d.target.z);
+      const d = controls3d.target.clone().sub(persp.position);
+      ex.yaw = Math.atan2(-d.x, -d.z);
+    }
+    ex.pitch = -0.05;
+    controls3d.enabled = false;
+    showGeoMsg("校内探検：ドラッグで見まわす。パソコンは W・S（または ↑・↓）で前後、A・D で横、←・→ で向きを変える。スマホは右下のボタン。階は左のボタン、Esc でおわり", 9000);
+  } else {
+    controls3d.enabled = true;
+    ex.keys.clear(); ex.pad.f = ex.pad.t = 0;
+    if (ex.saved) { persp.position.copy(ex.saved[0]); controls3d.target.copy(ex.saved[1]); }
+    showGeoMsg("校内探検をおわりました", 2500);
+  }
+  applyMode();
   poke();
-});
+}
+function updateExplore(dt) {
+  const k = ex.keys, f = state.floor || 1;
+  const fwd = (k.has("w") || k.has("arrowup") ? 1 : 0) - (k.has("s") || k.has("arrowdown") ? 1 : 0) + ex.pad.f;
+  const side = (k.has("d") ? 1 : 0) - (k.has("a") ? 1 : 0);
+  const turn = (k.has("arrowleft") || k.has("q") ? 1 : 0) - (k.has("arrowright") || k.has("e") ? 1 : 0) + ex.pad.t;
+  ex.yaw += turn * dt * 1.8;
+  if (fwd || side) {
+    const sp = 2.2 * dt, fx = -Math.sin(ex.yaw), fz = -Math.cos(ex.yaw);
+    const mx = (fx * fwd - fz * side) * sp, mz = (fz * fwd + fx * side) * sp;
+    // 壁（建物のはし）にぶつかったら、すべるように横へ
+    if (canStand(ex.x + mx, ex.z + mz, f)) { ex.x += mx; ex.z += mz; }
+    else if (canStand(ex.x + mx, ex.z, f)) ex.x += mx;
+    else if (canStand(ex.x, ex.z + mz, f)) ex.z += mz;
+  }
+  ex.y += (floorY(ex.x, ex.z, f) - ex.y) * Math.min(1, dt * 8);
+  const eye = new THREE.Vector3(ex.x, ex.y + EYE, ex.z);
+  persp.position.copy(eye);
+  const look = new THREE.Vector3(-Math.sin(ex.yaw) * Math.cos(ex.pitch), Math.sin(ex.pitch), -Math.cos(ex.yaw) * Math.cos(ex.pitch));
+  controls3d.target.copy(eye).add(look);
+  persp.lookAt(controls3d.target);
+}
+document.getElementById("walk-btn").addEventListener("click", () => setExplore(!ex.on));
+// キーボード（探検中は、カメラの操作のかわりに歩く）
+window.addEventListener("keydown", (e) => {
+  if (!ex.on || e.target.closest?.("input, textarea")) return;
+  const k = e.key.toLowerCase();
+  if (k === "escape") { setExplore(false); e.stopImmediatePropagation(); return; }
+  if (["w", "a", "s", "d", "q", "e", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) { ex.keys.add(k); e.preventDefault(); e.stopImmediatePropagation(); }
+}, true);
+window.addEventListener("keyup", (e) => ex.keys.delete(e.key.toLowerCase()), true);
+window.addEventListener("blur", () => ex.keys.clear());
+// ドラッグで見まわす
+{
+  let last = null;
+  const el = labelRenderer.domElement;
+  el.addEventListener("pointerdown", (e) => { if (ex.on) last = [e.clientX, e.clientY]; });
+  window.addEventListener("pointermove", (e) => {
+    if (!ex.on || !last || !e.buttons) return;
+    ex.yaw += (e.clientX - last[0]) * 0.005;
+    ex.pitch = Math.max(-1.2, Math.min(1.0, ex.pitch + (e.clientY - last[1]) * 0.004));
+    last = [e.clientX, e.clientY];
+    poke();
+  });
+  window.addEventListener("pointerup", () => { last = null; });
+}
+// スマホ用のボタン（おしているあいだ動く）
+{
+  const pad = document.createElement("div");
+  pad.className = "explore-pad";
+  pad.innerHTML = `<button data-f="1" aria-label="前へ">▲</button><button data-t="1" aria-label="左を向く">⟲</button><button data-t="-1" aria-label="右を向く">⟳</button><button data-f="-1" aria-label="後ろへ">▼</button><button class="ex-end" aria-label="探検をおわる">おわる</button>`;
+  document.body.appendChild(pad);
+  pad.addEventListener("pointerdown", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    e.preventDefault();
+    if (b.classList.contains("ex-end")) { setExplore(false); return; }
+    if (b.dataset.f) ex.pad.f = Number(b.dataset.f);
+    if (b.dataset.t) ex.pad.t = Number(b.dataset.t);
+    b.setPointerCapture(e.pointerId);
+  });
+  const stop = (e) => { const b = e.target.closest?.("button"); if (b?.dataset.f) ex.pad.f = 0; if (b?.dataset.t) ex.pad.t = 0; };
+  pad.addEventListener("pointerup", stop); pad.addEventListener("pointercancel", stop);
+  pad.addEventListener("contextmenu", (e) => e.preventDefault());
+}
 
 // ---------- はじめの表示 ----------
 // 動かない屋外の部品を、材質ごとにまとめて軽くする

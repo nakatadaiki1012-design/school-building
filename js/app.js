@@ -1958,7 +1958,7 @@ for (const f of [1, 2, 3]) {
   layers.wallsBelow[f] = wallsBelow;
   scene.add(wallsBelow);
   // 廊下に面した入口のドア：教室の家具の置き方にドアがない部屋は、廊下（部屋のない建物の中）に面した辺にドアをつける
-  const NO_DOOR = /年\d+組|選択|オーラル|社会科教室|音楽室|昇降口|玄関|ホール|吹抜|バルコニー|光庭|体育館|ステージ|ラウンジ|らくらく|STUDY HALL|部室|窯|倉庫|受水槽|電気室/;
+  const NO_DOOR = /年\d+組|選択|オーラル|社会科教室|音楽室|昇降口|玄関|ホール|吹抜|バルコニー|光庭|体育館|ステージ|ラウンジ|らくらく|STUDY HALL|部室|窯/;
   const roomCells = new Set();
   for (const q of ROOMS.filter((x) => x.floor === f)) for (let c = Math.floor(q.c0); c <= Math.ceil(q.c1); c++) for (let rr = q.r0; rr <= q.r1; rr++) roomCells.add(key(c, rr));
   const autoDoors = (x) => {
@@ -1969,6 +1969,11 @@ for (const f of [1, 2, 3]) {
     let best = null, bestN = 0;
     for (const [d, ks] of Object.entries(sides)) {
       const n = ks.filter((k) => OCC[f].has(k) && !roomCells.has(k)).length;
+      if (n > bestN && n >= Math.min(2, ks.length)) { best = d; bestN = n; }
+    }
+    // 廊下に面していない部屋（倉庫・設備の部屋など）は、外に面した辺に入口をつける（入口のない部屋をなくす）
+    if (!best) for (const [d, ks] of Object.entries(sides)) {
+      const n = ks.filter((k) => !OCC[f].has(k)).length;
       if (n > bestN && n >= Math.min(2, ks.length)) { best = d; bestN = n; }
     }
     // 前と後ろに入口がある特別教室

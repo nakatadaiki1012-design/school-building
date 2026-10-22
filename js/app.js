@@ -1262,7 +1262,7 @@ function rustTex() {
   const gx = X(7), gz0 = Z(1), gz1 = Z(39), gxe = X(27);
   // 2階の高さで体育館を囲む外廊下（渡り廊下）。東側で中央棟からの渡り廊下につながり、南の2階の玄関まで行ける
   const ty = FH + GYM_LIFT, dw = 3; // 床の高さ（体育館の2階は校舎より高い）、幅
-  const zTop = gz0 + 2, zBot = gz1 + 2.5;
+  const zTop = gz0 + 2, zBot = gz1 + 1.2; // 南の外廊下はせまく（図書室の棟とあくように）
   const deck = (x0, x1, z0, z1) => box(geos2, x1 - x0, 0.3, z1 - z0, (x0 + x1) / 2, ty - 0.15, (z0 + z1) / 2);
   // 外廊下の腰壁（写真では高め、約1.6m）
   const rail = (x0, x1, z0, z1) => box(geos2, Math.max(0.18, x1 - x0), 1.6, Math.max(0.18, z1 - z0), (x0 + x1) / 2, ty + 0.65, (z0 + z1) / 2);
@@ -1273,16 +1273,16 @@ function rustTex() {
   deck(so - sw - 0.2, so, zTop, zTop + landL);  // 北西の踊り場（外廊下の外）
   // 西側の2階の外廊下（体育館の長さいっぱい）
   // 写真：体育館の西の壁ぞいに、北の踊り場から南へ1階へ下りる外階段。その南から外廊下が続く
-  deck(gx - sw - 0.2, gx, zTop, gz1 + 2.5);       // 外廊下は北から南までつながる
-  rail(so, so, zTop + landL + stairL, gz1 + 2.5);  // 階段の南から先の外廊下の手すり
+  deck(gx - sw - 0.2, gx, zTop, zBot);       // 外廊下は北から南までつながる
+  rail(so, so, zTop + landL + stairL, zBot);  // 階段の南から先の外廊下の手すり
   rail(so - sw - 0.2, so - sw - 0.2, zTop, zTop + landL); // 踊り場の西の手すり
   rail(so - sw - 0.2, so, zTop, zTop);
-  rail(gx - sw - 0.2, gx, gz1 + 2.5, gz1 + 2.5); // 西の外廊下の南のはし（落ちないように手すり）
+  rail(gx - sw - 0.2, gx, zBot, zBot); // 西の外廊下の南のはし（落ちないように手すり）
   deck(gx, gxe + dw, gz1, zBot);                // 南
   deck(gxe, gxe + dw, zTop, gz1);               // 東
   rail(gx - sw - 0.2, gx, zTop, zTop);
   // 南：保健体育科準備室（西の端）の前が踊り場。そこから東へ下りる外階段
-  const pl = 3.2, sl = 9.4, SW = 3.4; // SW：体育準備室の前の外階段の幅（幅広）
+  const pl = 2.6, sl = 9.4, SW = 2.6; // SW：体育準備室の前の外階段の幅（図書室の棟とあくように少しせまく）
   deck(gx, gx + pl, zBot, zBot + SW);
   rail(gx + pl, gx + pl + sl, zBot, zBot);
   rail(gx + pl + sl + 2.4, gxe + dw, zBot, zBot); // 上の階段の踊り場のところはあけておく

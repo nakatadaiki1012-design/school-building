@@ -407,6 +407,11 @@ const SHAPES = {
   sinkCounter: [[M(0xd9d6cf), merge([b(0.6, 0.85, 1.8)])], [M(0xb8bcc0, { metalness: 0.5 }), merge([b(0.45, 0.02, 0.7, 0, 0.86)])]],
   magazineRack: [[M(0xd8d2c0), merge([b(0.35, 1.9, 1.0)])], [MAT.books, merge([0.3, 0.65, 1.0, 1.35, 1.7].map((h) => b(0.06, 0.28, 0.9, -0.18, h)))]],
   pamphletCart: [[M(0xf0ece0), merge([b(0.6, 0.03, 0.9, 0, 0.3), b(0.6, 0.03, 0.9, 0, 0.6), ...legs(0.6, 0.9, 1.0, 0.03)])], [MAT.books, merge([b(0.5, 0.35, 0.85, 0, 0.95).rotateZ(-0.3)])]],
+  cookIsland: [[M(0xf4f2ec), merge([b(1.2, 0.8, 1.8)])], [M(0xe8d5c4), merge([b(1.22, 0.45, 0.5, 0, 0.15, -0.5), b(1.22, 0.45, 0.5, 0, 0.15, 0.5)])], [M(0xb8bcc0, { metalness: 0.6, roughness: 0.3 }), merge([b(1.25, 0.04, 1.85, 0, 0.8)])], [MAT.black, merge([b(0.7, 0.03, 0.45, 0, 0.84, -0.55), b(0.6, 0.06, 0.5, 0, 0.82, 0.5)])]],
+  longTable: [[M(0xeceae4), merge([b(0.6, 0.04, 1.75, 0, 0.7)])], [MAT.metal, merge(legs(0.55, 1.7, 0.7, 0.03))]],
+  greenStool: [[M(0x5f9a3c), merge([new THREE.CylinderGeometry(0.17, 0.17, 0.06, 12).translate(0, 0.6, 0)])], [MAT.metal, merge([b(0.03, 0.6, 0.03, 0.1, 0, 0.1), b(0.03, 0.6, 0.03, -0.1, 0, -0.1), b(0.03, 0.6, 0.03, 0.1, 0, -0.1), b(0.03, 0.6, 0.03, -0.1, 0, 0.1)])]],
+  dishCabinet: [[M(0xb07a4a), merge([b(0.45, 0.9, 0.95), b(0.4, 1.0, 0.95, 0.02, 0.9)])], [MAT.transom, merge([b(0.42, 0.85, 0.85, 0.03, 0.98)])]],
+  fridge: [[M(0xdcdcdc, { metalness: 0.3 }), merge([b(0.7, 1.8, 0.7)])]],
   hallWindow: [[MAT.transom, merge([b(1.7, 0.42, 0.24, 0, 1.92), b(1.7, 0.32, 0.24, 0, 0.12)])], [MAT.doorFrame, merge([b(1.78, 0.04, 0.26, 0, 2.34), b(1.78, 0.04, 0.26, 0, 1.88), b(0.04, 0.46, 0.26, 0, 1.88)])]],
   // 壁より厚くして、教室の中からも廊下からも見えるようにする
   // 4枚の大きな両引き戸（体育館の入口）。ガラスの入ったアルミの戸
@@ -963,7 +968,27 @@ const LAYOUTS = [
     o.push({ t: "cabinet", x: x1 - 0.3, z: z1 - 0.8, rot: Math.PI }); // 顕微鏡保管庫
   }],
   [/化学実験室|物理実験室|生物実験室/, (o, R) => lab(o, R)],
-  [/調理室/, (o, R) => lab(o, R, "cookBench", true)],
+  // 調理室（写真）：前（黒板側）の半分に、流しとガスコンロのついた白い調理台が2列×3つ。後ろの半分は白い長机と緑の丸いすで、
+  // 窓側に2列・廊下側に1列。廊下側の壁ぞいに木の食器棚、前のすみに冷蔵庫、窓側にテレビ
+  [/調理室/, (o, R) => {
+    const { x0, x1, z0, z1 } = R, L = x1 - x0, W = z1 - z0;
+    o.push({ t: "blackboard", x: x0 + 0.12, z: z0 + W * 0.55, rot: 0 });
+    o.push({ t: "fridge", x: x0 + 0.4, z: z0 + 0.5, rot: 0 }, { t: "fridge", x: x0 + 0.4, z: z0 + 1.3, rot: 0 });
+    const xm = x0 + L * 0.48;
+    for (let i = 0; i < 3; i++) for (const f of [0.4, 0.72]) {
+      const x = x0 + 2.0 + i * ((xm - x0 - 2.4) / 2), z = z0 + W * f;
+      o.push({ t: "cookIsland", x, z, rot: 0 });
+    }
+    for (const f of [0.84, 0.6, 0.26]) {
+      const z = z0 + W * f;
+      for (let x = xm + 0.9; x < x1 - 0.9; x += 1.8) {
+        o.push({ t: "longTable", x, z, rot: Math.PI / 2 }); // 長机は部屋の長い向き（前後）にならぶ
+        for (const sd of [-1, 1]) for (const k of [-0.45, 0.45]) o.push({ t: "greenStool", x: x + k, z: z + sd * 0.5, rot: 0 });
+      }
+    }
+    for (let x = xm + 0.4; x < x1 - 0.5; x += 1.0) o.push({ t: "dishCabinet", x, z: z0 + 0.3, rot: Math.PI / 2 });
+    o.push({ t: "tvStand", x: xm - 0.3, z: z1 - 0.6, rot: 0 });
+  }],
   [/被服室/, sewing],
   [/コンピューター/, computers],
   [/視聴覚/, theater],

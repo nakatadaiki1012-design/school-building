@@ -1821,6 +1821,7 @@ for (const f of [1, 2, 3]) {
       if (/ステージ/.test(r.name)) tint = new THREE.Color(0xc99560); // ステージの木の床
       else if (/卓球場/.test(r.name)) { map = null; tint = new THREE.Color(0x2f7a72); } // 卓球場の床は緑がかった青の樹脂の床（写真）
       else if (/^土間$/.test(r.name)) { map = texBrickFloor.clone(); map.needsUpdate = true; map.repeat.set(r.w / 3, r.d / 3); tint = new THREE.Color(0xffffff); } // 土間はレンガ色のタイル
+      else if (/調理室/.test(r.name)) { map = null; tint = new THREE.Color(0x8a9a88); } // 調理室の床は灰色がかった緑（写真）
       else if (/社会科教室/.test(r.name)) { map = null; tint = new THREE.Color(0x8a9c8c); } // 社会科教室の床は灰色がかった緑（写真）
       else if (/^音楽室$/.test(r.name)) { map = null; tint = new THREE.Color(0x7b2733); } // 音楽室の床はえんじ色
       else if (/STUDY HALL/.test(r.name)) { map = null; tint = new THREE.Color(0x8a7c6c); } // STUDY HALL の床は灰色がかった茶色（写真）

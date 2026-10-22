@@ -1602,8 +1602,11 @@ scene.add(outdoor);
   // 2階は吹き抜け。3階の床の裏（天井）と、それを支える2階分の高さの柱
   const low = [], high = [];
   const box = (list, bw2, bh2, bd, x, y, z) => { const g = new THREE.BoxGeometry(bw2, bh2, bd); g.translate(x, y, z); list.push(g); };
-  // 柱は茶色（写真）。床の裏は白
+  // 柱はテラコッタ色、天井はこげ茶の板張り（昇降口前の写真）
   const cols = [];
+  const soffitTex = canvasTex(64, 64, (c, w, h) => { c.fillStyle = "#4e3528"; c.fillRect(0, 0, w, h); c.fillStyle = "rgba(0,0,0,0.3)"; for (let y = 0; y < h; y += 4) c.fillRect(0, y, w, 1); });
+  soffitTex.repeat.set(1, 20);
+  const soffitMat = new THREE.MeshStandardMaterial({ map: soffitTex, roughness: 0.8 });
   // 2階の渡り廊下の床の裏と、吹き抜けの上の3階の床の裏
   const bx0 = X(PILOTIS.bridge[0]), bx1 = X(PILOTIS.bridge[1] + 1);
   box(low, bx1 - bx0, 0.4, d, (bx0 + bx1) / 2, FH - 0.2, (rc.z0 + rc.z1) / 2);
@@ -1619,14 +1622,16 @@ scene.add(outdoor);
     box(cols, 0.5, FH, 0.5, bx1 - 0.3, FH / 2 - 0.2, z);
     box(cols, 0.5, FH, 0.5, bx0 + 0.3, FH / 2 - 0.2, z);
   }
-  const brownCol = new THREE.MeshStandardMaterial({ color: 0x7a4b38, roughness: 0.85 });
+  // 写真：柱は赤みのあるテラコッタ色で、たての溝が2本。下のほうは灰色のコンクリートの台
+  const colTex = canvasTex(64, 128, (c, w, h) => { c.fillStyle = "#a8705e"; c.fillRect(0, 0, w, h); noise(c, w, h, 0.12, 600); c.fillStyle = "rgba(60,30,20,0.35)"; c.fillRect(w * 0.3, 0, 2, h); c.fillRect(w * 0.68, 0, 2, h); c.fillStyle = "#9a9a90"; c.fillRect(0, h * 0.86, w, h * 0.14); });
+  const brownCol = new THREE.MeshStandardMaterial({ map: colTex, roughness: 0.85 });
   for (const [list, f] of [[cols, 1], [colsHigh, 2]]) {
     const cm = new THREE.Mesh(mergeGeometries(list), brownCol);
     cm.castShadow = cm.receiveShadow = true;
     inBlock(layers.exterior[f], b).add(cm);
   }
   for (const [list, f] of [[low, 1], [high, 2]]) {
-    const m = new THREE.Mesh(mergeGeometries(list), matRelief);
+    const m = new THREE.Mesh(mergeGeometries(list), soffitMat); // 天井（床の裏）はこげ茶の板張り（写真）
     m.castShadow = m.receiveShadow = true;
     // 3階の床の裏（吹き抜けの天井）は、2階を見ているときはじゃまなので屋根と同じあつかい
     inBlock(f === 2 ? layers.roofs[2] : layers.exterior[f], b).add(m);
@@ -2757,6 +2762,17 @@ document.getElementById("here-btn").addEventListener("click", () => {
   document.getElementById("here-btn").classList.add("active");
   geoWatch = navigator.geolocation.watchPosition(onGeo, onGeoErr, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
 });
+
+// STUDY HALL 横の階段（1階は南の昇降口の奥）：階段の両側は、昇降口の写真のような赤茶色の壁
+{
+  const st = STAIRS.find((x) => x.name === "STUDY HALL横の階段"), b = blockAtCell(st.c0, st.r0), rc = rectOf(st);
+  const tex = canvasTex(64, 64, (c, w, h) => { c.fillStyle = "#c4917e"; c.fillRect(0, 0, w, h); noise(c, w, h, 0.06, 500); });
+  const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.9 });
+  const g = [];
+  for (const z of [rc.z0 + 0.1, rc.z1 - 0.1]) g.push(new THREE.BoxGeometry(rc.x1 - rc.x0, FH - 0.05, 0.2).translate((rc.x0 + rc.x1) / 2, (FH - 0.05) / 2, z));
+  const m = new THREE.Mesh(mergeGeometries(g), mat); m.castShadow = m.receiveShadow = true;
+  inBlock(layers.rooms[1], b).add(m);
+}
 
 // ---------- 校内探検（一人称視点） ----------
 // 自分の目の高さで、校舎の中を歩いて見てまわる。歩けるのは建物の床の上だけ（外や吹き抜け・階段の穴には落ちない）。

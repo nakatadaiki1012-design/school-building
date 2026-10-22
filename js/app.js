@@ -2177,15 +2177,6 @@ function selectRoom(r, { fly = true } = {}) {
     }
   }
   const cat = CATEGORIES[r.cat];
-  const toiletM = nearest(r, (o) => /男子トイレ|みんなのトイレ/.test(o.name));
-  const toiletF = nearest(r, (o) => /女子トイレ|みんなのトイレ/.test(o.name));
-  const stairs = nearest(r, (o) => o.kind === "stairs");
-  const nearby = [];
-  if (r.cat !== "toilet") {
-    if (toiletM) nearby.push(`<li>🚹 ${roomLink(toiletM.room, ` <span class="dist">約${toiletM.dist}m</span>`)}</li>`);
-    if (toiletF && toiletF.room !== toiletM?.room) nearby.push(`<li>🚺 ${roomLink(toiletF.room, ` <span class="dist">約${toiletF.dist}m</span>`)}</li>`);
-  }
-  if (stairs && r.kind !== "stairs") nearby.push(`<li>🪜 ${roomLink(stairs.room, ` <span class="dist">約${stairs.dist}m</span>`)}</li>`);
   const sameFloor = r.kind === "stairs"
     ? `<p class="muted">この階段で行ける階：${STAIRS.find((s) => s.name === r.name).floors.map((f) => `<button class="link" data-floor="${f}">${f}階</button>`).join(" ")}</p>`
     : "";
@@ -2196,7 +2187,6 @@ function selectRoom(r, { fly = true } = {}) {
     ${(() => { const ph = r.photos ? [, r.photos] : PHOTOS.find(([re, , fl]) => re.test(r.name) && (fl === undefined || fl === r.floor)); return ph ? photosHtml([].concat(ph[1]), r.name) : ""; })()}
     <p class="desc">${r.desc || "（紹介文はまだありません）"}</p>
     ${sameFloor}
-    ${nearby.length ? `<h3>近くにあるもの</h3><ul class="nearby">${nearby.join("")}</ul>` : ""}
     <p class="share"><button class="link" id="copy-link">🔗 この部屋へのリンクをコピー</button></p>
   `;
   openPanel();
@@ -2275,12 +2265,14 @@ labelRenderer.domElement.addEventListener("pointerup", (e) => {
       const [dx, dz] = toDrawing(p.x, p.z);
       const c = dx / CW + C_MID, r = dz / RH + R_MID;
       const w = WINGS.find((w) => areasOf(w).some((a) => c >= a[0] - 0.5 && c <= a[2] + 1.5 && r >= a[1] - 0.5 && r <= a[3] + 1.5));
-      if (w) showWing(w);
+      if (w) { showWing(w); return; }
     }
+    closePanel(); // 何もないところを押したら、紹介を閉じる
     return;
   }
   const hits = ray.intersectObjects(pickables.filter((m) => m.userData.room.floor === state.floor), false);
   if (hits.length) selectRoom(hits[0].object.userData.room, { fly: false });
+  else closePanel(); // 部屋のないところを押したら、紹介を閉じる
 });
 
 // ---------- 検索 ----------

@@ -1990,7 +1990,8 @@ for (const w of WINGS) {
   obj.position.set(wx, top, wz);
   wingLabels.add(obj);
 }
-// まわりの施設のラベル
+// まわりの施設のラベル（外観でも、階を見ているときでも出す）
+const siteLabels = new THREE.Group();
 for (const it of SITE_INFO) {
   if (it.key && !SITE[it.key]) continue; // key のない項目は、いつも表示する
   const div = document.createElement("div");
@@ -2000,9 +2001,9 @@ for (const it of SITE_INFO) {
   div.addEventListener("click", (e) => { e.stopPropagation(); showSite(it); });
   const obj = new CSS2DObject(div);
   obj.position.set(it.x, 5, it.z);
-  wingLabels.add(obj);
+  siteLabels.add(obj);
 }
-scene.add(wingLabels);
+scene.add(wingLabels, siteLabels);
 
 // ---------- 表示の切り替え ----------
 const state = { floor: 0, view: "3d", selected: null };
@@ -2066,6 +2067,7 @@ function applyMode() {
   }
   gymRoof.visible = f === 0;
   setLabelsVisible(wingLabels, f === 0 && labelsOn);
+  setLabelsVisible(siteLabels, labelsOn && !ex.on);
   document.querySelectorAll(".floor-btn").forEach((b) => b.classList.toggle("active", Number(b.dataset.floor) === f));
   document.querySelectorAll(".view-btn").forEach((b) => b.classList.toggle("active", b.dataset.view === state.view));
   document.getElementById("view-toggle").classList.toggle("disabled", f === 0);
@@ -2532,7 +2534,7 @@ resize();
 // 名前ラベルが重なったら、小さい部屋のほうを隠す
 let lastDeclutter = 0;
 function declutter() {
-  const groups = state.floor === 0 ? [wingLabels] : [layers.labels[state.floor]];
+  const groups = state.floor === 0 ? [wingLabels, siteLabels] : [layers.labels[state.floor], siteLabels];
   const items = [];
   for (const g of groups) {
     if (!g.visible) continue;

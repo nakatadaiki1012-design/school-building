@@ -1884,7 +1884,7 @@ for (const f of [1, 2, 3]) {
     return best ? [/被服室|コンピューター|調理室|実験室|美術教室|工芸教室/.test(x.name) ? best + "2" : best] : null;
   };
   // 家具（伸び縮みさせず、航空写真に合わせたあとの部屋の大きさで置く）
-  const toItem = (x) => ({ floor: f, name: x.kind === "part" ? (x.parent.name === "事務室" ? "受付カウンター" : x.parent.name + "（L字）") : x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd, vending: x.kind === "part" ? null : styleOf(x)?.vending, vendingN: styleOf(x)?.vendingN, vendingShift: styleOf(x)?.vendingShift, doors: x.kind === "part" ? null : styleOf(x)?.doors || autoDoors(x) });
+  const toItem = (x) => ({ floor: f, name: x.kind === "part" ? (x.parent.name === "事務室" ? "受付カウンター" : x.parent.name + "（L字）") : x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd, vending: x.kind === "part" ? null : styleOf(x)?.vending, vendingN: styleOf(x)?.vendingN, vendingShift: styleOf(x)?.vendingShift, doors: x.kind === "part" ? styleOf(x.parent)?.partDoors || null : styleOf(x)?.doors || autoDoors(x) });
   const onFloor = ROOMS.filter((x) => x.floor === f && (x.kind === "room" || x.kind === "part"));
   const inGym = (x) => f >= 2 && x.block.id === "gym";
   const furn = new THREE.Group();

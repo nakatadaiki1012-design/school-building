@@ -1322,6 +1322,19 @@ function rustTex() {
   deck(gx + pl + sl, gx + pl + sl + 2.4, zBot, zBot + SW); // 2階：上の階段の上り口の踊り場
   rail(gx + pl + sl + 2.4, gx + pl + sl + 2.4, zBot, zBot + SW);
   stair(geos1, gx + pl + sl, zBot + SW / 2, gx + pl, zBot + SW / 2, ty, 2 * FH + GYM_LIFT, SW - 0.1);
+  // 2階→3階の階段の両側のななめの手すり壁と、上りきった3階の踊り場（卓球場の入口の前）とそのまわりの手すり壁
+  {
+    const y3 = 2 * FH + GYM_LIFT, rise = y3 - ty, ang = Math.atan2(rise, sl), len = Math.hypot(sl, rise);
+    for (const z of [zBot + 0.08, zBot + SW - 0.08]) {
+      const g = new THREE.BoxGeometry(len, 1.0, 0.15).rotateZ(-ang).translate(gx + pl + sl / 2, (ty + y3) / 2 + 0.55, z);
+      geos2.push(g);
+    }
+    box(geos2, pl, 0.3, zBot + SW - gz1, gx + pl / 2, y3 - 0.15, (gz1 + zBot + SW) / 2); // 3階の踊り場
+    const r3 = (x0, x1, z0, z1) => box(geos2, Math.max(0.15, x1 - x0), 1.1, Math.max(0.15, z1 - z0), (x0 + x1) / 2, y3 + 0.55, (z0 + z1) / 2);
+    r3(gx, gx, gz1, zBot + SW);                 // 西
+    r3(gx, gx + pl, zBot + SW, zBot + SW);      // 南
+    r3(gx + pl, gx + pl, gz1, zBot);            // 東（階段の上り口の北どなり）
+  }
   // 3階の卓球場の入口：外階段を上りきった踊り場の前に、ガラスの引き戸2枚と、その上の壁
   {
     const y3 = 2 * FH + GYM_LIFT, dx0 = X(7), dx1 = X(9), dwid = dx1 - dx0;
@@ -2927,3 +2940,4 @@ if (m && ROOM_BY_ID[m[1]]) selectRoom(ROOM_BY_ID[m[1]]);
 requestAnimationFrame(tick);
 document.getElementById("loading").remove();
 
+window.__flyTo = (p, t) => flyTo(new THREE.Vector3(...p), new THREE.Vector3(...t), 10);

@@ -405,6 +405,8 @@ const SHAPES = {
   longBench: [[M(0xa8643a), merge([b(0.28, 0.05, 1.7, 0, 0.42), b(0.06, 0.42, 0.06, 0, 0, -0.75), b(0.06, 0.42, 0.06, 0, 0, 0.75)])]],
   microscope: [[M(0xf2f2ee), merge([b(0.14, 0.04, 0.18, 0, 0.78), b(0.05, 0.25, 0.06, 0.05, 0.8)])], [MAT.black, merge([b(0.12, 0.02, 0.12, 0, 0.92), new THREE.CylinderGeometry(0.025, 0.025, 0.14, 8).rotateZ(0.5).translate(0.02, 1.1, 0)])]],
   sinkCounter: [[M(0xd9d6cf), merge([b(0.6, 0.85, 1.8)])], [M(0xb8bcc0, { metalness: 0.5 }), merge([b(0.45, 0.02, 0.7, 0, 0.86)])]],
+  magazineRack: [[M(0xd8d2c0), merge([b(0.35, 1.9, 1.0)])], [MAT.books, merge([0.3, 0.65, 1.0, 1.35, 1.7].map((h) => b(0.06, 0.28, 0.9, -0.18, h)))]],
+  pamphletCart: [[M(0xf0ece0), merge([b(0.6, 0.03, 0.9, 0, 0.3), b(0.6, 0.03, 0.9, 0, 0.6), ...legs(0.6, 0.9, 1.0, 0.03)])], [MAT.books, merge([b(0.5, 0.35, 0.85, 0, 0.95).rotateZ(-0.3)])]],
   hallWindow: [[MAT.transom, merge([b(1.7, 0.42, 0.24, 0, 1.92), b(1.7, 0.32, 0.24, 0, 0.12)])], [MAT.doorFrame, merge([b(1.78, 0.04, 0.26, 0, 2.34), b(1.78, 0.04, 0.26, 0, 1.88), b(0.04, 0.46, 0.26, 0, 1.88)])]],
   // 壁より厚くして、教室の中からも廊下からも見えるようにする
   // 4枚の大きな両引き戸（体育館の入口）。ガラスの入ったアルミの戸
@@ -1054,6 +1056,13 @@ const LAYOUTS = [
     o.push({ t: "printerDesk", x: x1 - 0.4, z: z0 + (z1 - z0) * 0.62, rot: 0 });
     o.push({ t: "shelf", x: x1 - 0.25, z: z0 + (z1 - z0) * 0.28, rot: Math.PI }, { t: "cabinet", x: x1 - 0.3, z: z0 + 0.7, rot: Math.PI });
     o.push({ t: "collator", x: x0 + 0.5, z: z1 - 1.0, rot: 0 }, { t: "table", x: x0 + 0.5, z: z1 - 2.3, rot: 0 }, { t: "officeChair", x: x0 + 0.6, z: z0 + (z1 - z0) * 0.4, rot: Math.PI / 2 });
+  }],
+  // 進路情報コーナー（写真）：東の壁ぞいに、本を見せる棚、パンフレットのワゴン（専門学校・大学）、上に緑の掲示板
+  [/進路情報コーナー/, (o, R) => {
+    const { x1, z0, z1 } = R, x = x1 - 0.3;
+    o.push({ t: "magazineRack", x, z: z0 + 0.6, rot: Math.PI });
+    for (let z = z0 + 1.6; z < z1 - 0.4; z += 1.0) o.push({ t: "pamphletCart", x: x - 0.1, z, rot: Math.PI });
+    o.push({ t: "bulletin", x: x1 + 0.1, z: (z0 + 1.6 + z1) / 2, rot: Math.PI });
   }],
   [/ラウンジ/, (o, R) => {
     const { x0, x1, z0, z1 } = R;

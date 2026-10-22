@@ -384,7 +384,7 @@ export const FACADE = {
   libglass: [[9, 44, 10, 58, "w"]],
   // 窓のない壁 [階, c0, r0, c1, r1, 向き]：2階の練習室の北の壁
   // 1階の、2号館と3号館のあいだのすきまに面した壁（中央棟の東と、3号館の東はしの手洗い場の北）も窓なし。3階の視聴覚教室の北の壁も窓なし。図書室の北の壁も、まんなかの少しだけが窓で、ほかは壁（内側は本棚）
-  plain: [[2, 33, 9, 39, 9, "n"], [3, 33, 9, 39, 9, "n"], [1, 41, 59, 41, 62, "e"], [1, 42, 63, 44, 63, "n"], [2, 9, 44, 14, 44, "n"], [2, 17, 44, 22, 44, "n"]],
+  plain: [[1, 7, 3, 26, 3, "n"], [1, 7, 19, 7, 28, "w"], [2, 33, 9, 39, 9, "n"], [3, 33, 9, 39, 9, "n"], [1, 41, 59, 41, 62, "e"], [1, 42, 63, 44, 63, "n"], [2, 9, 44, 14, 44, "n"], [2, 17, 44, 22, 44, "n"]],
   // 半円のバルコニー（x: 東の壁の位置、z: まんなか）。1号館は2-1・1-1の教室のとなり、
   // 2号館は職員室・コミュニティルームのとなり、3号館は数学科・英語科準備室のとなり
   roundStairs: [
@@ -442,6 +442,7 @@ export const GYM_GALLERY = [[25, 4, 26, 34], [23, 4, 26, 7], [23, 33, 26, 38]];
 // 前の年度の図面のとおり、北側に左右に分かれた小さな練習室が2つある（あいだは通路）
 export const ROOM_EDITS = [
   { name: "音楽室", floor: 2, set: { r0: 12 } },
+  { name: "部室", floor: 1, atR: 19, set: { remove: true } }, // 西の部室は5つに分けて EXTRA_ROOMS に
   { name: "生物実験室", floor: 3, set: { photos: ["images/seibutsu-1.jpg", "images/seibutsu-2.jpg", "images/seibutsu-3.jpg"] } },
   { name: "職員室", floor: 2, set: { desc: "職員室の前には、指定校推薦の一覧や、奨学金、留学に関する情報などが掲示されています。", photos: ["images/shokuin-1.jpg"] } },
   { name: "生徒会室", floor: 3, set: { desc: "生徒会本部役員が活動しています。生徒からの意見を集める目安箱も設置されています。", photos: ["images/seitokai-1.jpg", "images/seitokai-2.jpg", "images/seitokai-3.jpg"] } },
@@ -450,7 +451,7 @@ export const ROOM_EDITS = [
   // 1・2階の職員WCは、細く半分に分かれている：西が男子、東が女子
   { name: "職員トイレ", floor: 2, set: { name: "職員男子トイレ", c1: 54.5 } },
   { name: "職員トイレ", floor: 1, set: { name: "職員男子トイレ", c1: 54.5 } },
-  { name: "事務室", floor: 1, set: { desc: "ご来校の際は、こちらから事務室にお声掛けください。", photos: ["images/jimu.jpg"] } },
+  { name: "事務室", floor: 1, set: { desc: "ご来校の際は、こちらから事務室にお声掛けください。", photos: ["images/jimu.jpg", "images/jimu-2.jpg"] } },
   // 視聴覚教室は北の壁まで広い（北の壁には窓がない）
   { name: "視聴覚教室", floor: 3, set: { r0: 9 } },
   // 音楽室・視聴覚教室のある中央棟の北の部分は、トイレの並ぶ1号館より北へ少し出ている（航空写真）。
@@ -515,6 +516,12 @@ export const EXTRA_ROOMS = [
   // 音楽室の北の2つの練習室：壁1枚をはさんでくっついている
   { id: "F2-SWC2", name: "職員女子トイレ", floor: 2, c0: 55.5, r0: 47, c1: 56, r1: 51 },
   { id: "F1-SWC2", name: "職員女子トイレ", floor: 1, c0: 55.5, r0: 47, c1: 56, r1: 51 },
+  // 体育館の1階の西の部室（写真）：西の外に入口が5つならぶ。北の2つはせまい
+  { id: "F1-CW1", name: "部室9", floor: 1, c0: 7, r0: 19, c1: 10, r1: 19.5 },
+  { id: "F1-CW2", name: "部室10", floor: 1, c0: 7, r0: 20.5, c1: 10, r1: 21 },
+  { id: "F1-CW3", name: "部室（女子陸上部）", floor: 1, c0: 7, r0: 22, c1: 10, r1: 23.3 },
+  { id: "F1-CW4", name: "部室（女子バスケ部）", floor: 1, c0: 7, r0: 24.3, c1: 10, r1: 25.6 },
+  { id: "F1-CW5", name: "部室（女子バレー部）", floor: 1, c0: 7, r0: 26.6, c1: 10, r1: 28 },
   { id: "F2-PR1", name: "練習室", floor: 2, c0: 33, r0: 9, c1: 35.5, r1: 11 },
   { id: "F2-PR2", name: "練習室", floor: 2, c0: 36.5, r0: 9, c1: 39, r1: 11 },
 ];
@@ -538,6 +545,9 @@ export const ROOM_STYLE = [
   { name: "玄関", floor: 1, r0: 19, open: ["n"], doors: ["s"] },
   // 事務室：廊下側（北）の入口は西のはし寄り
   { name: "事務室", floor: 1, doors: ["n@-0.38"] },
+  // 体育館の1階の部室：外への入口は両引き戸（北の部室は北、西の部室は西）
+  { name: "部室1", floor: 1, doors: ["n:clubDoor"] }, { name: "部室2", floor: 1, doors: ["n:clubDoor"] }, { name: "部室3", floor: 1, doors: ["n:clubDoor"] }, { name: "部室4", floor: 1, doors: ["n:clubDoor"] }, { name: "部室5", floor: 1, doors: ["n:clubDoor"] }, { name: "部室6", floor: 1, doors: ["n:clubDoor"] }, { name: "部室7", floor: 1, doors: ["n:clubDoor"] }, { name: "部室8", floor: 1, doors: ["n:clubDoor"] },
+  { name: "部室9", floor: 1, doors: ["w:clubDoor"] }, { name: "部室10", floor: 1, doors: ["w:clubDoor"] }, { name: "部室（女子陸上部）", floor: 1, doors: ["w:clubDoor"] }, { name: "部室（女子バスケ部）", floor: 1, doors: ["w:clubDoor"] }, { name: "部室（女子バレー部）", floor: 1, doors: ["w:clubDoor"] },
   // 売店：西（廊下側）に窓口
   { name: "売店", floor: 1, doors: ["w:receptionWindow"] },
   // 2号館の職員WC（1・2階）と3階のトイレ：廊下側（南）の入口は、色のついた枠の片引き戸（男子は青緑、女子はピンク）

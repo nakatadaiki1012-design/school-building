@@ -143,6 +143,10 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, Math.min(window.innerWidth, window.innerHeight) < 700 ? 1.5 : 2));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// 処理落ち対策①：太陽は動かないので、影は毎回計算しなおさず、見せるものが変わったとき（階の切りかえ・家具の表示など）だけ計算する
+renderer.shadowMap.autoUpdate = false;
+renderer.shadowMap.needsUpdate = true;
+const shadowsDirty = () => { renderer.shadowMap.needsUpdate = true; };
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
@@ -2007,6 +2011,7 @@ const gymBelow = (() => {
 })();
 
 function applyMode() {
+  shadowsDirty();
   const f = state.floor;
   gymBelow.visible = f === 3;
   entranceBelow.visible = f === 2;
@@ -2094,7 +2099,7 @@ const panelBody = document.getElementById("panel-body");
 function nearest(r, test) {
   let best = null, bd = Infinity;
   for (const o of ROOMS) {
-    if (o.floor !== r.floor || o === r || !test(o)) continue;
+    if (o.floor !== r.floor || o === r || !test(o) || isStaffOnly(o)) continue; // 先生用のトイレなどは案内しない
     const d = Math.hypot(o.wx - r.wx, o.wz - r.wz);
     if (d < bd) { bd = d; best = o; }
   }
@@ -2104,6 +2109,49 @@ function nearest(r, test) {
 function roomLink(o, extra = "") {
   return `<button class="link" data-room="${o.id}">${o.name}</button>${extra}`;
 }
+
+// 紹介写真：1枚目は大きく、2枚目からは小さな写真をならべる。押すと画面いっぱいに大きく見られる（左右にめくれる）
+function photosHtml(list, name) {
+  if (!list.length) return "";
+  const img = (src, i, cls) => `<img class="${cls}" src="${src}" data-i="${i}" alt="${name}の写真${list.length > 1 ? `（${i + 1}/${list.length}）` : ""}" loading="lazy">`;
+  return `<div class="photos" data-srcs="${list.join("|")}">${img(list[0], 0, "room-photo")}${list.length > 1 ? `<div class="thumbs">${list.slice(1).map((src, i) => img(src, i + 1, "thumb")).join("")}</div>` : ""}</div>`;
+}
+const lightbox = document.createElement("div");
+lightbox.className = "lightbox"; lightbox.hidden = true;
+lightbox.innerHTML = `<button class="lb-close" aria-label="閉じる">✕</button><button class="lb-prev" aria-label="前の写真">‹</button><img alt=""><button class="lb-next" aria-label="次の写真">›</button><p class="lb-count"></p>`;
+document.body.appendChild(lightbox);
+let lbList = [], lbI = 0;
+function lbShow(i) {
+  lbI = (i + lbList.length) % lbList.length;
+  lightbox.querySelector("img").src = lbList[lbI];
+  lightbox.querySelector(".lb-count").textContent = lbList.length > 1 ? `${lbI + 1} / ${lbList.length}` : "";
+  lightbox.querySelector(".lb-prev").hidden = lightbox.querySelector(".lb-next").hidden = lbList.length < 2;
+}
+document.addEventListener("click", (e) => {
+  const im = e.target.closest(".photos img");
+  if (!im) return;
+  lbList = im.closest(".photos").dataset.srcs.split("|");
+  lightbox.hidden = false;
+  lbShow(Number(im.dataset.i));
+});
+lightbox.addEventListener("click", (e) => {
+  if (e.target.closest(".lb-prev")) lbShow(lbI - 1);
+  else if (e.target.closest(".lb-next")) lbShow(lbI + 1);
+  else if (e.target.tagName !== "IMG") lightbox.hidden = true;
+});
+{ // スマホ：左右にスワイプでめくる
+  let sx = null;
+  lightbox.addEventListener("touchstart", (e) => { sx = e.touches[0].clientX; }, { passive: true });
+  lightbox.addEventListener("touchend", (e) => { if (sx === null) return; const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 40) lbShow(lbI + (dx < 0 ? 1 : -1)); sx = null; });
+}
+window.addEventListener("keydown", (e) => {
+  if (lightbox.hidden) return;
+  if (e.key === "Escape") lightbox.hidden = true;
+  else if (e.key === "ArrowRight") lbShow(lbI + 1);
+  else if (e.key === "ArrowLeft") lbShow(lbI - 1);
+  else return;
+  e.stopImmediatePropagation(); e.preventDefault();
+}, true);
 
 function selectRoom(r, { fly = true } = {}) {
   if (state.selected?.mesh) {
@@ -2141,7 +2189,7 @@ function selectRoom(r, { fly = true } = {}) {
     <div class="chip" style="--c:${cat.color}">${cat.label}</div>
     <h2>${r.name}</h2>
     <p class="where">${r.floor}階${r.wing ? `・<button class="link" data-wing="${r.wing.id}">${r.wing.name}</button>` : ""}</p>
-    ${(() => { const ph = r.photos ? [, r.photos] : PHOTOS.find(([re, , fl]) => re.test(r.name) && (fl === undefined || fl === r.floor)); return ph ? [].concat(ph[1]).map((src) => `<img class="room-photo" src="${src}" alt="${r.name}の写真" loading="lazy">`).join("") : ""; })()}
+    ${(() => { const ph = r.photos ? [, r.photos] : PHOTOS.find(([re, , fl]) => re.test(r.name) && (fl === undefined || fl === r.floor)); return ph ? photosHtml([].concat(ph[1]), r.name) : ""; })()}
     <p class="desc">${r.desc || "（紹介文はまだありません）"}</p>
     ${sameFloor}
     ${nearby.length ? `<h3>近くにあるもの</h3><ul class="nearby">${nearby.join("")}</ul>` : ""}
@@ -2174,7 +2222,7 @@ function showSite(it) {
   panelBody.innerHTML = `
     <div class="chip" style="--c:#cfe3c4">屋外の施設</div>
     <h2>${it.name}</h2>
-    ${[].concat(it.photos || []).map((src) => `<img class="room-photo" src="${src}" alt="${it.name}の写真" loading="lazy">`).join("")}
+    ${photosHtml([].concat(it.photos || []), it.name)}
     <p class="desc">${it.desc}</p>
     <p class="muted">${SITE_NOTE}</p>
   `;
@@ -2272,6 +2320,7 @@ let labelsOn = true;
 document.getElementById("labels-toggle").addEventListener("change", (e) => { labelsOn = e.target.checked; applyMode(); });
 document.getElementById("furniture-toggle").addEventListener("change", (e) => {
   for (const f of [1, 2, 3]) layers.furniture[f].visible = e.target.checked;
+  shadowsDirty();
 });
 
 // ---------- 見る方向 ----------
@@ -2480,7 +2529,19 @@ function declutter() {
 let activeUntil = 0, lastDraw = 0;
 const camKey = new Float64Array(18);
 const poke = () => { activeUntil = performance.now() + 1500; };
-for (const ev of ["pointerdown", "pointermove", "wheel", "keydown", "click", "touchstart", "touchmove", "resize"]) window.addEventListener(ev, poke, { passive: true, capture: true });
+for (const ev of ["pointerdown", "wheel", "keydown", "click", "touchstart", "touchmove", "resize"]) window.addEventListener(ev, poke, { passive: true, capture: true });
+// マウスを動かしただけ（ボタンを押していない）では描き直さない
+window.addEventListener("pointermove", (e) => { if (e.buttons) poke(); }, { passive: true, capture: true });
+// 処理落ち対策②：画面を動かしているあいだは解像度を少し下げて軽くし、止まったらきれいな解像度で描き直す。
+// 動かしているときに重い（1コマ40ms以上）なら、もう一段下げる
+const DPR_FULL = renderer.getPixelRatio();
+let dprLow = Math.min(DPR_FULL, 1), moving = false, slowFrames = 0, lastFrame = 0, lastMoveT = 0;
+function setMoving(m) {
+  if (m === moving) return;
+  moving = m;
+  renderer.setPixelRatio(m ? dprLow : DPR_FULL);
+  resize();
+}
 function cameraChanged(cam) {
   const e = cam.matrixWorld.elements;
   let ch = false;
@@ -2509,7 +2570,14 @@ function tick(now) {
   compassEl.style.transform = `rotate(${THREE.MathUtils.radToDeg(az)}deg)`;
   (cam === ortho ? controls2d : controls3d).update();
   cam.updateMatrixWorld();
-  if (anim || cameraChanged(cam) || now < activeUntil || now - lastDraw > 1000) {
+  const camMoved = cameraChanged(cam);
+  if (camMoved || anim) {
+    setMoving(true); lastMoveT = now;
+    const dt = now - lastFrame;
+    if (lastFrame && dt > 40 && dt < 500 && ++slowFrames > 20 && dprLow > 0.6) { dprLow = Math.max(0.6, dprLow - 0.2); slowFrames = 0; renderer.setPixelRatio(dprLow); resize(); }
+  } else if (moving && now - lastMoveT > 250) { setMoving(false); activeUntil = Math.max(activeUntil, now + 100); }
+  lastFrame = now;
+  if (anim || camMoved || now < activeUntil || now - lastDraw > 1000) {
     lastDraw = now;
     renderer.render(scene, cam);
     labelRenderer.render(scene, cam);

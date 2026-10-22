@@ -1758,6 +1758,8 @@ for (const f of [1, 2, 3]) {
       else map.repeat.set(r.w / 4, r.d / 4);
       if (/ステージ/.test(r.name)) tint = new THREE.Color(0xc99560); // ステージの木の床
       else if (/卓球場/.test(r.name)) { map = null; tint = new THREE.Color(0x2f7a72); } // 卓球場の床は緑がかった青の樹脂の床（写真）
+      else if (/^音楽室$/.test(r.name)) { map = null; tint = new THREE.Color(0x7b2733); } // 音楽室の床はえんじ色
+      else if (/STUDY HALL/.test(r.name)) { map = null; tint = new THREE.Color(0x8a7c6c); } // STUDY HALL の床は灰色がかった茶色（写真）
       else if (/コンピューター/.test(r.name)) tint = new THREE.Color(0x4a74c9); // コンピューター教室の床は青
       else if (/教室/.test(r.name) && st === "wood") tint = new THREE.Color(0xeadfc8); // 教室の床はうすいベージュ
     }
@@ -2484,28 +2486,33 @@ function tick(now) {
 function build2FHall(grp) {
   const white = matRelief, metal = new THREE.MeshStandardMaterial({ color: 0xc8ccd0, metalness: 0.6, roughness: 0.35 });
   const y = base(2);
-  // ① 吹き抜けの腰壁（北と東。北東の角は丸い）と、その上の金属の手すり
-  {
-    const rc = rectOf({ c0: 33, r0: 29, c1: 37, r1: 31 }), R = 0.9, t = 0.2, h = 1.0;
+  // ① 吹き抜けの腰壁と、その上の金属の手すり。コモンスペースの南の吹き抜けは北と東（北東の角が丸い）、
+  //    STUDY HALL の北の吹き抜けはそれを鏡にうつした形で、南と東（南東の角が丸い）
+  const atriumRail = (cells, flip) => {
+    const rc = rectOf(cells), R = 0.9, t = 0.2, h = 1.0;
+    const zE = flip ? rc.z1 : rc.z0, sg = flip ? -1 : 1; // 腰壁のある側の z と、内向きの向き
+    const zFar = flip ? rc.z0 : rc.z1;
+    const ccx = rc.x1 - R, ccz = zE + sg * R;
     const gs = [];
-    gs.push(new THREE.BoxGeometry(rc.x1 - R - rc.x0, h, t).translate((rc.x0 + rc.x1 - R) / 2, y + h / 2, rc.z0 + t / 2));
-    gs.push(new THREE.BoxGeometry(t, h, rc.z1 - rc.z0 - R).translate(rc.x1 - t / 2, y + h / 2, (rc.z0 + R + rc.z1) / 2));
-    const ccx = rc.x1 - R, ccz = rc.z0 + R;
-    const outer = new THREE.CylinderGeometry(R, R, h, 16, 1, true, Math.PI / 2, Math.PI / 2).translate(ccx, y + h / 2, ccz);
-    const inner = new THREE.CylinderGeometry(R - t, R - t, h, 16, 1, true, Math.PI / 2, Math.PI / 2).translate(ccx, y + h / 2, ccz);
-    const top = new THREE.RingGeometry(R - t, R, 16, 1, 0, Math.PI / 2).rotateX(-Math.PI / 2).translate(ccx, y + h, ccz);
+    gs.push(new THREE.BoxGeometry(rc.x1 - R - rc.x0, h, t).translate((rc.x0 + rc.x1 - R) / 2, y + h / 2, zE + sg * t / 2));
+    gs.push(new THREE.BoxGeometry(t, h, Math.abs(zFar - ccz)).translate(rc.x1 - t / 2, y + h / 2, (ccz + zFar) / 2));
+    const a0 = flip ? 0 : Math.PI / 2;
+    const outer = new THREE.CylinderGeometry(R, R, h, 16, 1, true, a0, Math.PI / 2).translate(ccx, y + h / 2, ccz);
+    const inner = new THREE.CylinderGeometry(R - t, R - t, h, 16, 1, true, a0, Math.PI / 2).translate(ccx, y + h / 2, ccz);
+    const top = new THREE.RingGeometry(R - t, R, 16, 1, flip ? -Math.PI / 2 : 0, Math.PI / 2).rotateX(-Math.PI / 2).translate(ccx, y + h, ccz);
     const m = new THREE.Mesh(mergeGeometries([...gs.map((g) => g.toNonIndexed()), outer.toNonIndexed(), inner.toNonIndexed(), top.toNonIndexed()]), new THREE.MeshStandardMaterial({ color: 0xf1efea, roughness: 0.85, side: THREE.DoubleSide }));
     m.castShadow = m.receiveShadow = true;
-    // 手すり：腰壁の上に、柱で少し浮かせた金属のパイプ
     const pts = [], hy = y + h + 0.25, rr = R - t / 2;
-    for (let x = rc.x0 + 0.1; x < ccx; x += 0.5) pts.push(new THREE.Vector3(x, hy, rc.z0 + t / 2));
-    for (let i = 0; i <= 8; i++) { const a = Math.PI - (Math.PI / 2) * (i / 8); pts.push(new THREE.Vector3(ccx + Math.sin(a) * rr, hy, ccz + Math.cos(a) * rr)); }
-    for (let z = ccz + 0.5; z <= rc.z1 - 0.1; z += 0.5) pts.push(new THREE.Vector3(rc.x1 - t / 2, hy, z));
+    for (let x = rc.x0 + 0.1; x < ccx; x += 0.5) pts.push(new THREE.Vector3(x, hy, zE + sg * t / 2));
+    for (let i = 0; i <= 8; i++) { const a = (Math.PI / 2) * (i / 8); pts.push(new THREE.Vector3(ccx + Math.sin(a) * rr, hy, ccz - sg * Math.cos(a) * rr)); }
+    for (let k = 0.5; k <= Math.abs(zFar - ccz) - 0.1; k += 0.5) pts.push(new THREE.Vector3(rc.x1 - t / 2, hy, ccz + sg * k));
     const rail = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, false, "catmullrom", 0), 120, 0.035, 6), metal);
     const posts = [];
     for (let i = 0; i < pts.length; i += 3) posts.push(new THREE.CylinderGeometry(0.02, 0.02, 0.25, 6).translate(pts[i].x, y + h + 0.125, pts[i].z));
-    inBlock(grp, blockAtCell(33, 29)).add(m, rail, new THREE.Mesh(mergeGeometries(posts), metal));
-  }
+    inBlock(grp, blockAtCell(cells.c0, cells.r0)).add(m, rail, new THREE.Mesh(mergeGeometries(posts), metal));
+  };
+  atriumRail({ c0: 33, r0: 29, c1: 37, r1: 31 }, false);
+  atriumRail({ c0: 33, r0: 47, c1: 37, r1: 49 }, true);
   // ② 2階の渡り廊下（1号館と2号館をつなぐ。東はガラスブロックの窓）：西側に柱が5本ならび、柱のあいだは展示のくぼみ（ベンチと掲示板）と窓
   {
     const rc = rectOf({ c0: 38, r0: 32, c1: 41, r1: 46 }), L = rc.z1 - rc.z0, n = 5, x0 = rc.x0;

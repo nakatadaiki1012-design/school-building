@@ -273,6 +273,9 @@ const SHAPES = {
   carrel: [
     [MAT.white, merge([b(0.6, 0.03, 0.9, 0, 0.72), b(0.03, 1.25, 0.9, -0.3, 0), b(0.6, 1.25, 0.03, 0, 0, -0.45), b(0.6, 1.25, 0.03, 0, 0, 0.45)])],
   ],
+  deskLamp: [[MAT.black, merge([b(0.12, 0.02, 0.18, -0.2, 0.75), b(0.02, 0.4, 0.02, -0.22, 0.75), b(0.2, 0.03, 0.05, -0.15, 1.13)])]],
+  woodCase: [[MAT.wood, merge([b(0.4, 1.15, 1.0)])], [MAT.books, merge([b(0.42, 0.9, 0.85, 0, 0.12)])]],
+  akahon: [[MAT.white, merge([b(0.35, 1.8, 0.9)])], [M(0xd8452f), merge([b(0.3, 0.9, 0.8, 0.03, 0.85)])]],
   lowShelf: [[MAT.books, merge([b(0.35, 1.2, 0.9)])]],
   table: [
     [MAT.wood, merge([b(0.9, 0.04, 1.8, 0, 0.7)])],
@@ -596,18 +599,24 @@ function staffRoomL(out, R) {
   pairColumn(out, x1 - PAIR_W / 2, z0 + 0.6, z1 - 0.5);
 }
 
-// STUDY HALL：仕切り板のついた自習用の机が、背中合わせに南北に2列ならぶ。木の椅子。階段側（南）の壁に本棚
+// STUDY HALL（写真）：仕切り板とデスクライトのついた自習机。西の窓ぎわ・北のガラスぎわ・南の壁ぎわに壁を向いた机がならび、
+// まんなかには背中合わせの机のかたまりが2つ（南北にのびる）。かたまりの南のはしに木の本棚、西の窓ぎわに赤本の白い本棚
 function studyHall(out, R) {
-  const { x0, x1, z0, z1 } = R;
-  const w = x1 - x0;
-  for (const f of [0.27, 0.73]) {
+  const { x0, x1, z0, z1 } = R, w = x1 - x0;
+  // 1つの机：rot は向いている方向（0=西、-π/2=北、π/2=南、π=東）。いすは反対側
+  const unit = (x, z, rot) => {
+    out.push({ t: "carrel", x, z, rot }, { t: "deskLamp", x, z, rot });
+    out.push({ t: "chair", x: x + Math.cos(rot) * 0.55, z: z - Math.sin(rot) * 0.55, rot });
+  };
+  for (let z = z0 + 1.3; z < z1 - 2.6; z += 0.95) unit(x0 + 0.35, z, 0);              // 西の窓ぎわ
+  for (let x = x0 + 1.5; x < x1 - 0.7; x += 0.95) unit(x, z0 + 0.35, -Math.PI / 2);    // 北のガラスぎわ
+  for (let x = x0 + 1.5; x < x1 - 1.6; x += 0.95) unit(x, z1 - 0.35, Math.PI / 2);     // 南の壁ぎわ
+  for (const f of [0.39, 0.73]) {
     const xc = x0 + w * f;
-    for (let z = z0 + 0.9; z < z1 - 1.5; z += 0.95) {
-      out.push({ t: "carrel", x: xc + 0.31, z, rot: 0 }, { t: "chair", x: xc + 0.85, z, rot: 0 });
-      out.push({ t: "carrel", x: xc - 0.31, z, rot: Math.PI }, { t: "chair", x: xc - 0.85, z, rot: Math.PI });
-    }
+    for (let z = z0 + 1.9; z < z1 - 2.4; z += 0.95) { unit(xc - 0.31, z, Math.PI); unit(xc + 0.31, z, 0); }
+    out.push({ t: "woodCase", x: xc, z: z1 - 1.75, rot: 0 }); // かたまりの南のはしの木の本棚
   }
-  for (let x = x0 + 0.8; x < x1 - 0.6; x += 0.95) out.push({ t: "shelf", x, z: z1 - 0.25, rot: Math.PI / 2 });
+  for (const k of [0, 1]) out.push({ t: "akahon", x: x0 + 0.3, z: z1 - 1.4 - k * 0.95, rot: 0 }); // 赤本の白い本棚
 }
 
 // 会議室：長い机が2列（部屋の長い方向にのびる）。机の両側に椅子

@@ -933,6 +933,17 @@ for (const f of [1, 2, 3]) {
       ext.add(win, win2);
       continue;
     }
+    if (t.northBalcony) {
+      // 北へ出る半円のバルコニー：床（半円の板）と手すり壁（半円の輪）。北向きの半分＝theta π/2〜3π/2
+      if (!t.floors.includes(f)) continue;
+      const slab = new THREE.Mesh(new THREE.CylinderGeometry(t.r, t.r, 0.22, 24, 1, false, Math.PI / 2, Math.PI), matRelief);
+      slab.position.set(t.x, base(f), t.z);
+      const rail = new THREE.Mesh(new THREE.CylinderGeometry(t.r, t.r, 1.1, 24, 1, true, Math.PI / 2, Math.PI), matStackSide);
+      rail.position.set(t.x, base(f) + 0.65, t.z);
+      for (const m of [slab, rail]) { m.castShadow = m.receiveShadow = true; ext.add(m); }
+      if (f === 3) { const cap = new THREE.Mesh(new THREE.CylinderGeometry(t.r + 0.1, t.r + 0.1, 0.3, 24, 1, false, Math.PI / 2, Math.PI), matRelief); cap.position.set(t.x, base(f) + FH, t.z); cap.castShadow = true; ext.add(cap); } // いちばん上は屋根
+      continue;
+    }
     if (!t.tower) {
       // 床（半円の板）と、手すり壁（半円の輪）。東向きの半分＝theta 0〜π
       const slab = new THREE.Mesh(new THREE.CylinderGeometry(t.r, t.r, 0.22, 24, 1, false, 0, Math.PI), matRelief);

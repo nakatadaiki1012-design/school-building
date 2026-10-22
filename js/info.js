@@ -19,7 +19,8 @@ export const FOOTPRINTS = {
     [12, 59, 15, 64, "school"], // 3号館西のトイレ
   ],
   2: [
-    [7, 1, 26, 38, "gym"],      // 体育館
+    [7, 1, 26, 37, "gym"],      // 体育館（南の玄関・体育準備室のところは、3階の卓球場より1列引っこむ）
+    [19, 38, 26, 38, "gym"],
     [27, 19, 32, 21, "school"], // 体育館への渡り廊下
     [9, 44, 22, 62, "school"],  // 図書室の棟（南に廊下・階段・トイレ）
     [33, 9, 41, 31, "school"], // 中央棟（2つの昇降口のあいだは吹き抜けで床がない）
@@ -447,6 +448,8 @@ export const GYM_GALLERY = [[25, 4, 26, 34], [23, 4, 26, 7], [23, 33, 26, 38]];
 // 前の年度の図面のとおり、北側に左右に分かれた小さな練習室が2つある（あいだは通路）
 export const ROOM_EDITS = [
   { name: "音楽室", floor: 2, set: { r0: 12 } },
+  // 体育館2階の南：3階の卓球場が張り出しているので、玄関と体育準備室は1列引っこむ
+  { name: "保健体育科準備室", floor: 2, set: { r1: 37 } },
   { name: "部室", floor: 1, atR: 19, set: { remove: true } }, // 西の部室は5つに分けて EXTRA_ROOMS に
   { name: "生物実験室", floor: 3, set: { photos: ["images/seibutsu-1.jpg", "images/seibutsu-2.jpg", "images/seibutsu-3.jpg"] } },
   { name: "職員室", floor: 2, set: { desc: "職員室の前には、指定校推薦の一覧や、奨学金、留学に関する情報などが掲示されています。", photos: ["images/shokuin-1.jpg"] } },
@@ -511,7 +514,7 @@ export const ROOM_EDITS = [
   { name: "吹抜", floor: 3, at: 48, set: { name: "光庭（中庭）" } },
   // STUDY HALL は、吹き抜け側（北）と階段側（南）にもう少し広い
   // 体育館の2階の玄関は、階段から器具庫の手前まで広い
-  { name: "玄関", floor: 2, set: { c0: 14, r0: 35 } },
+  { name: "玄関", floor: 2, set: { c0: 14, r0: 35, r1: 37 } },
 ];
 export const EXTRA_ROOMS = [
   // 2階：音楽準備室の南の広い場所（壁にアート）。テーブルと長椅子があり、西に渡り廊下へ少し上がる階段

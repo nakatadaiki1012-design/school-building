@@ -606,24 +606,34 @@ function staffRoomL(out, R) {
   pairColumn(out, x1 - PAIR_W / 2, z0 + 0.6, z1 - 0.5);
 }
 
-// STUDY HALL（写真）：仕切り板とデスクライトのついた自習机。西の窓ぎわ・北のガラスぎわ・南の壁ぎわに壁を向いた机がならび、
-// まんなかには背中合わせの机のかたまりが2つ（南北にのびる）。かたまりの南のはしに木の本棚、西の窓ぎわに赤本の白い本棚
+// STUDY HALL（写真）：仕切り板とデスクライトのついた自習机。西の窓ぎわと北のガラスぎわに壁を向いた机。
+// まんなかには背中合わせの机のかたまりが東西にのびる（机は南北を向く）。かたまりの東のはしに木の本棚。
+// 赤本の白い本棚は西の窓ぎわのまんなか。南の壁ぎわは作りつけの長いベンチで、その前に長い大きな机が2つ
 function studyHall(out, R) {
-  const { x0, x1, z0, z1 } = R, w = x1 - x0;
+  const { x0, x1, z0, z1 } = R, d = z1 - z0, zm = z0 + d * 0.5;
   // 1つの机：rot は向いている方向（0=西、-π/2=北、π/2=南、π=東）。いすは反対側
   const unit = (x, z, rot) => {
     out.push({ t: "carrel", x, z, rot }, { t: "deskLamp", x, z, rot });
     out.push({ t: "chair", x: x + Math.cos(rot) * 0.55, z: z - Math.sin(rot) * 0.55, rot });
   };
-  for (let z = z0 + 1.3; z < z1 - 2.6; z += 0.95) unit(x0 + 0.35, z, 0);              // 西の窓ぎわ
-  for (let x = x0 + 1.5; x < x1 - 0.7; x += 0.95) unit(x, z0 + 0.35, -Math.PI / 2);    // 北のガラスぎわ
-  for (let x = x0 + 1.5; x < x1 - 1.6; x += 0.95) unit(x, z1 - 0.35, Math.PI / 2);     // 南の壁ぎわ
-  for (const f of [0.39, 0.73]) {
-    const xc = x0 + w * f;
-    for (let z = z0 + 1.9; z < z1 - 2.4; z += 0.95) { unit(xc - 0.31, z, Math.PI); unit(xc + 0.31, z, 0); }
-    out.push({ t: "woodCase", x: xc, z: z1 - 1.75, rot: 0 }); // かたまりの南のはしの木の本棚
+  // 西の窓ぎわ（まんなかは赤本の棚）
+  for (let z = z0 + 1.3; z < z1 - 3.4; z += 0.95) if (Math.abs(z - zm) > 1.0) unit(x0 + 0.35, z, 0);
+  for (const k of [-0.48, 0.48]) out.push({ t: "akahon", x: x0 + 0.3, z: zm + k, rot: 0 });
+  for (let x = x0 + 1.5; x < x1 - 0.7; x += 0.95) unit(x, z0 + 0.35, -Math.PI / 2); // 北のガラスぎわ
+  // まんなかの背中合わせのかたまり（東西にのびる、2列）
+  for (const f of [0.34, 0.56]) {
+    const zc = z0 + d * f;
+    for (let x = x0 + 2.0; x < x1 - 1.6; x += 0.95) { unit(x, zc - 0.31, Math.PI / 2); unit(x, zc + 0.31, -Math.PI / 2); }
+    out.push({ t: "woodCase", x: x1 - 1.0, z: zc, rot: Math.PI / 2 });
   }
-  for (const k of [0, 1]) out.push({ t: "akahon", x: x0 + 0.3, z: z1 - 1.4 - k * 0.95, rot: 0 }); // 赤本の白い本棚
+  // 南：壁ぎわの長いベンチと、その前の長い大きな机2つ
+  alongX(out, "wallBench", z1 - 0.3, x0 + 0.6, x1 - 0.6, 1.6, Math.PI / 2);
+  const wt = (x1 - x0 - 1.6) / 2;
+  for (const k of [0, 1]) {
+    const x = x0 + 0.8 + wt * (k + 0.5);
+    out.push({ t: "bigTable", x, z: z1 - 1.25, rot: Math.PI / 2, sz: Math.max(1, (wt - 0.4) / 2.4) });
+    alongX(out, "chair", z1 - 2.0, x - wt / 2 + 0.4, x + wt / 2 - 0.4, 0.75, Math.PI / 2);
+  }
 }
 
 // 会議室：長い机が2列（部屋の長い方向にのびる）。机の両側に椅子

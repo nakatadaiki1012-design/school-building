@@ -438,6 +438,7 @@ export const GYM_GALLERY = [[25, 4, 26, 34], [23, 4, 26, 7], [23, 33, 26, 38]];
 // 前の年度の図面のとおり、北側に左右に分かれた小さな練習室が2つある（あいだは通路）
 export const ROOM_EDITS = [
   { name: "音楽室", floor: 2, set: { r0: 12 } },
+  { name: "生徒会室", floor: 3, set: { desc: "生徒会本部役員が活動しています。生徒からの意見を集める目安箱も設置されています。", photos: ["images/seitokai-1.jpg", "images/seitokai-2.jpg", "images/seitokai-3.jpg"] } },
   { name: "調理室", floor: 3, set: { desc: "家庭基礎の授業や、料理部の活動などに利用されています。また、鴻志祭では飲食団体の調理場所としても活躍します。", photos: ["images/chouri-1.jpg", "images/chouri-2.jpg", "images/chouri-3.jpg", "images/chouri-4.jpg", "images/chouri-5.jpg"] } },
   { name: "STUDY HALL", floor: 2, set: { r0: 50, r1: 56, desc: "自習ができるスペースです。仕切りやデスクライトがついた勉強机、赤本などが置いてあります。昼休みや放課後に自習をする生徒が利用しています。", photos: ["images/studyhall-1.jpg", "images/studyhall-2.jpg", "images/studyhall-3.jpg", "images/studyhall-4.jpg", "images/studyhall-5.jpg", "images/studyhall-6.jpg"] } },
   // 2階の職員WCは、細く半分に分かれている：西が男子、東が女子

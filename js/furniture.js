@@ -397,6 +397,14 @@ const SHAPES = {
   ],
   wcDoorM: [[M(0x2f7f8a), merge([b(0.62, 2.0, 0.3, 0.17, 0), b(1.25, 0.12, 0.34, 0, 2.0), b(0.08, 2.12, 0.34, -0.6), b(0.08, 2.12, 0.34, 0.6)])], [MAT.transom, merge([b(0.06, 0.45, 0.32, 0.32, 1.25)])], [M(0xc9ccd0), merge([b(0.22, 0.28, 0.33, 0, 2.25)])], [M(0x1f3d7a), merge([b(0.06, 0.18, 0.34, 0, 2.3)])]],
   wcDoorF: [[M(0xc9787a), merge([b(0.62, 2.0, 0.3, 0.17, 0), b(1.25, 0.12, 0.34, 0, 2.0), b(0.08, 2.12, 0.34, -0.6), b(0.08, 2.12, 0.34, 0.6)])], [MAT.transom, merge([b(0.06, 0.45, 0.32, 0.32, 1.25)])], [M(0xc9ccd0), merge([b(0.22, 0.28, 0.33, 0, 2.25)])], [M(0xc23b3b), merge([b(0.08, 0.18, 0.34, 0, 2.3)])]],
+  // キャスターつきの台にのせた大きなテレビ
+  tvStand: [[MAT.black, merge([b(0.08, 0.75, 1.3, 0, 1.15), b(0.06, 1.15, 0.06, 0.05, 0), b(0.5, 0.04, 0.6, 0.05, 0.05)])]],
+  // 台にのった地球儀
+  globe: [[M(0x3a7fc8, { roughness: 0.4 }), merge([new THREE.SphereGeometry(0.17, 14, 10).translate(0, 1.15, 0)])], [M(0xb8b8b8, { metalness: 0.5 }), merge([b(0.03, 0.95, 0.03), b(0.25, 0.03, 0.25)])]],
+  bioTable: [[M(0x1f2224, { roughness: 0.35 }), merge([b(0.75, 0.05, 1.8, 0, 0.75)])], [M(0xa8643a), merge([b(0.75, 0.08, 1.75, 0, 0.67), ...legs(0.7, 1.7, 0.67, 0.07)])]],
+  longBench: [[M(0xa8643a), merge([b(0.28, 0.05, 1.7, 0, 0.42), b(0.06, 0.42, 0.06, 0, 0, -0.75), b(0.06, 0.42, 0.06, 0, 0, 0.75)])]],
+  microscope: [[M(0xf2f2ee), merge([b(0.14, 0.04, 0.18, 0, 0.78), b(0.05, 0.25, 0.06, 0.05, 0.8)])], [MAT.black, merge([b(0.12, 0.02, 0.12, 0, 0.92), new THREE.CylinderGeometry(0.025, 0.025, 0.14, 8).rotateZ(0.5).translate(0.02, 1.1, 0)])]],
+  sinkCounter: [[M(0xd9d6cf), merge([b(0.6, 0.85, 1.8)])], [M(0xb8bcc0, { metalness: 0.5 }), merge([b(0.45, 0.02, 0.7, 0, 0.86)])]],
   hallWindow: [[MAT.transom, merge([b(1.7, 0.42, 0.24, 0, 1.92), b(1.7, 0.32, 0.24, 0, 0.12)])], [MAT.doorFrame, merge([b(1.78, 0.04, 0.26, 0, 2.34), b(1.78, 0.04, 0.26, 0, 1.88), b(0.04, 0.46, 0.26, 0, 1.88)])]],
   // 壁より厚くして、教室の中からも廊下からも見えるようにする
   // 4枚の大きな両引き戸（体育館の入口）。ガラスの入ったアルミの戸
@@ -463,7 +471,7 @@ const alongX = (out, t, z, x0, x1, step, rot = Math.PI / 2) => {
 // 普通教室：前（-x側）に黒板と教卓、後ろにロッカー、机は 6列 × 7行
 // 普通教室は40人（6列×7行から、いちばん後ろの両はしの2席を除く）
 // cols：横の列の数、rows：縦の列の数、back：後ろに空けるスペース（部屋の奥行きに対する割合）
-function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back = 0, doorT = "door" } = {}) {
+function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back = 0, doorT = "door", gap = 0.95, empty = false } = {}) {
   const { x0, x1, z0, z1 } = R;
   out.push({ t: "blackboard", x: x0 + 0.12, z: (z0 + z1) / 2, rot: 0 });
   // 教壇は窓側の壁からドア側の壁まで、部屋の幅いっぱい
@@ -492,14 +500,14 @@ function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back
   const skip = rr * cc - seats; // いちばん後ろの列の両はしから空ける
   for (let i = 0; i < rr; i++) for (let j = 0; j < cc; j++) {
     if (i === rr - 1 && skip > 0 && (j < Math.ceil(skip / 2) || j >= cc - Math.floor(skip / 2))) continue;
-    const x = dx0 + Math.min(0.95, (dx1 - dx0) / Math.max(1, rr - 1)) * i;
+    const x = dx0 + Math.min(gap, (dx1 - dx0) / Math.max(1, rr - 1)) * i;
     const z = dz0 + (dz1 - dz0) * (j / (cc - 1));
     // 椅子は少しずつずらして、使っている感じを出す
     const k = Math.sin(i * 12.9898 + j * 78.233) * 43758.5453, rnd = k - Math.floor(k);
     out.push({ t: "desk", x, z, rot: 0 });
     out.push({ t: "chair", x: x + 0.42 + rnd * 0.12, z: z + (rnd - 0.5) * 0.08, rot: (rnd - 0.5) * 0.3 });
-    if (rnd < 0.55) out.push({ t: "bag", x: x + 0.05, z: z + 0.33, rot: 0, col: BAG_COLORS[Math.floor(rnd * 97) % BAG_COLORS.length] });
-    if (rnd > 0.35) out.push({ t: "books", x: x - 0.02, z: z + (rnd - 0.5) * 0.15, rot: (rnd - 0.5) * 0.4 });
+    if (!empty && rnd < 0.55) out.push({ t: "bag", x: x + 0.05, z: z + 0.33, rot: 0, col: BAG_COLORS[Math.floor(rnd * 97) % BAG_COLORS.length] });
+    if (!empty && rnd > 0.35) out.push({ t: "books", x: x - 0.02, z: z + (rnd - 0.5) * 0.15, rot: (rnd - 0.5) * 0.4 });
   }
 }
 const BAG_COLORS = [0x1f2a44, 0x2b2b2b, 0x3a5a8c, 0x6b2e2e, 0x2f4f3f, 0x444c56];
@@ -921,9 +929,37 @@ const LAYOUTS = [
   [/年\d+組/, classroom],
   // 選択第1教室：横6列×縦5列、後ろに少しスペース。社会科教室：横6列×縦7列、後ろ3分の1が空いている
   [/選択第１教室|選択第1教室/, (o, R) => classroom(o, R, { cols: 6, rows: 5, seats: 30, eboard: false, back: 0.12 })],
-  [/社会科教室/, (o, R) => classroom(o, R, { cols: 6, rows: 7, seats: 42, eboard: false, back: 0.33 })],
+  // 社会科教室（写真）：机は横7列×縦6列で、間隔が広い。前の黒板の窓側に大きなテレビ。後ろは広くあいていて、
+  // 後ろの壁にも黒板と地図、その前に地球儀と木の戸棚、廊下側の後ろのすみに金属の棚
+  [/社会科教室/, (o, R) => {
+    classroom(o, R, { cols: 7, rows: 6, seats: 42, eboard: false, back: 0.3, gap: 1.2, empty: true });
+    const { x0, x1, z0, z1 } = R, zc = (z0 + z1) / 2;
+    for (let i = o.length - 1; i >= 0; i--) if (o[i].t === "locker" || o[i].t === "bulletin") o.splice(i, 1);
+    o.push({ t: "tvStand", x: x0 + 0.6, z: zc + 2.6, rot: 0 });
+    o.push({ t: "blackboard", x: x1 - 0.12, z: zc, rot: Math.PI });
+    for (const k of [-1, 0, 1]) o.push({ t: "globe", x: x1 - 0.7, z: zc + k * 0.9 - 0.4, rot: 0 });
+    o.push({ t: "cabinet", x: x1 - 0.35, z: zc + 1.6, rot: Math.PI }, { t: "cabinet", x: x1 - 0.35, z: zc + 2.4, rot: Math.PI });
+    o.push({ t: "rack", x: x1 - 1.6, z: z0 + 0.35, rot: Math.PI / 2 });
+  }],
   [/選択|オーラル/, (o, R) => classroom(o, R, { cols: 5, rows: 6, seats: 30, eboard: false })],
   [/STUDY HALL/, studyHall],
+  // 生物実験室（写真）：黒い天板の木の実験机（黒板と平行に長い）が2列×5列。机の前後に長いベンチ、机の上に顕微鏡。
+  // 窓ぎわに流しのカウンター、前（黒板の前）に段ボールや道具、後ろのすみに顕微鏡保管庫
+  [/生物実験室/, (o, R) => {
+    const { x0, x1, z0, z1 } = R, zm = (z0 + z1) / 2;
+    o.push({ t: "blackboard", x: x0 + 0.12, z: zm, rot: 0 }, { t: "teacherDesk", x: x0 + 0.9, z: zm, rot: 0 });
+    for (const k of [-1.6, 1.6]) o.push({ t: "rack", x: x0 + 0.4, z: zm + k, rot: 0 });
+    const n = Math.max(3, Math.floor((x1 - x0 - 2.6) / 1.45));
+    for (let i = 0; i < n; i++) {
+      const x = x0 + 2.4 + i * ((x1 - x0 - 3.2) / Math.max(1, n - 1)) * 0.92;
+      for (const zc of [z0 + (z1 - z0) * 0.28, z0 + (z1 - z0) * 0.66]) {
+        o.push({ t: "bioTable", x, z: zc, rot: 0 }, { t: "longBench", x: x + 0.62, z: zc, rot: 0 });
+        for (const k of [-0.6, 0, 0.6]) o.push({ t: "microscope", x: x - 0.1, z: zc + k, rot: 0 });
+      }
+    }
+    for (let x = x0 + 2.2; x < x1 - 1.4; x += 1.8) o.push({ t: "sinkCounter", x, z: z1 - 0.32, rot: Math.PI / 2 }); // 窓ぎわの流し
+    o.push({ t: "cabinet", x: x1 - 0.3, z: z1 - 0.8, rot: Math.PI }); // 顕微鏡保管庫
+  }],
   [/化学実験室|物理実験室|生物実験室/, (o, R) => lab(o, R)],
   [/調理室/, (o, R) => lab(o, R, "cookBench", true)],
   [/被服室/, sewing],

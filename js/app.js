@@ -1816,6 +1816,7 @@ for (const f of [1, 2, 3]) {
       if (/ステージ/.test(r.name)) tint = new THREE.Color(0xc99560); // ステージの木の床
       else if (/卓球場/.test(r.name)) { map = null; tint = new THREE.Color(0x2f7a72); } // 卓球場の床は緑がかった青の樹脂の床（写真）
       else if (/^土間$/.test(r.name)) { map = texBrickFloor.clone(); map.needsUpdate = true; map.repeat.set(r.w / 3, r.d / 3); tint = new THREE.Color(0xffffff); } // 土間はレンガ色のタイル
+      else if (/社会科教室/.test(r.name)) { map = null; tint = new THREE.Color(0x8a9c8c); } // 社会科教室の床は灰色がかった緑（写真）
       else if (/^音楽室$/.test(r.name)) { map = null; tint = new THREE.Color(0x7b2733); } // 音楽室の床はえんじ色
       else if (/STUDY HALL/.test(r.name)) { map = null; tint = new THREE.Color(0x8a7c6c); } // STUDY HALL の床は灰色がかった茶色（写真）
       else if (/コンピューター/.test(r.name)) tint = new THREE.Color(0x4a74c9); // コンピューター教室の床は青
@@ -2297,6 +2298,7 @@ labelRenderer.domElement.addEventListener("pointerup", (e) => {
     closePanel(); // 何もないところを押したら、紹介を閉じる
     return;
   }
+  if (walkOn && walkPlayerTo(ray)) return; // 歩く人を出しているときは、廊下をタップするとそこへ歩く
   const hits = ray.intersectObjects(pickables.filter((m) => m.userData.room.floor === state.floor), false);
   if (hits.length) selectRoom(hits[0].object.userData.room, { fly: false });
   else closePanel(); // 部屋のないところを押したら、紹介を閉じる
@@ -2587,7 +2589,7 @@ function tick(now) {
     const dx = hereGoal.x - here.position.x, dz = hereGoal.z - here.position.z;
     if (Math.abs(dx) + Math.abs(dz) > 0.02) { here.position.x += dx * 0.08; here.position.z += dz * 0.08; poke(); }
   }
-  if (walkers.length) { const dt = Math.min(0.1, (now - (lastWalkT || now)) / 1000); updateWalkers(dt); activeUntil = now + 100; }
+  if (walkers.length) { const dt = Math.min(0.25, (now - (lastWalkT || now)) / 1000); updateWalkers(dt); activeUntil = now + 100; }
   lastWalkT = now;
   const cam = useCamera();
   // 方位磁針（画面の上がどの方角か）
@@ -2806,7 +2808,7 @@ function pathTo(cells, from, to) {
 }
 const walkCache = {};
 function spawnWalkers(f) {
-  for (const w of walkers) scene.remove(w.g);
+  for (const w of walkers) { scene.remove(w.g); w.g.traverse((o) => { if (o.isCSS2DObject) o.element.remove(); }); }
   walkers.length = 0;
   if (!f) return;
   const cells = (walkCache[f] ||= [...walkCells(f)]);
@@ -2814,15 +2816,42 @@ function spawnWalkers(f) {
   const set = new Set(cells);
   const colors = [0x22304a, 0x22304a, 0x3a3f46, 0x7a1f2b, 0x22304a];
   for (let i = 0; i < 5; i++) {
-    const g = makePerson(colors[i]);
+    const g = makePerson(i === 0 ? 0xc0392b : colors[i]);
+    if (i === 0) {
+      // 操作できる人：赤い服と、足もとの青い輪、頭の上の「あなた」
+      const ring = new THREE.Mesh(new THREE.RingGeometry(0.35, 0.48, 24).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x1a73e8, transparent: true, opacity: 0.8, depthWrite: false }));
+      ring.position.y = 0.04; g.add(ring);
+      const div = document.createElement("div"); div.className = "here-label"; div.textContent = "あなた";
+      const lb = new CSS2DObject(div); lb.position.y = 2.0; g.add(lb);
+    }
     const start = cells[Math.floor(Math.random() * cells.length)];
     g.position.copy(cellWorld(start, f));
     scene.add(g);
-    walkers.push({ g, f, set, cells, at: start, path: [], t: Math.random() * 10, speed: 1.1 + Math.random() * 0.4 });
+    walkers.push({ g, f, set, cells, at: start, path: [], t: Math.random() * 10, speed: i === 0 ? 1.6 : 1.1 + Math.random() * 0.4, player: i === 0 });
   }
 }
 function updateWalkers(dt) {
   for (const w of walkers) {
+    if (w.player) {
+      // 操作する人：矢印キー（またはWASD）でまっすぐ動かす。押していないときは、タップした場所へ向かう
+      const k = walkKeys, mx = (k.has("arrowright") || k.has("d") ? 1 : 0) - (k.has("arrowleft") || k.has("a") ? 1 : 0), mz = (k.has("arrowdown") || k.has("s") ? 1 : 0) - (k.has("arrowup") || k.has("w") ? 1 : 0);
+      if (mx || mz) {
+        // 画面の向きに合わせる（上キー＝画面の奥）
+        const az = controls3d.getAzimuthalAngle(), fx = -Math.sin(az), fz = -Math.cos(az), rx = Math.cos(az), rz = -Math.sin(az);
+        const dir = new THREE.Vector3(rx * mx - fx * mz, 0, rz * mx - fz * mz).normalize();
+        const np = w.g.position.clone().addScaledVector(dir, w.speed * dt);
+        const nk = nearestWalkCell(w, np.x, np.z, 0.75);
+        if (nk) { w.g.position.copy(np); w.at = nk; } // 廊下の外へは出られない
+        w.path = [];
+        w.g.rotation.y = Math.atan2(dir.x, dir.z);
+        w.g.position.y = base(w.f);
+        w.t += dt * w.speed * 5.5;
+        const sw = Math.sin(w.t) * 0.55, u = w.g.userData;
+        u.legL.rotation.x = sw; u.legR.rotation.x = -sw; u.armL.rotation.x = -sw * 0.8; u.armR.rotation.x = sw * 0.8;
+        continue;
+      }
+      if (!w.path.length) { const u = w.g.userData; u.legL.rotation.x = u.legR.rotation.x = u.armL.rotation.x = u.armR.rotation.x = 0; continue; } // 止まって待つ
+    }
     if (!w.path.length) {
       // 次の行き先：遠すぎない、つながっているます目をえらぶ
       for (let tries = 0; tries < 8 && !w.path.length; tries++) {
@@ -2850,13 +2879,41 @@ function updateWalkers(dt) {
     u.legL.rotation.x = sw; u.legR.rotation.x = -sw; u.armL.rotation.x = -sw * 0.8; u.armR.rotation.x = sw * 0.8;
   }
 }
+// いちばん近い、歩けるます目（maxD メートルより遠ければ null）
+function nearestWalkCell(w, x, z, maxD = Infinity) {
+  let best = null, bd = maxD * maxD;
+  for (const k of w.cells) { const p = cellWorld(k, w.f), d = (p.x - x) ** 2 + (p.z - z) ** 2; if (d < bd) { bd = d; best = k; } }
+  return best;
+}
+// タップした場所へ、操作する人を歩かせる（廊下のところをタップしたとき）。歩かせたら true
+function walkPlayerTo(ray) {
+  const w = walkers.find((x) => x.player);
+  if (!w) return false;
+  const hit = new THREE.Vector3();
+  if (!ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -base(w.f)), hit)) return false;
+  const to = nearestWalkCell(w, hit.x, hit.z, 1.6);
+  if (!to) return false;
+  const p = pathTo(w.set, nearestWalkCell(w, w.g.position.x, w.g.position.z) || w.at, to);
+  if (!p) return false;
+  w.path = p.slice(1);
+  poke();
+  return true;
+}
+const walkKeys = new Set();
+window.addEventListener("keydown", (e) => {
+  if (!walkOn || e.target.closest?.("input, textarea")) return;
+  const k = e.key.toLowerCase();
+  if (["arrowup", "arrowdown", "arrowleft", "arrowright", "w", "a", "s", "d"].includes(k)) { walkKeys.add(k); e.preventDefault(); e.stopImmediatePropagation(); }
+}, true);
+window.addEventListener("keyup", (e) => walkKeys.delete(e.key.toLowerCase()), true);
+window.addEventListener("blur", () => walkKeys.clear());
 let walkOn = false, lastWalkT = 0;
 document.getElementById("walk-btn").addEventListener("click", () => {
   walkOn = !walkOn;
   document.getElementById("walk-btn").classList.toggle("active", walkOn);
   if (walkOn && !state.floor) { setFloor(1); }
   spawnWalkers(walkOn ? state.floor : 0);
-  showGeoMsg(walkOn ? "見ている階の廊下を、人が歩いています（階を切りかえると、その階を歩きます）" : "歩く人を消しました", 4000);
+  showGeoMsg(walkOn ? "赤い服の「あなた」を動かせます：廊下をタップするとそこへ歩きます（パソコンは矢印キーでも）。ほかの人は自由に歩きます" : "歩く人を消しました", 4000);
   poke();
 });
 

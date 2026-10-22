@@ -442,8 +442,9 @@ export const ROOM_EDITS = [
   { name: "生徒会室", floor: 3, set: { desc: "生徒会本部役員が活動しています。生徒からの意見を集める目安箱も設置されています。", photos: ["images/seitokai-1.jpg", "images/seitokai-2.jpg", "images/seitokai-3.jpg"] } },
   { name: "調理室", floor: 3, set: { desc: "家庭基礎の授業や、料理部の活動などに利用されています。また、鴻志祭では飲食団体の調理場所としても活躍します。", photos: ["images/chouri-1.jpg", "images/chouri-2.jpg", "images/chouri-3.jpg", "images/chouri-4.jpg", "images/chouri-5.jpg"] } },
   { name: "STUDY HALL", floor: 2, set: { r0: 50, r1: 56, desc: "自習ができるスペースです。仕切りやデスクライトがついた勉強机、赤本などが置いてあります。昼休みや放課後に自習をする生徒が利用しています。", photos: ["images/studyhall-1.jpg", "images/studyhall-2.jpg", "images/studyhall-3.jpg", "images/studyhall-4.jpg", "images/studyhall-5.jpg", "images/studyhall-6.jpg"] } },
-  // 2階の職員WCは、細く半分に分かれている：西が男子、東が女子
+  // 1・2階の職員WCは、細く半分に分かれている：西が男子、東が女子
   { name: "職員トイレ", floor: 2, set: { name: "職員男子トイレ", c1: 54.5 } },
+  { name: "職員トイレ", floor: 1, set: { name: "職員男子トイレ", c1: 54.5 } },
   { name: "事務室", floor: 1, set: { desc: "ご来校の際は、こちらから事務室にお声掛けください。", photos: ["images/jimu.jpg"] } },
   // 視聴覚教室は北の壁まで広い（北の壁には窓がない）
   { name: "視聴覚教室", floor: 3, set: { r0: 9 } },
@@ -508,6 +509,7 @@ export const EXTRA_ROOMS = [
   { id: "F2-AP126R", name: "放送室（録音室）", floor: 2, c0: 42, r0: 56.5, c1: 44, r1: 58 },
   // 音楽室の北の2つの練習室：壁1枚をはさんでくっついている
   { id: "F2-SWC2", name: "職員女子トイレ", floor: 2, c0: 55.5, r0: 47, c1: 56, r1: 51 },
+  { id: "F1-SWC2", name: "職員女子トイレ", floor: 1, c0: 55.5, r0: 47, c1: 56, r1: 51 },
   { id: "F2-PR1", name: "練習室", floor: 2, c0: 33, r0: 9, c1: 35.5, r1: 11 },
   { id: "F2-PR2", name: "練習室", floor: 2, c0: 36.5, r0: 9, c1: 39, r1: 11 },
 ];
@@ -531,6 +533,10 @@ export const ROOM_STYLE = [
   { name: "玄関", floor: 1, r0: 19, open: ["n"], doors: ["s"] },
   // 事務室：廊下側（北）の入口は西のはし寄り
   { name: "事務室", floor: 1, doors: ["n@-0.38"] },
+  // 2号館の職員WC（1・2階）と3階のトイレ：廊下側（南）の入口は、色のついた枠の片引き戸（男子は青緑、女子はピンク）
+  { name: "職員男子トイレ", floor: 1, doors: ["s:wcDoorM"] }, { name: "職員女子トイレ", floor: 1, doors: ["s:wcDoorF"] },
+  { name: "職員男子トイレ", floor: 2, doors: ["s:wcDoorM"] }, { name: "職員女子トイレ", floor: 2, doors: ["s:wcDoorF"] },
+  { name: "男子トイレ", floor: 3, r0: 47, doors: ["s:wcDoorM"] }, { name: "女子トイレ", floor: 3, r0: 47, doors: ["s:wcDoorF"] },
   // 放送室：録音室とミキサー室のあいだの壁に、のぞける窓
   { name: "放送室（録音室）", floor: 2, doors: ["n:studioWindow"] },
   // 第２職員室の引き戸は南側

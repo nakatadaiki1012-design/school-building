@@ -534,7 +534,8 @@ function cellsToRects(set) {
 }
 
 const matPlain = new THREE.MeshStandardMaterial({ color: 0xece6d8, roughness: 0.9, side: THREE.DoubleSide });
-const matParapet = new THREE.MeshStandardMaterial({ color: 0xd9d3c5, roughness: 0.9, side: THREE.DoubleSide });
+// 屋上のふち：屋根の板の横の面と同じ面にあるので、少し手前に描く（ちらつき対策）
+const matParapet = new THREE.MeshStandardMaterial({ color: 0xd9d3c5, roughness: 0.9, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 });
 const matRoof = new THREE.MeshStandardMaterial({ map: texRoofTop, color: 0xffffff, roughness: 0.95 });
 // 中央棟の北の屋根：屋根いっぱいに古い太陽光パネル（黒っぽい板が格子にならぶ）
 const texPanelRoof = (() => {
@@ -1926,12 +1927,15 @@ for (const f of [1, 2, 3]) {
     return best ? [/被服室|コンピューター|調理室|実験室|美術教室|工芸教室/.test(x.name) ? best + "2" : best] : null;
   };
   // 家具（伸び縮みさせず、航空写真に合わせたあとの部屋の大きさで置く）
-  const toItem = (x) => ({ floor: f, name: x.kind === "part" ? (x.parent.name === "事務室" ? "受付カウンター" : x.parent.name + "（L字）") : x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd, vending: x.kind === "part" ? null : styleOf(x)?.vending, vendingN: styleOf(x)?.vendingN, vendingShift: styleOf(x)?.vendingShift, doors: x.kind === "part" ? styleOf(x.parent)?.partDoors || null : styleOf(x)?.doors || autoDoors(x) });
+  const toItem = (x) => ({ floor: f, name: x.kind === "part" ? (x.parent.name === "事務室" ? "受付カウンター" : x.parent.name + "（L字）") : x.name, cx: x.wx, cz: x.wz, w: x.ww, d: x.wd, vending: x.kind === "part" ? null : styleOf(x)?.vending, vendingN: styleOf(x)?.vendingN, vendingShift: styleOf(x)?.vendingShift, doors: x.kind === "part" ? styleOf(x.parent)?.partDoors || null : (styleOf(x)?.doors || autoDoors(x))?.filter((d) => !d.includes("clubDoor")) });
   const onFloor = ROOMS.filter((x) => x.floor === f && (x.kind === "room" || x.kind === "part"));
   const inGym = (x) => f >= 2 && x.block.id === "gym";
   const furn = new THREE.Group();
   furn.add(buildFurniture(onFloor.filter((x) => !inGym(x)).map(toItem), y0OfFloor(f)));
   if (onFloor.some(inGym)) furn.add(buildFurniture(onFloor.filter(inGym).map(toItem), y0OfFloor(f) + GYM_LIFT)); // 体育館は高い
+  // 外への入口（部室の扉）は外観でも見えるように、外壁といっしょに表示する
+  const outDoors = onFloor.filter((x) => x.kind === "room" && styleOf(x)?.doors?.some((d) => d.includes("clubDoor")));
+  if (outDoors.length) layers.exterior[f].add(buildFurniture(outDoors.map((x) => ({ name: "_外の入口", cx: x.wx, cz: x.wz, w: x.ww, d: x.wd, doors: styleOf(x).doors.filter((d) => d.includes("clubDoor")) })), y0OfFloor(f)));
   layers.furniture[f] = furn;
   grp.add(furn);
   if (f === 2) build2FHall(grp);

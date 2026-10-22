@@ -412,6 +412,10 @@ const SHAPES = {
   greenStool: [[M(0x5f9a3c), merge([new THREE.CylinderGeometry(0.17, 0.17, 0.06, 12).translate(0, 0.6, 0)])], [MAT.metal, merge([b(0.03, 0.6, 0.03, 0.1, 0, 0.1), b(0.03, 0.6, 0.03, -0.1, 0, -0.1), b(0.03, 0.6, 0.03, 0.1, 0, -0.1), b(0.03, 0.6, 0.03, -0.1, 0, 0.1)])]],
   dishCabinet: [[M(0xb07a4a), merge([b(0.45, 0.9, 0.95), b(0.4, 1.0, 0.95, 0.02, 0.9)])], [MAT.transom, merge([b(0.42, 0.85, 0.85, 0.03, 0.98)])]],
   fridge: [[M(0xdcdcdc, { metalness: 0.3 }), merge([b(0.7, 1.8, 0.7)])]],
+  woodDesk: [[M(0x9a5a34, { roughness: 0.6 }), merge([b(0.6, 0.03, 0.45, 0, 0.7)])], [MAT.metal, merge(legs(0.55, 0.4, 0.7, 0.025))]],
+  woodChair: [[M(0x7a4a2c), merge([b(0.38, 0.03, 0.38, 0, 0.44), b(0.38, 0.32, 0.03, 0, 0.52, -0.18)])], [MAT.metal, merge(legs(0.34, 0.34, 0.44, 0.02))]],
+  greenBoard: [[M(0x2f5a44, { roughness: 0.9 }), merge([b(0.04, 1.4, 3.6, 0, 1.0)])], [M(0xf2f0ea), merge([b(0.05, 0.4, 0.3, -0.02, 1.7, -1.2), b(0.05, 0.4, 0.3, -0.02, 1.7, -0.6), b(0.05, 0.4, 0.5, -0.02, 1.7, 0.2)])]],
+  cubby: [[M(0xb07a4a), merge([b(0.4, 1.8, 0.92)])], [M(0x5a3a22), merge([0.35, 0.8, 1.25].map((h) => b(0.38, 0.38, 0.88, 0.02, h)))]],
   hallWindow: [[MAT.transom, merge([b(1.7, 0.42, 0.24, 0, 1.92), b(1.7, 0.32, 0.24, 0, 0.12)])], [MAT.doorFrame, merge([b(1.78, 0.04, 0.26, 0, 2.34), b(1.78, 0.04, 0.26, 0, 1.88), b(0.04, 0.46, 0.26, 0, 1.88)])]],
   // 壁より厚くして、教室の中からも廊下からも見えるようにする
   // 4枚の大きな両引き戸（体育館の入口）。ガラスの入ったアルミの戸
@@ -785,23 +789,28 @@ function artroom(out, R, kiln = false) {
 
 // 美術教室（写真）：ふつうの机を4つくっつけた島が、横3列×縦3列。向かい合って座る。
 // 黒板の側の壁ぞいに石こう像の棚、横の壁ぞいに作品の棚
+// 美術教室（写真）：前は黒板とテレビ・先生の机。後ろの壁は緑の掲示板で、その前に石こう像をならべた棚と作品の乾燥棚。
+// 廊下側の壁ぞいに木の棚（作品や道具）。机は茶色の木の机を4つ合わせた島で、3列×3つ
 function artIslands(out, R) {
   const { x0, x1, z0, z1 } = R;
   const cz = (z0 + z1) / 2;
   out.push({ t: "blackboard", x: x0 + 0.12, z: cz, rot: 0 });
-  out.push({ t: "teacherDesk", x: x0 + 1.0, z: cz + 2.4, rot: 0 });
-  // 石こう像をのせた低い棚（黒板の両わき）
-  for (const s of [-1, 1]) out.push({ t: "lowShelf", x: x0 + 0.3, z: cz + s * 3.0, rot: 0 }, { t: "bust", x: x0 + 0.3, z: cz + s * 3.0 - 0.25, rot: 0, y: 1.2 }, { t: "bust", x: x0 + 0.3, z: cz + s * 3.0 + 0.3, rot: 0, y: 1.2 });
-  const xa = x0 + 2.4, xb = x1 - 1.0, za = z0 + 0.9, zb = z1 - 0.9;
+  out.push({ t: "tvStand", x: x0 + 0.6, z: cz - 2.6, rot: 0 });
+  out.push({ t: "teacherDesk", x: x0 + 1.0, z: cz + 2.2, rot: 0 });
+  // 後ろ：緑の掲示板と、石こう像の棚、乾燥棚
+  out.push({ t: "greenBoard", x: x1 - 0.08, z: cz - 0.6, rot: Math.PI });
+  for (const k of [-2.4, -1.2, 0]) out.push({ t: "lowShelf", x: x1 - 0.35, z: cz + k, rot: 0 }, { t: "bust", x: x1 - 0.35, z: cz + k - 0.25, rot: Math.PI, y: 1.2 }, { t: "bust", x: x1 - 0.35, z: cz + k + 0.25, rot: Math.PI, y: 1.2 });
+  out.push({ t: "rack", x: x1 - 0.4, z: cz + 1.3, rot: 0 });
+  const xa = x0 + 2.4, xb = x1 - 1.4, za = z0 + 1.2, zb = z1 - 0.9;
   for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) {
     const x = xa + ((xb - xa) * (i + 0.5)) / 3, z = za + ((zb - za) * (j + 0.5)) / 3;
-    // 椅子は東西の向き（部屋は南が前なので、ここでは z が東西）
     for (const dx of [-1, 1]) for (const dz of [-1, 1]) {
-      out.push({ t: "desk", x: x + dx * 0.31, z: z + dz * 0.24, rot: Math.PI / 2 });
-      out.push({ t: "chair", x: x + dx * 0.31, z: z + dz * 0.68, rot: dz > 0 ? -Math.PI / 2 : Math.PI / 2 });
+      out.push({ t: "woodDesk", x: x + dx * 0.31, z: z + dz * 0.24, rot: Math.PI / 2 });
+      out.push({ t: "woodChair", x: x + dx * 0.31, z: z + dz * 0.68, rot: dz > 0 ? -Math.PI / 2 : Math.PI / 2 });
     }
   }
-  along(out, "shelf", x1 - 0.25, z0 + 0.5, z1 - 0.5, 0.92, Math.PI);
+  // 廊下側の壁ぞいの木の棚
+  alongX(out, "cubby", z0 + 0.25, x0 + 2.2, x1 - 1.0, 0.95, -Math.PI / 2);
 }
 
 function prep(out, R) {

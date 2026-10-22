@@ -442,6 +442,7 @@ export const GYM_GALLERY = [[25, 4, 26, 34], [23, 4, 26, 7], [23, 33, 26, 38]];
 // 前の年度の図面のとおり、北側に左右に分かれた小さな練習室が2つある（あいだは通路）
 export const ROOM_EDITS = [
   { name: "音楽室", floor: 2, set: { r0: 12 } },
+  { name: "生物実験室", floor: 3, set: { photos: ["images/seibutsu-1.jpg", "images/seibutsu-2.jpg", "images/seibutsu-3.jpg"] } },
   { name: "職員室", floor: 2, set: { desc: "職員室の前には、指定校推薦の一覧や、奨学金、留学に関する情報などが掲示されています。", photos: ["images/shokuin-1.jpg"] } },
   { name: "生徒会室", floor: 3, set: { desc: "生徒会本部役員が活動しています。生徒からの意見を集める目安箱も設置されています。", photos: ["images/seitokai-1.jpg", "images/seitokai-2.jpg", "images/seitokai-3.jpg"] } },
   { name: "調理室", floor: 3, set: { desc: "家庭基礎の授業や、料理部の活動などに利用されています。また、鴻志祭では飲食団体の調理場所としても活躍します。", photos: ["images/chouri-1.jpg", "images/chouri-2.jpg", "images/chouri-3.jpg", "images/chouri-4.jpg", "images/chouri-5.jpg"] } },

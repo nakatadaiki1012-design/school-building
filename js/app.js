@@ -643,7 +643,8 @@ const texCorridor = (() => {
   return t;
 })();
 const matSlab = new THREE.MeshStandardMaterial({ map: texCorridor, color: 0xffffff, roughness: 0.6 });
-const wallMat = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.82, metalness: 0.0 });
+// 外壁は、同じ面にぴったり重なる柱・床のふちなどより「少し奥」にあるものとして描く（重なった面がちらつかないように）
+const wallMat = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.82, metalness: 0.0, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 2 });
 const matStack = new THREE.MeshStandardMaterial({ map: texStack, roughness: 0.8 });
 const matGlassDoor = new THREE.MeshStandardMaterial({ color: 0x3e5a74, roughness: 0.15, metalness: 0.3 });
 const matStackSide = new THREE.MeshStandardMaterial({ color: 0xf2efe8, roughness: 0.85, side: THREE.DoubleSide });
@@ -657,7 +658,7 @@ function cutMat(style) {
     const t = src.clone();
     t.needsUpdate = true;
     t.repeat.set(1, CUT_H / FH);
-    cutMats[style] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, side: THREE.DoubleSide });
+    cutMats[style] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 2 });
   }
   return cutMats[style];
 }
@@ -839,7 +840,7 @@ for (const f of [1, 2, 3]) {
     if (bid !== "bridge") {
       const wallG = [], glassG = [], frameG = [], y0 = base(f), inset = 0.1, th = 0.08;
       const piece = (list, sg, y, h, t = th, from = 0, to = 1) => {
-        const alongX = sg.n[1] !== 0, len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az) * (to - from);
+        const alongX = sg.n[1] !== 0, len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az) * (to - from) - (from === 0 && to === 1 ? 0.24 : 0); // 両はしは外壁の角から少し離す（角の外に白い線が出ないように）
         const k = (from + to) / 2, cx = sg.ax + (sg.bx - sg.ax) * k - sg.n[0] * inset, cz = sg.az + (sg.bz - sg.az) * k - sg.n[1] * inset;
         list.push(new THREE.BoxGeometry(alongX ? len : t, h, alongX ? t : len).translate(cx, y + h / 2, cz));
       };
@@ -1042,7 +1043,7 @@ for (const f of [1, 2, 3]) {
   for (const [bid, set] of Object.entries(slabSets)) {
     const geos = cellsToRects(set).map((r) => {
       const rc = rectOf(r);
-      const g = new THREE.BoxGeometry(rc.x1 - rc.x0, 0.25, rc.z1 - rc.z0);
+      const g = new THREE.BoxGeometry(rc.x1 - rc.x0 - 0.04, 0.25, rc.z1 - rc.z0 - 0.04); // 外壁と同じ面にならないよう、ほんの少し小さく
       g.translate((rc.x0 + rc.x1) / 2, base(f) - 0.1, (rc.z0 + rc.z1) / 2);
       return g;
     });
@@ -1413,8 +1414,8 @@ scene.add(outdoor);
     geo.rotateX(-Math.PI / 2);
     const rim = new THREE.Mesh(geo, curb);
     rim.position.y = -0.2; rim.scale.y = 0.4;
-    const top = new THREE.Mesh(geo, hedge);
-    top.position.y = -0.2;
+    const top = new THREE.Mesh(geo, hedge); // 緑は灰色のふちの上から（同じ面が重なってちらつかないように）
+    top.position.y = -0.2 + 0.4 * h; top.scale.y = 0.6;
     rim.castShadow = rim.receiveShadow = top.castShadow = top.receiveShadow = true;
     outdoor.add(rim, top);
     // 低木のかたまり

@@ -1786,7 +1786,7 @@ function stairGuard(r, y, list) {
 // 生徒や来校者が入らない部屋（準備室・倉庫・設備の部屋など）：うすく小さく表示し、押しても反応しない
 const STAFF_ONLY = /準備室|印刷室|保管室|倉庫|器具庫|器具室|電気室|受水槽|給湯室|技能員室|放送室|資料室|整理室|職員(男子|女子)?トイレ|職員更衣室|放送$/;
 const isStaffOnly = (r) => r.kind !== "stairs" && STAFF_ONLY.test(r.kind === "part" ? r.parent.name : r.name);
-const styleOf = (r) => ROOM_STYLE.find((s) => s.name === r.name && s.floor === r.floor && (s.r0 === undefined || s.r0 === r.r0));
+const styleOf = (r) => ROOM_STYLE.find((s) => s.name === r.name && s.floor === r.floor && (s.r0 === undefined || s.r0 === r.r0) && (s.c0 === undefined || s.c0 === r.c0));
 // 部屋の仕切りの壁の高さ（天井まで描くと中が見えにくいので、ドアの上が少し見える高さ）
 const WALL_H = 2.45;
 const pickables = [];

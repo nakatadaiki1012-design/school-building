@@ -302,6 +302,17 @@ const texSchool = makeSchoolTex(PALETTE.white);
 const texPlain = canvasTex(W, H, (g) => { wallBase(g, PALETTE.white); });
 const texPlainArt = canvasTex(W, H, (g) => { wallBase(g, { base: "#e9dfcf", band: "#ddd2c0", line: "#cfc3ae", tile: false }); }); // 美術・図書館棟の色
 // 美術・図書館棟はうすいベージュの壁（写真）
+// 図書室の西の面（写真）：白い柱のあいだが、床から天井近くまで青みがかった灰色の大きなガラス窓。床の位置に濃い青灰色の帯
+const texLibGlass = canvasTex(W, H, (g) => {
+  wallBase(g, { base: "#eceae4", band: "#ddd8cc", line: "#cfc8b8", tile: false });
+  const x = 0.32 * PX, w = BAY * PX - 0.64 * PX, y = yFromFloor(3.05), h = 2.55 * PX;
+  g.fillStyle = "#5d6f80"; g.fillRect(x, y, w, h);
+  glass(g, x + 3, y + 3, w - 6, h - 6);
+  g.fillStyle = "rgba(70,90,110,0.35)"; g.fillRect(x, y, w, h);
+  g.fillStyle = "#8b98a4"; g.fillRect(x, yFromFloor(1.3), w, 4); g.fillRect(x + w / 3, y, 3, h); g.fillRect(x + (2 * w) / 3, y, 3, h);
+  frame(g, x, y, w, h, 5);
+  g.fillStyle = "#56677a"; g.fillRect(0, yFromFloor(0.5), W, 0.5 * PX); // 床の位置の帯
+});
 const texArtWing = makeSchoolTex({ base: "#e9dfcf", band: "#ddd2c0", line: "#cfc3ae", tile: false });
 
 // 茶色いレンガタイルの壁（端の壁。窓はほとんどない）
@@ -723,6 +734,7 @@ const MAT_WALL = {
   gym2: wallMat(texGymLow),
   gym3: wallMat(texGymHigh),
   plain: wallMat(texPlain),
+  libglass: wallMat(texLibGlass),
   plainart: wallMat(texPlainArt),
 };
 
@@ -757,8 +769,8 @@ for (const f of [1, 2, 3]) {
     if (style === "high") return "high|" + b;
     if (OPEN_COURTS.some((rc) => inCells(c + d.dc, r + d.dr, rc))) return "school|" + b; // 光庭のまわりは白
     // 写真に合わせた面ごとの壁（[c0, r0, c1, r1, 向き]）
-    for (const [st, list] of [["office", FACADE.office], ["glassblock", FACADE.glassblock]]) {
-      if ((list || []).some(([c0, r0, c1, r1, dir]) => side === dir && inCells(c, r, [c0, r0, c1, r1]) && (f >= 2 || st === "office"))) return st + "|" + b;
+    for (const [st, list] of [["office", FACADE.office], ["glassblock", FACADE.glassblock], ["libglass", FACADE.libglass]]) {
+      if ((list || []).some(([c0, r0, c1, r1, dir]) => side === dir && inCells(c, r, [c0, r0, c1, r1]) && (f >= 2 || st !== "glassblock"))) return st + "|" + b;
     }
     if (b === "art" && style !== "gym") return "artwing|" + b; // 美術・図書館棟
     if (FACADE.brick.some((rc) => inCells(c, r, rc))) return "brick|" + b;
@@ -1080,6 +1092,16 @@ for (const f of [1, 2, 3]) {
   buildingGroup.add(slab);
 }
 
+// 3号館の西のはしのレンガの壁（写真）：まんなかに白い柱が1本あり、レンガが左右2枚に分かれて見える
+{
+  const b3 = blockById("w3"), [px, pz0] = toWorld(X(15), Z(63), b3), [, pz1] = toWorld(X(15), Z(70), b3);
+  for (const f of [1, 2, 3]) {
+    const pil = new THREE.Mesh(new THREE.BoxGeometry(0.5, FH, 0.7), matRelief);
+    pil.position.set(px - 0.2, base(f) + FH / 2, pz0 + (pz1 - pz0) * 0.75); // レンガは南半分（教室の側）
+    pil.castShadow = pil.receiveShadow = true;
+    layers.exterior[f].add(pil);
+  }
+}
 // 図書室の棟のピンク色の寄棟屋根
 {
   // 寄棟は教室・図書室の部分だけ（南の廊下・階段・トイレの帯は3階まであるので、平らな屋上にする）

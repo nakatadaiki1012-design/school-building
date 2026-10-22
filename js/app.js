@@ -1892,6 +1892,7 @@ for (const f of [1, 2, 3]) {
   if (onFloor.some(inGym)) furn.add(buildFurniture(onFloor.filter(inGym).map(toItem), y0OfFloor(f) + GYM_LIFT)); // 体育館は高い
   layers.furniture[f] = furn;
   grp.add(furn);
+  if (f === 2) build2FHall(grp);
   layers.rooms[f] = grp;
   layers.labels[f] = lbl;
   scene.add(grp, lbl);
@@ -2477,6 +2478,55 @@ function tick(now) {
     if (now - lastDeclutter > 200) { lastDeclutter = now; declutter(); }
   }
   requestAnimationFrame(tick);
+}
+
+// 2階の、写真に合わせた形：コモンスペースの南の吹き抜けの、角の丸い腰壁と手すり／中央の渡り廊下（ギャラリースペース）の柱と展示のくぼみ
+function build2FHall(grp) {
+  const white = matRelief, metal = new THREE.MeshStandardMaterial({ color: 0xc8ccd0, metalness: 0.6, roughness: 0.35 });
+  const y = base(2);
+  // ① 吹き抜けの腰壁（北と東。北東の角は丸い）と、その上の金属の手すり
+  {
+    const rc = rectOf({ c0: 33, r0: 29, c1: 37, r1: 31 }), R = 0.9, t = 0.2, h = 1.0;
+    const gs = [];
+    gs.push(new THREE.BoxGeometry(rc.x1 - R - rc.x0, h, t).translate((rc.x0 + rc.x1 - R) / 2, y + h / 2, rc.z0 + t / 2));
+    gs.push(new THREE.BoxGeometry(t, h, rc.z1 - rc.z0 - R).translate(rc.x1 - t / 2, y + h / 2, (rc.z0 + R + rc.z1) / 2));
+    const ccx = rc.x1 - R, ccz = rc.z0 + R;
+    const outer = new THREE.CylinderGeometry(R, R, h, 16, 1, true, Math.PI / 2, Math.PI / 2).translate(ccx, y + h / 2, ccz);
+    const inner = new THREE.CylinderGeometry(R - t, R - t, h, 16, 1, true, Math.PI / 2, Math.PI / 2).translate(ccx, y + h / 2, ccz);
+    const top = new THREE.RingGeometry(R - t, R, 16, 1, 0, Math.PI / 2).rotateX(-Math.PI / 2).translate(ccx, y + h, ccz);
+    const m = new THREE.Mesh(mergeGeometries([...gs.map((g) => g.toNonIndexed()), outer.toNonIndexed(), inner.toNonIndexed(), top.toNonIndexed()]), new THREE.MeshStandardMaterial({ color: 0xf1efea, roughness: 0.85, side: THREE.DoubleSide }));
+    m.castShadow = m.receiveShadow = true;
+    // 手すり：腰壁の上に、柱で少し浮かせた金属のパイプ
+    const pts = [], hy = y + h + 0.25, rr = R - t / 2;
+    for (let x = rc.x0 + 0.1; x < ccx; x += 0.5) pts.push(new THREE.Vector3(x, hy, rc.z0 + t / 2));
+    for (let i = 0; i <= 8; i++) { const a = Math.PI - (Math.PI / 2) * (i / 8); pts.push(new THREE.Vector3(ccx + Math.sin(a) * rr, hy, ccz + Math.cos(a) * rr)); }
+    for (let z = ccz + 0.5; z <= rc.z1 - 0.1; z += 0.5) pts.push(new THREE.Vector3(rc.x1 - t / 2, hy, z));
+    const rail = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, false, "catmullrom", 0), 120, 0.035, 6), metal);
+    const posts = [];
+    for (let i = 0; i < pts.length; i += 3) posts.push(new THREE.CylinderGeometry(0.02, 0.02, 0.25, 6).translate(pts[i].x, y + h + 0.125, pts[i].z));
+    inBlock(grp, blockAtCell(33, 29)).add(m, rail, new THREE.Mesh(mergeGeometries(posts), metal));
+  }
+  // ② 2階の渡り廊下（1号館と2号館をつなぐ。東はガラスブロックの窓）：西側に柱が5本ならび、柱のあいだは展示のくぼみ（ベンチと掲示板）と窓
+  {
+    const rc = rectOf({ c0: 38, r0: 32, c1: 41, r1: 46 }), L = rc.z1 - rc.z0, n = 5, x0 = rc.x0;
+    const cols = [], benches = [], boards = [], beams = [];
+    const zs = Array.from({ length: n }, (_, i) => rc.z0 + (L * (i + 0.5)) / n);
+    for (const z of zs) cols.push(new THREE.BoxGeometry(0.6, FH, 0.6).translate(x0 + 0.95, y + FH / 2, z));
+    for (let i = 0; i < n - 1; i++) {
+      if (i % 2 === 1) continue; // 1つおきに窓（外壁の窓のまま）
+      const za = zs[i] + 0.3, zb = zs[i + 1] - 0.3, zc = (za + zb) / 2, len = zb - za;
+      benches.push(new THREE.BoxGeometry(0.6, 0.42, len - 0.2).translate(x0 + 0.45, y + 0.21, zc));
+      boards.push(new THREE.BoxGeometry(0.05, 1.5, len - 0.1).translate(x0 + 0.13, y + 1.3, zc));
+      beams.push(new THREE.BoxGeometry(0.75, 0.5, len).translate(x0 + 0.4, y + FH - 0.6, zc));
+    }
+    const g = inBlock(grp, blockAtCell(38, 32));
+    const wood = new THREE.MeshStandardMaterial({ color: 0xc9944f, roughness: 0.7 });
+    const art = canvasTex(256, 96, (c, w, h) => { c.fillStyle = "#555a5c"; c.fillRect(0, 0, w, h); const cs = ["#f2c14e", "#e4572e", "#4c9fd6", "#76b041", "#ffffff", "#d96fa8"]; for (let x = 6; x < w - 20; x += 22) for (let yy = 6; yy < h - 20; yy += 22) { c.fillStyle = "#fafafa"; c.fillRect(x, yy, 18, 18); c.fillStyle = cs[(x + yy) % cs.length]; c.fillRect(x + 3, yy + 5, 12, 7); } }, false);
+    for (const [geos, mat] of [[cols, white], [benches, wood], [boards, new THREE.MeshStandardMaterial({ map: art, roughness: 0.9 })], [beams, white]]) {
+      if (!geos.length) continue;
+      const m = new THREE.Mesh(mergeGeometries(geos), mat); m.castShadow = m.receiveShadow = true; g.add(m);
+    }
+  }
 }
 
 // ---------- 現在地（スマホのGPS） ----------

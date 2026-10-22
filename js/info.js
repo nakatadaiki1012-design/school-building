@@ -97,7 +97,7 @@ const RULES = [
   [/(化学|物理|生物)準備室/, "prep", (m) => `${m[1]}の先生の部屋で、実験の道具や薬品を準備・保管しています。`],
   [/(国語|数学|英語|社会|家庭|保健体育)科\s*準備室|(国語|数学|英語|社会|家庭|保健体育)科準備室/, "prep", (m) => `${m[1] || m[2]}科の先生が授業の準備をする部屋です。質問や提出物があるときはここを訪ねましょう。`],
   [/^準備室$/, "prep", "となりの特別教室で使う道具や資料を置いている準備室です。"],
-  [/コモンスペース/, "life", "音楽準備室の南にある、みんなが使える広いスペースです。壁には美術選択の生徒が描いた大きな壁画があります。テーブルと長椅子があり、渡り廊下へ少し上がる階段もあります。"],
+  [/コモンスペース/, "life", "音楽準備室の南にある、みんなが使える広いスペースです。壁には美術選択の生徒が描いた大きな壁画があります。テーブルと長椅子があり、渡り廊下へ少し上がる階段もあります。出張図書館も設置されています。"],
   [/練習室/, "special", "音楽室のとなりの小さな練習室です。楽器や歌の個人練習などに使います。"],
   [/音楽室/, "special", "音楽の授業を行う音楽室です。ギター、バイオリン、ウクレレ、キーボードなどが人数分あります。吹奏楽部や音楽部の活動場所としても使われます。"],
   [/美術教室/, "special", "美術の授業で使う教室です。絵画やデザインの制作を行います。"],
@@ -168,7 +168,7 @@ export const PHOTOS = [
   [/^ラウンジ$/, "images/lounge3.jpg", 3], // 3つめの数字を書くと、その階の部屋だけ
   [/^ラウンジ$/, "images/lounge2.jpg", 2],
   [/^正面玄関$/, "images/genkan.jpg"],
-  [/^コモンスペース$/, "images/common.jpg"],
+  [/^コモンスペース$/, ["images/common.jpg", "images/common-2.jpg", "images/common-3.jpg"]],
   [/^体育館$/, "images/gym.jpg"],
   [/^卓球場$/, ["images/takkyu-a.jpg", "images/takkyu-b.jpg"]],
   [/^社会科教室$/, ["images/shakai-1.jpg", "images/shakai-2.jpg", "images/shakai-3.jpg", "images/shakai-4.jpg"]],
@@ -438,6 +438,7 @@ export const GYM_GALLERY = [[25, 4, 26, 34], [23, 4, 26, 7], [23, 33, 26, 38]];
 // 前の年度の図面のとおり、北側に左右に分かれた小さな練習室が2つある（あいだは通路）
 export const ROOM_EDITS = [
   { name: "音楽室", floor: 2, set: { r0: 12 } },
+  { name: "調理室", floor: 3, set: { desc: "家庭基礎の授業や、料理部の活動などに利用されています。また、鴻志祭では飲食団体の調理場所としても活躍します。", photos: ["images/chouri-1.jpg", "images/chouri-2.jpg", "images/chouri-3.jpg", "images/chouri-4.jpg", "images/chouri-5.jpg"] } },
   { name: "STUDY HALL", floor: 2, set: { r0: 50, r1: 56, desc: "自習ができるスペースです。仕切りやデスクライトがついた勉強机、赤本などが置いてあります。昼休みや放課後に自習をする生徒が利用しています。", photos: ["images/studyhall-1.jpg", "images/studyhall-2.jpg", "images/studyhall-3.jpg", "images/studyhall-4.jpg", "images/studyhall-5.jpg", "images/studyhall-6.jpg"] } },
   // 2階の職員WCは、細く半分に分かれている：西が男子、東が女子
   { name: "職員トイレ", floor: 2, set: { name: "職員男子トイレ", c1: 54.5 } },

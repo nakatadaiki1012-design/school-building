@@ -437,6 +437,7 @@ export const GYM_GALLERY = [[25, 4, 26, 34], [23, 4, 26, 7], [23, 33, 26, 38]];
 // 前の年度の図面のとおり、北側に左右に分かれた小さな練習室が2つある（あいだは通路）
 export const ROOM_EDITS = [
   { name: "音楽室", floor: 2, set: { r0: 12 } },
+  { name: "STUDY HALL", floor: 2, set: { r0: 50, r1: 56, desc: "自習ができるスペースです。仕切りやデスクライトがついた勉強机、赤本などが置いてあります。昼休みや放課後に自習をする生徒が利用しています。", photos: ["images/studyhall-1.jpg", "images/studyhall-2.jpg", "images/studyhall-3.jpg", "images/studyhall-4.jpg", "images/studyhall-5.jpg", "images/studyhall-6.jpg"] } },
   // 2階の職員WCは、細く半分に分かれている：西が男子、東が女子
   { name: "職員トイレ", floor: 2, set: { name: "職員男子トイレ", c1: 54.5 } },
   { name: "事務室", floor: 1, set: { desc: "ご来校の際は、こちらから事務室にお声掛けください。", photos: ["images/jimu.jpg"] } },
@@ -492,7 +493,6 @@ export const ROOM_EDITS = [
   { name: "吹抜", floor: 2, at: 48, set: { name: "光庭（中庭）" } },
   { name: "吹抜", floor: 3, at: 48, set: { name: "光庭（中庭）" } },
   // STUDY HALL は、吹き抜け側（北）と階段側（南）にもう少し広い
-  { name: "STUDY HALL", floor: 2, set: { r0: 50, r1: 56 } },
   // 体育館の2階の玄関は、階段から器具庫の手前まで広い
   { name: "玄関", floor: 2, set: { c0: 14, r0: 35 } },
 ];

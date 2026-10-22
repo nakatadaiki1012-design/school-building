@@ -644,7 +644,7 @@ const texCorridor = (() => {
 })();
 const matSlab = new THREE.MeshStandardMaterial({ map: texCorridor, color: 0xffffff, roughness: 0.6 });
 // 外壁は、同じ面にぴったり重なる柱・床のふちなどより「少し奥」にあるものとして描く（重なった面がちらつかないように）
-const wallMat = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.82, metalness: 0.0, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 2 });
+const wallMat = (map) => new THREE.MeshStandardMaterial({ map, roughness: 0.82, metalness: 0.0, polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: 4 });
 const matStack = new THREE.MeshStandardMaterial({ map: texStack, roughness: 0.8 });
 const matGlassDoor = new THREE.MeshStandardMaterial({ color: 0x3e5a74, roughness: 0.15, metalness: 0.3 });
 const matStackSide = new THREE.MeshStandardMaterial({ color: 0xf2efe8, roughness: 0.85, side: THREE.DoubleSide });
@@ -658,7 +658,7 @@ function cutMat(style) {
     const t = src.clone();
     t.needsUpdate = true;
     t.repeat.set(1, CUT_H / FH);
-    cutMats[style] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 1, polygonOffsetUnits: 2 });
+    cutMats[style] = new THREE.MeshStandardMaterial({ map: t, roughness: 0.85, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: 0, polygonOffsetUnits: 4 });
   }
   return cutMats[style];
 }
@@ -838,7 +838,7 @@ for (const f of [1, 2, 3]) {
     }
     // 外壁の内側の面
     if (bid !== "bridge") {
-      const wallG = [], glassG = [], frameG = [], y0 = base(f), inset = 0.1, th = 0.08;
+      const wallG = [], glassG = [], frameG = [], y0 = base(f), inset = 0.18, th = 0.06;
       const piece = (list, sg, y, h, t = th, from = 0, to = 1) => {
         const alongX = sg.n[1] !== 0, len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az) * (to - from) - (from === 0 && to === 1 ? 0.24 : 0); // 両はしは外壁の角から少し離す（角の外に白い線が出ないように）
         const k = (from + to) / 2, cx = sg.ax + (sg.bx - sg.ax) * k - sg.n[0] * inset, cz = sg.az + (sg.bz - sg.az) * k - sg.n[1] * inset;
@@ -1811,6 +1811,8 @@ for (const f of [1, 2, 3]) {
       const cells = new Map();
       for (const q of [r, ...r.parts, ...(r.joined || [])]) for (let c = q.c0; c <= q.c1; c++) for (let rr = q.r0; rr <= q.r1; rr++) cells.set(key(c, rr), "p");
       for (const sg of boundarySegments(cells)) {
+        // 建物の外に面した辺は外壁があるので立てない（L字の部屋も）
+        { const mx = (sg.ax + sg.bx) / 2 + sg.n[0] * 0.3, mz = (sg.az + sg.bz) / 2 + sg.n[1] * 0.3; if (!OCC[f].has(key(Math.floor(mx / CW + C_MID), Math.floor(mz / RH + R_MID)))) continue; }
         const len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az), t = 0.14, h = WALL_H;
         const g = new THREE.BoxGeometry(sg.n[1] !== 0 ? len : t, h, sg.n[1] !== 0 ? t : len);
         g.translate((sg.ax + sg.bx) / 2, y + h / 2, (sg.az + sg.bz) / 2);

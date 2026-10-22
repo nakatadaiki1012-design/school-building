@@ -1417,6 +1417,24 @@ scene.add(outdoor);
     const [px0, pz0] = toWorld(X(20), Z(23), blockById("gym")), [px1, pz1] = toWorld(X(27), Z(39), blockById("gym"));
     flatRect(px0, px1, pz0, pz1, pink, -0.188);
   }
+  // 体育館下のピロティ（写真）：奥（北）の壁に武道場の入口（クリーム色の4枚の扉と、ネットのついた欄間の窓）、西の壁ぞいにベンチ
+  {
+    const gb = blockById("gym"), [dx0, dz] = toWorld(X(22.5), Z(23), gb), [dx1] = toWorld(X(26.5), Z(23), gb);
+    const cream = new THREE.MeshStandardMaterial({ color: 0xece2cc, roughness: 0.8 });
+    const w = dx1 - dx0, cx = (dx0 + dx1) / 2, g = [];
+    for (let i = 0; i < 4; i++) g.push(new THREE.BoxGeometry(w / 4 - 0.04, 2.3, 0.08).translate(dx0 + (w * (i + 0.5)) / 4, 1.0, dz + 0.06));
+    const door = new THREE.Mesh(mergeGeometries(g), cream);
+    const win = new THREE.Mesh(new THREE.BoxGeometry(w, 0.9, 0.06), new THREE.MeshStandardMaterial({ color: 0x3c4c48, roughness: 0.3 }));
+    win.position.set(cx, 2.75, dz + 0.06);
+    const net = new THREE.Mesh(new THREE.BoxGeometry(w + 0.1, 1.0, 0.04), new THREE.MeshStandardMaterial({ color: 0x2f5a3a, wireframe: true }));
+    net.position.set(cx, 2.75, dz + 0.12);
+    const benches = [];
+    const [bx, bz0] = toWorld(X(20) + 0.5, Z(27), gb), [, bz1] = toWorld(X(20), Z(35), gb);
+    for (const bz of [bz0, (bz0 + bz1) / 2, bz1]) benches.push(new THREE.BoxGeometry(0.35, 0.06, 1.8).translate(bx, 0.22, bz), new THREE.BoxGeometry(0.3, 0.42, 0.06).translate(bx, 0.0, bz - 0.8), new THREE.BoxGeometry(0.3, 0.42, 0.06).translate(bx, 0.0, bz + 0.8));
+    const bm = new THREE.Mesh(mergeGeometries(benches), new THREE.MeshStandardMaterial({ color: 0xd8d2c4, roughness: 0.8 }));
+    for (const m of [door, win, bm]) { m.castShadow = m.receiveShadow = true; }
+    outdoor.add(door, win, net, bm);
+  }
   const planter = matHedge;
   // 図書室の棟と中央のあいだのレンガの広場の植え込み（航空写真をなぞった形）
   // 北：こんもりした丸い木のかたまり、南：だ円形の植え込み
@@ -1797,6 +1815,7 @@ for (const f of [1, 2, 3]) {
       else map.repeat.set(r.w / 4, r.d / 4);
       if (/ステージ/.test(r.name)) tint = new THREE.Color(0xc99560); // ステージの木の床
       else if (/卓球場/.test(r.name)) { map = null; tint = new THREE.Color(0x2f7a72); } // 卓球場の床は緑がかった青の樹脂の床（写真）
+      else if (/^土間$/.test(r.name)) { map = texBrickFloor.clone(); map.needsUpdate = true; map.repeat.set(r.w / 3, r.d / 3); tint = new THREE.Color(0xffffff); } // 土間はレンガ色のタイル
       else if (/^音楽室$/.test(r.name)) { map = null; tint = new THREE.Color(0x7b2733); } // 音楽室の床はえんじ色
       else if (/STUDY HALL/.test(r.name)) { map = null; tint = new THREE.Color(0x8a7c6c); } // STUDY HALL の床は灰色がかった茶色（写真）
       else if (/コンピューター/.test(r.name)) tint = new THREE.Color(0x4a74c9); // コンピューター教室の床は青

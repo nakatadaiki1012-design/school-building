@@ -15,7 +15,7 @@ export const FOOTPRINTS = {
     [42, 15, 65, 31, "school"], // 1号館
     [42, 47, 65, 58, "school"], // 2号館
     [15, 63, 44, 69, "school"], // 3号館（廊下＋教室）
-    [13, 59, 15, 64, "school"], // 3号館西のトイレ
+    [12, 59, 15, 64, "school"], // 3号館西のトイレ
   ],
   2: [
     [7, 1, 26, 38, "gym"],      // 体育館
@@ -27,7 +27,7 @@ export const FOOTPRINTS = {
     [42, 15, 65, 31, "school"],
     [42, 47, 65, 58, "school"],
     [15, 63, 44, 69, "school"],
-    [13, 59, 15, 64, "school"],
+    [12, 59, 15, 64, "school"],
   ],
   3: [
     [7, 1, 26, 38, "gym"],      // 体育館の上部（吹き抜け）と卓球場
@@ -39,7 +39,7 @@ export const FOOTPRINTS = {
     [42, 15, 65, 31, "school"],
     [42, 47, 65, 58, "school"],
     [15, 63, 44, 69, "school"],
-    [13, 59, 15, 64, "school"],
+    [12, 59, 15, 64, "school"],
   ],
 };
 
@@ -120,6 +120,7 @@ const RULES = [
   [/整理室/, "storage", "図書室の本を整理・修理するための部屋です。"],
   [/資料室/, "storage", "図書室の資料を保管している部屋です。"],
   [/ラウンジ/, "life", "休み時間などに過ごせる、廊下に面したスペースです。"],
+  [/^土間$/, "entry", "昇降口の横の、タイル敷きの土間です。"],
   [/らくらくスペース/, "life", "ひと休みしたり、落ち着いて過ごしたりできるスペースです。"],
   [/生徒会室/, "life", "生徒会が活動の打ち合わせや準備をする部屋です。"],
   [/生徒指導室/, "office", "生徒指導の先生が相談や面談を行う部屋です。"],
@@ -350,6 +351,8 @@ export const SITE = {
 };
 
 export const SITE_INFO = [
+  { name: "体育館下のピロティ", x: -19.5, z: -6, desc: "体育館の下の、柱がならぶ屋根つきの広い場所です。レンガ敷きでベンチがあり、奥に武道場の入口、横にトイレがあります。", photos: ["images/piloti-1.jpg", "images/budo-1.jpg"] },
+  { name: "昇降口前（ピロティ）", x: 2.7, z: 1, desc: "2つの昇降口のあいだの、柱がならぶ屋根つきの広い場所です。レンガ敷きで、上には2階の渡り廊下があります。", photos: ["images/shokoumae-1.jpg"] },
   { key: "ground", name: "グラウンド", x: -10, z: -90, desc: "グラウンドの風景です。授業のほか、野球部やサッカー部、陸上競技部などが活動場所として使用しています。", photos: ["images/ground-a.jpg", "images/ground-b.jpg"] },
   { key: "tennis", name: "テニスコート", x: 74, z: -50, desc: "グラウンドの東側にある、砂のテニスコートです（2区画）。" },
   { key: "pool", name: "プール", x: -58, z: -36, desc: "25mプールです。体育の水泳の選択授業のほか、水泳部の活動場所として使われています。", photos: ["images/pool-a.jpg", "images/pool-b.jpg"] },
@@ -475,10 +478,11 @@ export const ROOM_EDITS = [
   { name: "女子トイレ", floor: 1, at: 48, set: { c0: 47, c1: 49 } },
   { name: "電気室", floor: 1, at: 51, set: { c0: 50, c1: 51 } },
   { name: "化学実験室", floor: 1, set: { c0: 52 } },
-  // 3号館の西のはしの男子トイレ（美術・図書館棟と3号館にまたがる）は、東西の幅を美術・図書館棟に合わせる（細くなりすぎないように）
-  { name: "男子トイレ", floor: 1, at: 13, set: { xBlock: "art" } },
-  { name: "男子トイレ", floor: 2, at: 13, set: { xBlock: "art" } },
-  { name: "男子トイレ", floor: 3, at: 13, set: { xBlock: "art" } },
+  // 3号館の西のはしの男子トイレ（美術・図書館棟と3号館にまたがる）は、東西の幅を美術・図書館棟に合わせる（細くなりすぎないように）。
+  // 女子トイレの入口をふさがないよう、少し西に寄せる
+  { name: "男子トイレ", floor: 1, at: 13, set: { xBlock: "art", c0: 12, c1: 13.7 } },
+  { name: "男子トイレ", floor: 2, at: 13, set: { xBlock: "art", c0: 12, c1: 13.7 } },
+  { name: "男子トイレ", floor: 3, at: 13, set: { xBlock: "art", c0: 12, c1: 13.7 } },
   // 2階の美術・図書館棟：図書室と選択第２教室を南北に広げ、選択第２教室は男子トイレにくっつける
   { name: "図書室", floor: 2, set: { r1: 52, photos: ["images/tosho-1.jpg", "images/tosho-2.jpg", "images/tosho-3.jpg"] } },
   { name: "選択第２教室", floor: 2, set: { r0: 53, r1: 58 } },
@@ -509,6 +513,8 @@ export const ROOM_EDITS = [
 ];
 export const EXTRA_ROOMS = [
   // 2階：音楽準備室の南の広い場所（壁にアート）。テーブルと長椅子があり、西に渡り廊下へ少し上がる階段
+  // 1階：南の昇降口とらくらくスペースのあいだの土間（タイル）。らくらくスペースへはここのドアから入る
+  { id: "F1-DOMA", name: "土間", floor: 1, c0: 40, r0: 47, c1: 41, r1: 49 },
   { id: "F2-CS", name: "コモンスペース", floor: 2, c0: 33, r0: 23, c1: 41, r1: 28 },
   // 2階：STUDY HALL の前、吹き抜けの横の展示スペース（美術作品）。北の渡り廊下のギャラリースペースもあわせて紹介
   { id: "F2-EX", name: "2階廊下の展示スペース", floor: 2, c0: 38, r0: 47, c1: 41, r1: 49, desc: "美術作品が飾られています。STUDY HALL の前と、北へのびる2階の渡り廊下（ギャラリースペース）に、生徒の作品が展示されています。", photos: ["images/tenji-1.jpg", "images/tenji-2.jpg", "images/tenji-3.jpg", "images/tenji-4.jpg", "images/tenji-5.jpg"] },
@@ -545,6 +551,7 @@ export const ROOM_STYLE = [
   { name: "玄関", floor: 1, r0: 19, open: ["n"], doors: ["s"] },
   // 事務室：廊下側（北）の入口は西のはし寄り
   { name: "事務室", floor: 1, doors: ["n@-0.38"] },
+  { name: "らくらくスペース", floor: 1, doors: ["w@-0.2"] }, { name: "土間", floor: 1, open: ["n", "s", "w"], noLabel: true },
   // 体育館の1階の部室：外への入口は両引き戸（北の部室は北、西の部室は西）
   { name: "部室1", floor: 1, doors: ["n:clubDoor"] }, { name: "部室2", floor: 1, doors: ["n:clubDoor"] }, { name: "部室3", floor: 1, doors: ["n:clubDoor"] }, { name: "部室4", floor: 1, doors: ["n:clubDoor"] }, { name: "部室5", floor: 1, doors: ["n:clubDoor"] }, { name: "部室6", floor: 1, doors: ["n:clubDoor"] }, { name: "部室7", floor: 1, doors: ["n:clubDoor"] }, { name: "部室8", floor: 1, doors: ["n:clubDoor"] },
   { name: "部室9", floor: 1, doors: ["w:clubDoor"] }, { name: "部室10", floor: 1, doors: ["w:clubDoor"] }, { name: "部室（女子陸上部）", floor: 1, doors: ["w:clubDoor"] }, { name: "部室（女子バスケ部）", floor: 1, doors: ["w:clubDoor"] }, { name: "部室（女子バレー部）", floor: 1, doors: ["w:clubDoor"] },

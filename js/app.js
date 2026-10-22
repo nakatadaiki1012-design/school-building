@@ -2793,6 +2793,16 @@ document.getElementById("here-btn").addEventListener("click", () => {
   inBlock(layers.rooms[1], b).add(m);
 }
 
+// 3階の社会科教室の西：バルコニーの奥の教室の壁（外観でも見えるように、窓のある外壁を立てる）
+{
+  const b = blockAtCell(35, 36), x = X(35);
+  const seg = { ax: x, az: Z(32), bx: x, bz: Z(47), n: [-1, 0] };
+  const m = new THREE.Mesh(wallGeometry([seg], base(3), FH), MAT_WALL.school);
+  m.material = MAT_WALL.school.clone(); m.material.side = THREE.DoubleSide;
+  m.castShadow = m.receiveShadow = true;
+  inBlock(layers.exterior[3], b).add(m);
+}
+
 // ---------- 校内探検（一人称視点） ----------
 // 自分の目の高さで、校舎の中を歩いて見てまわる。歩けるのは建物の床の上だけ（外や吹き抜け・階段の穴には落ちない）。
 // 部屋の仕切りの壁は通りぬけられる。階を変えるときは左の階のボタン
@@ -2940,4 +2950,3 @@ if (m && ROOM_BY_ID[m[1]]) selectRoom(ROOM_BY_ID[m[1]]);
 requestAnimationFrame(tick);
 document.getElementById("loading").remove();
 
-window.__flyTo = (p, t) => flyTo(new THREE.Vector3(...p), new THREE.Vector3(...t), 10);

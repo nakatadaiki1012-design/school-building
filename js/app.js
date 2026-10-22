@@ -1262,7 +1262,8 @@ function rustTex() {
   const gx = X(7), gz0 = Z(1), gz1 = Z(39), gxe = X(27);
   // 2階の高さで体育館を囲む外廊下（渡り廊下）。東側で中央棟からの渡り廊下につながり、南の2階の玄関まで行ける
   const ty = FH + GYM_LIFT, dw = 3; // 床の高さ（体育館の2階は校舎より高い）、幅
-  const zTop = gz0 + 2, zBot = gz1 + 2.5;
+  // 南の2階の外廊下は細い（航空写真：卓球場の張り出しの下におさまり、図書室の棟とは約7mあいている）
+  const zTop = gz0 + 2, zBot = gz1 + 1.3;
   const deck = (x0, x1, z0, z1) => box(geos2, x1 - x0, 0.3, z1 - z0, (x0 + x1) / 2, ty - 0.15, (z0 + z1) / 2);
   // 外廊下の腰壁（写真では高め、約1.6m）
   const rail = (x0, x1, z0, z1) => box(geos2, Math.max(0.18, x1 - x0), 1.6, Math.max(0.18, z1 - z0), (x0 + x1) / 2, ty + 0.65, (z0 + z1) / 2);
@@ -1273,21 +1274,16 @@ function rustTex() {
   deck(so - sw - 0.2, so, zTop, zTop + landL);  // 北西の踊り場（外廊下の外）
   // 西側の2階の外廊下（体育館の長さいっぱい）
   // 写真：体育館の西の壁ぞいに、北の踊り場から南へ1階へ下りる外階段。その南から外廊下が続く
-  deck(gx - sw - 0.2, gx, zTop, gz1 + 2.5);       // 外廊下は北から南までつながる
-  rail(so, so, zTop + landL + stairL, gz1 + 2.5);  // 階段の南から先の外廊下の手すり
+  deck(gx - sw - 0.2, gx, zTop, zBot);       // 外廊下は北から南までつながる
+  rail(so, so, zTop + landL + stairL, zBot);  // 階段の南から先の外廊下の手すり
   rail(so - sw - 0.2, so - sw - 0.2, zTop, zTop + landL); // 踊り場の西の手すり
   rail(so - sw - 0.2, so, zTop, zTop);
-  rail(gx - sw - 0.2, gx, gz1 + 2.5, gz1 + 2.5); // 西の外廊下の南のはし（落ちないように手すり）
+  rail(gx - sw - 0.2, gx, zBot, zBot); // 西の外廊下の南のはし（落ちないように手すり）
   deck(gx, gxe + dw, gz1, zBot);                // 南
   deck(gxe, gxe + dw, zTop, gz1);               // 東
   rail(gx - sw - 0.2, gx, zTop, zTop);
-  // 南：保健体育科準備室（西の端）の前が踊り場。そこから東へ下りる外階段
-  const pl = 3.2, sl = 9.4, SW = 3.4; // SW：体育準備室の前の外階段の幅（幅広）
-  deck(gx, gx + pl, zBot, zBot + SW);
-  rail(gx + pl, gx + pl + sl, zBot, zBot);
-  rail(gx + pl + sl + 2.4, gxe + dw, zBot, zBot); // 上の階段の踊り場のところはあけておく
-  rail(gx, gx, zBot, zBot + SW);
-  rail(gx, gx + pl, zBot + SW, zBot + SW);
+  // 南の外廊下の手すり
+  rail(gx, gxe + dw, zBot, zBot);
   // 中央棟からの渡り廊下がつながるところは手すりなし（渡り廊下の実際の位置を、体育館の図面の座標に直す）
   const gb = blockById("gym"), brw = blockById("bridge").world;
   const bz0 = (brw[1] - gb.oz) / gb.sz, bz1 = (brw[3] - gb.oz) / gb.sz;
@@ -1309,29 +1305,25 @@ function rustTex() {
   // 外廊下のさらに西に、北の踊り場へ上がる外階段（南から北へ上る）
   stair(geos1, so - sw / 2 - 0.1, zTop + landL + stairL, so - sw / 2 - 0.1, zTop + landL, -0.2, ty, sw);
   for (let z = zTop + 4.5; z <= gz1; z += 4.5) box(geos2, 0.35, ty, 0.35, gx - sw, ty / 2 - 0.15, z);
-  // 南側の2階の入口の上は、3階の床がのびた ひさし
-  // （上の外階段のところは、ひさしの南の部分をあける）
-  box(eaves, pl, 0.35, zBot + SW - gz1, gx + pl / 2, 2 * FH - 0.2, (gz1 + zBot + SW) / 2);
-  // 踊り場より東は、壁から少しだけ出た小さなひさし
-  const eD = 1.5;
-  box(eaves, gxe + dw - gx - pl, 0.3, eD, (gx + pl + gxe + dw) / 2, 2 * FH - 0.18, gz1 + eD / 2);
-  stair(geos1, gx + pl + sl, zBot + SW / 2, gx + pl, zBot + SW / 2, -0.2, ty, SW - 0.1);
-  // 体育準備室の前の外階段は、1階→2階の階段の真上に、同じ形の2階→3階の階段がある（3階の卓球場へ）
-  deck(gx + pl + sl, gx + pl + sl + 2.4, zBot, zBot + SW); // 2階：上の階段の上り口の踊り場
-  rail(gx + pl + sl + 2.4, gx + pl + sl + 2.4, zBot, zBot + SW);
-  stair(geos1, gx + pl + sl, zBot + SW / 2, gx + pl, zBot + SW / 2, ty, 2 * FH + GYM_LIFT, SW - 0.1);
-  // 3階の卓球場の入口：外階段を上りきった踊り場の前に、ガラスの引き戸2枚と、その上の壁
+  // 南の2階の外廊下の上は、3階の卓球場が張り出した ひさし
+  box(eaves, gxe + dw - gx + sw + 0.2, 0.35, zBot - gz1 + 0.2, (gx - sw - 0.2 + gxe + dw) / 2, 2 * FH - 0.2, (gz1 + zBot + 0.2) / 2);
+  // 卓球場への外階段（写真）：西の2階の外廊下から南へ上り、南西のすみの3階の踊り場から、そのまま卓球場に入る
   {
-    const y3 = 2 * FH + GYM_LIFT, dx0 = X(7), dx1 = X(9), dwid = dx1 - dx0;
+    const y3 = 2 * FH + GYM_LIFT, xs = gx - sw / 2 - 0.1, zl0 = Z(36.5), run = 6.2;
+    stair(geos1, xs, zl0 - run, xs, zl0, ty, y3, sw - 0.1);
+    box(geos2, sw + 0.2, 0.3, zBot - zl0, gx - sw / 2 - 0.1, y3 - 0.15, (zl0 + zBot) / 2); // 3階の踊り場
+    for (const [x0, x1, z0, z1] of [[gx - sw - 0.2, gx - sw - 0.2, zl0 - run, zBot], [gx - sw - 0.2, gx, zBot, zBot]]) box(geos2, Math.max(0.18, x1 - x0), 1.1, Math.max(0.18, z1 - z0), (x0 + x1) / 2, (x0 === x1 ? (ty + y3) / 2 + 0.55 : y3 + 0.55), (z0 + z1) / 2);
+    box(geos2, 0.35, y3, 0.35, gx - sw - 0.1, y3 / 2 - 0.15, zBot - 0.2); // 踊り場を支える柱
+    // 卓球場の入口（西の壁）：ガラスの引き戸2枚
+    const dz0 = Z(37), dz1 = Z(39) - 0.3, dw2 = dz1 - dz0;
     for (const k of [0, 1]) {
-      const dr = new THREE.Mesh(new THREE.BoxGeometry(dwid / 2 - 0.08, 2.2, 0.08), matGlassDoor);
-      dr.position.set(dx0 + dwid / 4 + k * dwid / 2, y3 + 1.1, gz1 - 0.1 + k * 0.08);
+      const dr = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.2, dw2 / 2 - 0.08), matGlassDoor);
+      dr.position.set(gx - 0.1 + k * 0.08, y3 + 1.1, dz0 + dw2 / 4 + k * dw2 / 2);
       gymExtras.add(dr);
     }
-    box(geos2, dwid, 0.12, 0.2, dx0 + dwid / 2, y3 + 2.25, gz1 - 0.05); // ドアの上の枠
-    box(geos2, dwid, FH - 2.3, 0.3, dx0 + dwid / 2, y3 + 2.3 + (FH - 2.3) / 2, gz1 - 0.05); // ドアの上の壁
+    box(geos2, 0.3, FH - 2.3, dw2, gx - 0.05, y3 + 2.3 + (FH - 2.3) / 2, dz0 + dw2 / 2);
   }
-  stair(geos1, gxe + dw + 1.2, zTop + 2.4 + sl, gxe + dw + 1.2, zTop + 2.4, -0.2, ty, 2.3);
+  stair(geos1, gxe + dw + 1.2, zTop + 2.4 + 9.4, gxe + dw + 1.2, zTop + 2.4, -0.2, ty, 2.3);
   // 1階の南側の柱（柱が並ぶ吹きさらしの部分）
   for (let x = gx + 9; x < gxe; x += 4.2) box(geos2, 0.5, ty, 0.5, x, ty / 2 - 0.2, gz1 + 0.3);
   // その奥の茶色い壁と、柱のあいだのアーチ（写真：大きなアーチが並び、奥が茶色）

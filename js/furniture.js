@@ -419,6 +419,13 @@ const SHAPES = {
   // ゆるいスロープ（幅1.5m）：灰色の石の板と、両はしの金属のふち
   ramp: [[M(0x8f8f88, { roughness: 0.5 }), merge([b(1.5, 0.06, 0.9, 0, 0.04).rotateX(0.08)])], [MAT.metal, merge([b(0.05, 0.08, 0.9, 0.75, 0.05).rotateX(0.08), b(0.05, 0.08, 0.9, -0.75, 0.05).rotateX(0.08)])]],
   bustShelf: [[MAT.wood, merge([b(0.4, 1.2, 1.15), b(0.42, 0.04, 1.2, 0, 1.2)])]],
+  // パイプいす（黒い座面と背、銀の脚）
+  foldChair: [[MAT.black, merge([b(0.4, 0.04, 0.4, 0, 0.44), b(0.04, 0.3, 0.4, 0.2, 0.55)])], [MAT.metal, merge([b(0.03, 0.44, 0.03, -0.18, 0, -0.18), b(0.03, 0.44, 0.03, -0.18, 0, 0.18), b(0.03, 0.85, 0.03, 0.18, 0, -0.18), b(0.03, 0.85, 0.03, 0.18, 0, 0.18)])]],
+  // 制服を着せたマネキン（上半身だけ、スタンドつき）
+  mannequin: [[MAT.metal, merge([b(0.4, 0.03, 0.4), b(0.03, 1.0, 0.03)])], [MAT.navy, merge([b(0.42, 0.6, 0.25, 0, 1.0)])], [M(0xf0c8a8), merge([b(0.14, 0.14, 0.14, 0, 1.6)])]],
+  // ハンガーラック（服がかかっている。白いカバー）
+  hangerRack: [[MAT.metal, merge([b(1.2, 0.03, 0.03, 0, 1.7), b(0.03, 1.7, 0.03, -0.58), b(0.03, 1.7, 0.03, 0.58)])], [M(0xeeeeea, { transparent: true, opacity: 0.85 }), merge([b(1.0, 1.3, 0.5, 0, 0.35)])]],
+  cardboard: [[MAT.cardboard, merge([b(0.5, 0.35, 0.4), b(0.4, 0.3, 0.35, 0.05, 0.35)])]],
   hallWindow: [[MAT.transom, merge([b(1.7, 0.42, 0.24, 0, 1.92), b(1.7, 0.32, 0.24, 0, 0.12)])], [MAT.doorFrame, merge([b(1.78, 0.04, 0.26, 0, 2.34), b(1.78, 0.04, 0.26, 0, 1.88), b(0.04, 0.46, 0.26, 0, 1.88)])]],
   // 壁より厚くして、教室の中からも廊下からも見えるようにする
   // 4枚の大きな両引き戸（体育館の入口）。ガラスの入ったアルミの戸
@@ -1067,7 +1074,23 @@ const LAYOUTS = [
     o.push({ t: "table", x: cx, z: cz, rot: Math.PI / 2 });
     o.push({ t: "officeChair", x: cx - 0.5, z: cz + 0.8, rot: -Math.PI / 2 }, { t: "officeChair", x: cx + 0.5, z: cz + 0.8, rot: -Math.PI / 2 });
   }],
-  [/準備室|放送室|生徒指導室|生徒会室|進路資料室|整理室|資料室/, prep],
+  // 生徒指導室（写真）：長机を「ロ」の字にならべ、まわりにパイプいす。黒板側（北）に小さな机、北の壁ぞいに書類の棚、東の壁ぞいにロッカー、
+  // 窓ぎわ（南）にハンガーラックと制服のマネキン、入口の近くに段ボール
+  [/生徒指導室/, (o, R) => {
+    const { x0, x1, z0, z1 } = R, cx = (x0 + x1) / 2 + 0.1, cz = (z0 + z1) / 2 + 0.5;
+    o.push({ t: "blackboard", x: x0 + 0.12, z: cz - 1.6, rot: 0 });
+    // 長机を「ロ」の字に（長い辺が前後にのびる2本と、それをつなぐ2本）。まわりにパイプいす10脚
+    o.push({ t: "longTable", x: cx - 0.9, z: cz, rot: 0 }, { t: "longTable", x: cx + 0.9, z: cz, rot: 0 });
+    o.push({ t: "longTable", x: cx, z: cz - 1.2, rot: Math.PI / 2 }, { t: "longTable", x: cx, z: cz + 1.2, rot: Math.PI / 2 });
+    for (const k of [-0.6, 0.6]) { o.push({ t: "foldChair", x: cx + k, z: cz - 1.85, rot: -Math.PI / 2 }, { t: "foldChair", x: cx + k, z: cz + 1.85, rot: Math.PI / 2 }); }
+    for (const k of [-0.9, 0, 0.9]) { o.push({ t: "foldChair", x: cx - 1.6, z: cz + k, rot: Math.PI }, { t: "foldChair", x: cx + 1.6, z: cz + k, rot: 0 }); }
+    o.push({ t: "desk", x: x0 + 0.5, z: cz - 0.5, rot: 0 }); // 黒板の下の小さな机
+    along(o, "cabinet", x0 + 0.3, z0 + 0.4, cz - 2.2, 0.95, 0); // 北西の書類の棚
+    o.push({ t: "mannequin", x: cx + 0.4, z: z1 - 0.5, rot: Math.PI / 2 }, { t: "hangerRack", x: cx - 1.2, z: z1 - 0.6, rot: 0 });
+    for (let z = z0 + 0.8; z < z1 - 0.6; z += 1.0) o.push({ t: "cabinet", x: x1 - 0.3, z, rot: Math.PI });
+    o.push({ t: "cardboard", x: x0 + 0.6, z: z0 + 0.4, rot: 0 }, { t: "cardboard", x: x0 + 1.2, z: z0 + 0.35, rot: 0.3 });
+  }],
+  [/準備室|放送室|生徒会室|進路資料室|整理室|資料室/, prep],
   [/男子トイレ/, (o, R) => { toilet(o, R); urinals(o, R); }],
   [/トイレ/, toilet],
   [/ステージ/, stage],

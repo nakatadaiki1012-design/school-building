@@ -467,6 +467,7 @@ export const GYM_GALLERY = [[25, 4, 26, 34], [23, 4, 26, 7], [23, 33, 26, 38]];
 // 前の年度の図面のとおり、北側に左右に分かれた小さな練習室が2つある（あいだは通路）
 export const ROOM_EDITS = [
   { name: "音楽室", floor: 2, set: { r0: 12 } },
+  { name: "生徒指導室", floor: 2, set: { photos: ["images/seitoshido-1.jpg"] } },
   // 体育館2階の南：3階の卓球場が張り出しているので、玄関と体育準備室は1列引っこむ
   { name: "保健体育科準備室", floor: 2, set: { r1: 37 } },
   { name: "部室", floor: 1, atR: 19, set: { remove: true } }, // 西の部室は5つに分けて EXTRA_ROOMS に

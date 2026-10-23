@@ -140,7 +140,7 @@ for (const f of [1, 2, 3]) {
 // ---------- three.js の準備 ----------
 const app = document.getElementById("viewer");
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, Math.min(window.innerWidth, window.innerHeight) < 700 ? 1.5 : 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, Math.min(window.innerWidth, window.innerHeight) < 700 ? 1.5 : 1.75)); // 細かすぎると重いので、上限をおさえる
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 // 処理落ち対策①：太陽は動かないので、影は毎回計算しなおさず、見せるものが変わったとき（階の切りかえ・家具の表示など）だけ計算する
@@ -174,7 +174,7 @@ controls3d.minDistance = 6;
 // 操作しやすく：地面にそって動かす、マウスの位置に向かってズーム、少しなめらかに止まる
 controls3d.screenSpacePanning = false;
 controls3d.zoomToCursor = true;
-controls3d.dampingFactor = 0.12;
+controls3d.dampingFactor = 0.09; // 指をはなしたあと、少しすべるように止まる
 controls3d.rotateSpeed = 0.7;
 controls3d.panSpeed = 1.1;
 controls3d.zoomSpeed = 1.2;
@@ -2236,14 +2236,20 @@ window.addEventListener("keydown", (e) => {
   e.stopImmediatePropagation(); e.preventDefault();
 }, true);
 
+// 選んだ部屋の床の板（ふだんは見えない）を出して光らせる。L字の部屋は、つながった部分の板も
+function showTile(r, on) {
+  for (const q of [r, ...ROOMS.filter((x) => x.kind === "part" && x.parent === r)]) if (q.mesh && !q.mesh.material.transparent) q.mesh.visible = on;
+}
 function selectRoom(r, { fly = true } = {}) {
   if (state.selected?.mesh) {
+    showTile(state.selected, false);
     state.selected.mesh.material.emissive.setHex(0x000000);
     state.selected.label?.classList.remove("selected");
   }
   state.selected = r;
   if (state.floor !== r.floor) setFloor(r.floor, { keepCamera: true });
   r.mesh.material.emissive.setHex(0x553300);
+  showTile(r, true);
   r.label?.classList.add("selected");
   if (fly) {
     if (state.view === "2d") {
@@ -2308,7 +2314,7 @@ function closePanel() {
   panel.classList.remove("open");
   document.body.classList.remove("panel-open");
   if (state.selected?.mesh) {
-    state.selected.mesh.material.emissive.setHex(0x000000);
+    showTile(state.selected, false); state.selected.mesh.material.emissive.setHex(0x000000);
     state.selected.label?.classList.remove("selected");
   }
   state.selected = null;
@@ -2588,52 +2594,61 @@ resize();
 
 // 名前ラベルが重なったら、小さい部屋のほうを隠す
 let lastDeclutter = 0;
+// 名前の札が重ならないように、大事なもの（大きい部屋・選んだ部屋）から順に置き、重なるものはかくす。
+// 画面の位置は札の3Dの位置から計算し、札の大きさは最初の1回だけ測って覚えておく（ページのレイアウト計算を毎回させない）
+const labelPrio = new Map();
+const _wp = new THREE.Vector3();
 function declutter() {
   const groups = state.floor === 0 ? [wingLabels, siteLabels] : [layers.labels[state.floor], siteLabels];
+  const cam = useCamera(), W = renderer.domElement.clientWidth, H = renderer.domElement.clientHeight;
   const items = [];
   for (const g of groups) {
     if (!g.visible) continue;
-    const objs = [];
-    g.traverse((o) => { if (o.isCSS2DObject) objs.push(o); });
-    const wp = new THREE.Vector3();
-    for (const o of objs) {
+    g.traverse((o) => {
+      if (!o.isCSS2DObject || !o.visible) return;
       const el = o.element;
-      if (el.style.display === "none") continue;
+      if (el.style.display === "none") return;
+      o.getWorldPosition(_wp);
       // 校内探検中は、近くの部屋の名前だけ出す
-      el.classList.toggle("far", ex.on && o.getWorldPosition(wp).distanceTo(persp.position) > 14);
-      if (el.classList.contains("far")) continue;
-      const r = ROOMS.find((x) => x.label === el);
-      const prio = el.classList.contains("selected") ? 1e9 : r ? (r.grade ? 1e6 : 0) + r.w * r.d : 1e5;
-      items.push({ el, prio, rect: el.getBoundingClientRect() });
-    }
+      const far = ex.on && _wp.distanceTo(persp.position) > 14;
+      if (el.classList.contains("far") !== far) el.classList.toggle("far", far);
+      if (far) return;
+      _wp.project(cam);
+      if (_wp.z > 1) return;
+      if (!el.__w) { el.__w = el.offsetWidth; el.__h = el.offsetHeight; }
+      const x = ((_wp.x + 1) / 2) * W, y = ((1 - _wp.y) / 2) * H, hw = el.__w / 2, hh = el.__h / 2;
+      let prio = labelPrio.get(el);
+      if (prio === undefined) { const r = ROOMS.find((q) => q.label === el); prio = r ? (r.grade ? 1e6 : 0) + r.w * r.d : 1e5; labelPrio.set(el, prio); }
+      if (el.classList.contains("selected")) prio = 1e9;
+      items.push({ el, prio, left: x - hw, right: x + hw, top: y - hh, bottom: y + hh });
+    });
   }
   items.sort((a, b) => b.prio - a.prio);
   const placed = [];
-  for (const it of items) {
-    const a = it.rect;
+  for (const a of items) {
     const hit = placed.some((b) => a.left < b.right - 2 && a.right > b.left + 2 && a.top < b.bottom - 1 && a.bottom > b.top + 1);
-    it.el.classList.toggle("overlap", hit);
+    if (a.el.classList.contains("overlap") !== hit) a.el.classList.toggle("overlap", hit);
     if (!hit) placed.push(a);
   }
 }
 
 // 軽くするため、画面が止まっているときは描き直さない。
 // カメラが動いたとき、操作の直後（1.5秒）、アニメーション中だけ描く（念のため1秒に1回は描く）
-let activeUntil = 0, lastDraw = 0, lastExT = 0;
+let activeUntil = 0, lastDraw = 0, lastExT = 0, lastAz = 1e9;
 const camKey = new Float64Array(18);
 const poke = () => { activeUntil = performance.now() + 1500; };
 for (const ev of ["pointerdown", "wheel", "keydown", "click", "touchstart", "touchmove", "resize"]) window.addEventListener(ev, poke, { passive: true, capture: true });
 // マウスを動かしただけ（ボタンを押していない）では描き直さない
 window.addEventListener("pointermove", (e) => { if (e.buttons) poke(); }, { passive: true, capture: true });
-// 処理落ち対策②：画面を動かしているあいだは解像度を少し下げて軽くし、止まったらきれいな解像度で描き直す。
-// 動かしているときに重い（1コマ40ms以上）なら、もう一段下げる
-const DPR_FULL = renderer.getPixelRatio();
-let dprLow = Math.min(DPR_FULL, 1), moving = false, slowFrames = 0, lastFrame = 0, lastMoveT = 0;
-function setMoving(m) {
-  if (m === moving) return;
-  moving = m;
-  renderer.setPixelRatio(m ? dprLow : DPR_FULL);
-  resize();
+// 処理落ち対策②：画面の細かさ（解像度）は、上限を少しおさえ、動かしたときに重い（1コマ28ms以上が続く）ようなら
+// 一段ずつ下げる。動かすたびに切りかえると、そのたびに一瞬止まるので、いちど下げたらそのまま
+let dpr = renderer.getPixelRatio(), moving = false, frameTimes = [], lastFrame = 0, lastMoveT = 0;
+function noteFrame(dt) {
+  frameTimes.push(dt);
+  if (frameTimes.length < 40) return;
+  const median = [...frameTimes].sort((a, b) => a - b)[20];
+  frameTimes = [];
+  if (median > 28 && dpr > 0.75) { dpr = Math.max(0.75, dpr - 0.25); renderer.setPixelRatio(dpr); resize(); }
 }
 function cameraChanged(cam) {
   const e = cam.matrixWorld.elements;
@@ -2662,21 +2677,21 @@ function tick(now) {
   const cam = useCamera();
   // 方位磁針（画面の上がどの方角か）
   const az = cam === ortho ? 0 : controls3d.getAzimuthalAngle();
-  compassEl.style.transform = `rotate(${THREE.MathUtils.radToDeg(az)}deg)`;
+  if (Math.abs(az - lastAz) > 0.002) { lastAz = az; compassEl.style.transform = `rotate(${THREE.MathUtils.radToDeg(az)}deg)`; }
   if (!ex.on) (cam === ortho ? controls2d : controls3d).update();
   cam.updateMatrixWorld();
   const camMoved = cameraChanged(cam);
   if (camMoved || anim) {
-    setMoving(true); lastMoveT = now;
     const dt = now - lastFrame;
-    if (lastFrame && dt > 40 && dt < 500 && ++slowFrames > 20 && dprLow > 0.6) { dprLow = Math.max(0.6, dprLow - 0.2); slowFrames = 0; renderer.setPixelRatio(dprLow); resize(); }
-  } else if (moving && now - lastMoveT > 250) { setMoving(false); activeUntil = Math.max(activeUntil, now + 100); }
+    if (moving && dt > 0 && dt < 500) noteFrame(dt);
+    moving = true; lastMoveT = now;
+  } else if (moving && now - lastMoveT > 250) { moving = false; frameTimes = []; lastDeclutter = 0; activeUntil = Math.max(activeUntil, now + 100); } // 止まったらすぐ札を整理
   lastFrame = now;
   if (anim || camMoved || now < activeUntil || now - lastDraw > 1000) {
     lastDraw = now;
     renderer.render(scene, cam);
     labelRenderer.render(scene, cam);
-    if (now - lastDeclutter > 200) { lastDeclutter = now; declutter(); }
+    if (now - lastDeclutter > (moving ? 250 : 120)) { lastDeclutter = now; declutter(); }
   }
   requestAnimationFrame(tick);
 }
@@ -3028,6 +3043,38 @@ window.addEventListener("blur", () => ex.keys.clear());
 // 動かない屋外の部品を、材質ごとにまとめて軽くする
 bakeStatic(site.group);
 bakeStatic(outdoor);
+// 処理落ち対策：部屋の床の板は、見た目が同じものを1つにまとめて描く。もとの板は見えなくして、押したときの当たり判定と、
+// 選んだときの光る板にだけ使う（見えない板は描かない）
+for (const f of [1, 2, 3]) {
+  const grp = layers.rooms[f];
+  grp.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(grp.matrixWorld).invert();
+  const buckets = new Map();
+  for (const r of ROOMS) {
+    const t = r.mesh;
+    if (!t || r.floor !== f || !t.parent) continue;
+    const m = t.material;
+    if (m.transparent || m.opacity < 1) { if (m.opacity === 0) t.visible = false; continue; } // 透明の板（階段・吹き抜けなど）は描かない
+    const key = [m.map?.source?.uuid, m.color.getHex(), m.roughness].join("|");
+    if (!buckets.has(key)) buckets.set(key, { m, geos: [] });
+    const g = t.geometry.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, t.matrixWorld));
+    if (m.map) { m.map.updateMatrix(); const uv = g.attributes.uv, v = new THREE.Vector3(); for (let i = 0; i < uv.count; i++) { v.set(uv.getX(i), uv.getY(i), 1).applyMatrix3(m.map.matrix); uv.setXY(i, v.x, v.y); } }
+    buckets.get(key).geos.push(g);
+    t.visible = false;
+    m.polygonOffset = true; m.polygonOffsetFactor = -1; m.polygonOffsetUnits = -2; // 選んだときに上に重ねて光らせる
+  }
+  for (const { m, geos } of buckets.values()) {
+    const mat = m.clone();
+    if (m.map) { mat.map = m.map.clone(); mat.map.repeat.set(1, 1); mat.map.offset.set(0, 0); mat.map.rotation = 0; mat.map.center.set(0, 0); mat.map.needsUpdate = true; }
+    mat.polygonOffset = false; mat.emissive = new THREE.Color(0);
+    const mesh = new THREE.Mesh(mergeGeometries(geos), mat);
+    mesh.receiveShadow = true;
+    grp.add(mesh);
+  }
+}
+// 処理落ち対策：動かない校舎の部品（外壁・屋根・床・壁の内側など）を、材質ごとに1つにまとめて描く回数を減らす
+for (const k of ["exterior", "roofs", "inner", "wallsBelow", "slab", "cut"]) for (const g of Object.values(layers[k])) bakeStatic(g);
+bakeStatic(gymRoof);
 setFloor(0);
 const m = location.hash.match(/room=([\w-]+)/);
 if (m && ROOM_BY_ID[m[1]]) selectRoom(ROOM_BY_ID[m[1]]);

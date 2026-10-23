@@ -9,13 +9,16 @@ export function bakeStatic(group) {
   const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
   const buckets = new Map();
   const keep = [];
+  const others = []; // メッシュ以外（名前の札など）はそのまま残す
   group.traverse((o) => {
-    if (o === group || !o.isMesh) return;
+    if (o === group) return;
+    if (!o.isMesh) { if (!o.children.length && !o.isGroup) others.push([o, new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld)]); return; }
     const rel = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
     if (o.isInstancedMesh) { keep.push([o, rel]); return; }
     const m = o.material;
     if (Array.isArray(m)) { keep.push([o, rel]); return; }
-    const key = [m.type, m.color?.getHex(), m.map?.uuid, m.transparent, m.opacity, m.side, m.metalness, m.roughness, m.emissive?.getHex(), m.depthWrite, m.alphaTest].join("|");
+    if (o.renderOrder || m.depthTest === false) { keep.push([o, rel]); return; } // 描く順番に意味があるものはまとめない
+    const key = [m.type, m.color?.getHex(), m.map?.uuid, m.transparent, m.opacity, m.side, m.metalness, m.roughness, m.emissive?.getHex(), m.depthWrite, m.alphaTest, m.polygonOffset, m.polygonOffsetFactor, m.polygonOffsetUnits, m.wireframe].join("|");
     if (!buckets.has(key)) buckets.set(key, { mat: m, geos: [], cast: false });
     let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
     for (const name of Object.keys(g.attributes)) if (!["position", "normal", "uv"].includes(name)) g.deleteAttribute(name);
@@ -36,7 +39,7 @@ export function bakeStatic(group) {
     mesh.receiveShadow = true;
     group.add(mesh);
   }
-  for (const [o, rel] of keep) {
+  for (const [o, rel] of [...keep, ...others]) {
     o.matrixAutoUpdate = false;
     o.matrix.copy(rel);
     group.add(o);

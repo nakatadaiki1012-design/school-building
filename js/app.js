@@ -757,7 +757,12 @@ const texShoji = canvasTex(128, 128, (g, w, h) => {
 });
 const matShoji = new THREE.MeshStandardMaterial({ map: texShoji, roughness: 0.9 });
 const SHOJI_ROOMS = /作法室/;
-const NO_WINDOW_STYLE = /^(brick|gym|plain)/; // レンガの壁・体育館は窓なし（レンガは内側も壁だけ、体育館は作らない）
+const NO_WINDOW_STYLE = /^(brick|gym|plain)/;
+// ガラスブロック（内側から見たとき）：20cm角のブロックがならぶ
+const texGlassBlockTile = canvasTex(64, 64, (g, w, h) => { g.fillStyle = "#b9c4bd"; g.fillRect(0, 0, w, h); g.fillStyle = "#d5e2d9"; g.fillRect(3, 3, w - 6, h - 6); g.fillStyle = "rgba(255,255,255,0.55)"; g.fillRect(8, 8, w * 0.4, 5); g.fillStyle = "rgba(90,110,100,0.25)"; g.fillRect(w * 0.55, h * 0.55, w * 0.35, h * 0.35); });
+const matGlassBlockIn = new THREE.MeshStandardMaterial({ map: texGlassBlockTile, roughness: 0.25, metalness: 0.05 });
+// 長さ L・高さ h の板に、ガラスブロックの模様を 19cm ごとにくり返す
+const glassBlockBox = (alongX, L, h, cx, cy, cz, t = 0.1) => { const g = new THREE.BoxGeometry(alongX ? L : t, h, alongX ? t : L).translate(cx, cy, cz); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * Math.max(1, Math.round(L / 0.19)), uv.getY(i) * Math.max(1, Math.round(h / 0.19))); return g; }; // レンガの壁・体育館は窓なし（レンガは内側も壁だけ、体育館は作らない）
 const y0OfFloor = (f) => base(f);
 const buildingGroup = new THREE.Group();
 scene.add(buildingGroup);
@@ -861,7 +866,7 @@ for (const f of [1, 2, 3]) {
         const k = (from + to) / 2, cx = sg.ax + (sg.bx - sg.ax) * k - sg.n[0] * inset, cz = sg.az + (sg.bz - sg.az) * k - sg.n[1] * inset;
         list.push(new THREE.BoxGeometry(alongX ? len : t, h, alongX ? t : len).translate(cx, y + h / 2, cz));
       };
-      const shojiG = [];
+      const shojiG = [], gbG = [];
       const inShoji = (sg) => {
         const mx = (sg.ax + sg.bx) / 2 - sg.n[0] * 0.3, mz = (sg.az + sg.bz) / 2 - sg.n[1] * 0.3;
         const c = Math.floor(mx / CW + C_MID), r = Math.floor(mz / RH + R_MID);
@@ -898,6 +903,18 @@ for (const f of [1, 2, 3]) {
           continue;
         }
         if (NO_WINDOW_STYLE.test(sg.style)) { piece(wallG, sg, y0, FH); continue; }
+        if (sg.style === "glassblock") { // 2階の渡り廊下の東（写真）：下はガラスブロック、その上に銀の枠の窓
+          const L = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az) - 0.24, alongX = sg.n[1] !== 0;
+          const cx = (sg.ax + sg.bx) / 2 - sg.n[0] * inset, cz = (sg.az + sg.bz) / 2 - sg.n[1] * inset;
+          piece(wallG, sg, y0, 0.3);
+          gbG.push(glassBlockBox(alongX, L, 0.85, cx, y0 + 0.3 + 0.425, cz));
+          piece(frameG, sg, y0 + 1.15, 0.06, 0.16);
+          piece(glassG, sg, y0 + 1.2, 1.2, 0.03); piece(frameG, sg, y0 + 2.38, 0.06, 0.12);
+          const n = Math.max(1, Math.round(L / 0.9));
+          for (let i = 0; i <= n; i++) { const u = i / n, w = 0.05 / L; piece(frameG, sg, y0 + 1.2, 1.2, 0.1, Math.max(0, u - w / 2), Math.min(1, u + w / 2)); }
+          piece(wallG, sg, y0 + 2.44, FH - 2.44);
+          continue;
+        }
         const wb = 0.85, wt = 2.65; // 窓の下と上の高さ
         piece(wallG, sg, y0, wb); piece(wallG, sg, y0 + wt, FH - wt);
         piece(glassG, sg, y0 + wb, wt - wb, 0.03);
@@ -906,7 +923,7 @@ for (const f of [1, 2, 3]) {
         for (let i = 0; i <= n; i++) { const u = i / n, w = 0.06 / L; piece(frameG, sg, y0 + wb, wt - wb, 0.1, Math.max(0, u - w / 2), Math.min(1, u + w / 2)); }
       }
       const holderIn = inBlock(inner, b);
-      for (const [geos, mat] of [[wallG, matInnerWall], [glassG, matInnerGlass], [frameG, matInnerFrame], [shojiG, matShoji]]) {
+      for (const [geos, mat] of [[wallG, matInnerWall], [glassG, matInnerGlass], [frameG, matInnerFrame], [shojiG, matShoji], [gbG, matGlassBlockIn]]) {
         if (!geos.length) continue;
         const m = new THREE.Mesh(mergeGeometries(geos), mat);
         m.receiveShadow = true;
@@ -2695,26 +2712,50 @@ function build2FHall(grp) {
   };
   atriumRail({ c0: 33, r0: 29, c1: 37, r1: 31 }, false);
   atriumRail({ c0: 33, r0: 47, c1: 37, r1: 49 }, true);
-  // ② 2階の渡り廊下（1号館と2号館をつなぐ。東はガラスブロックの窓）：西側に柱が5本ならび、柱のあいだは展示のくぼみ（ベンチと掲示板）と窓
+  // ② 2階の渡り廊下（1号館と2号館をつなぐ。写真）：床は灰色がかった茶色。西側に白い角柱が5本ならび（柱に壁の照明）、
+  //    柱のあいだは、作品の掲示板のあるくぼみ・青灰色の壁のくぼみ（黄色い台の木のベンチ）・ガラスブロックの腰壁と窓、がならぶ
   {
     const rc = rectOf({ c0: 38, r0: 32, c1: 41, r1: 46 }), L = rc.z1 - rc.z0, n = 5, x0 = rc.x0;
-    const cols = [], benches = [], boards = [], beams = [];
-    const zs = Array.from({ length: n }, (_, i) => rc.z0 + (L * (i + 0.5)) / n);
-    for (const z of zs) cols.push(new THREE.BoxGeometry(0.6, FH, 0.6).translate(x0 + 0.95, y + FH / 2, z));
-    for (let i = 0; i < n - 1; i++) {
-      if (i % 2 === 1) continue; // 1つおきに窓（外壁の窓のまま）
-      const za = zs[i] + 0.3, zb = zs[i + 1] - 0.3, zc = (za + zb) / 2, len = zb - za;
-      benches.push(new THREE.BoxGeometry(0.6, 0.42, len - 0.2).translate(x0 + 0.45, y + 0.21, zc));
-      boards.push(new THREE.BoxGeometry(0.05, 1.5, len - 0.1).translate(x0 + 0.13, y + 1.3, zc));
-      beams.push(new THREE.BoxGeometry(0.75, 0.5, len).translate(x0 + 0.4, y + FH - 0.6, zc));
-    }
     const g = inBlock(grp, blockAtCell(38, 32));
-    const wood = new THREE.MeshStandardMaterial({ color: 0xc9944f, roughness: 0.7 });
-    const art = canvasTex(256, 96, (c, w, h) => { c.fillStyle = "#555a5c"; c.fillRect(0, 0, w, h); const cs = ["#f2c14e", "#e4572e", "#4c9fd6", "#76b041", "#ffffff", "#d96fa8"]; for (let x = 6; x < w - 20; x += 22) for (let yy = 6; yy < h - 20; yy += 22) { c.fillStyle = "#fafafa"; c.fillRect(x, yy, 18, 18); c.fillStyle = cs[(x + yy) % cs.length]; c.fillRect(x + 3, yy + 5, 12, 7); } }, false);
-    for (const [geos, mat] of [[cols, white], [benches, wood], [boards, new THREE.MeshStandardMaterial({ map: art, roughness: 0.9 })], [beams, white]]) {
-      if (!geos.length) continue;
-      const m = new THREE.Mesh(mergeGeometries(geos), mat); m.castShadow = m.receiveShadow = true; g.add(m);
+    const add = (geos, mat) => { if (!geos.length) return; const m = new THREE.Mesh(mergeGeometries(geos), mat); m.castShadow = m.receiveShadow = true; g.add(m); };
+    // 床（展示スペースまで）
+    const fr = rectOf({ c0: 38, r0: 32, c1: 41, r1: 49 });
+    add([new THREE.BoxGeometry(fr.x1 - fr.x0 - 0.1, 0.02, fr.z1 - fr.z0 - 0.1).translate((fr.x0 + fr.x1) / 2, y + 0.02, (fr.z0 + fr.z1) / 2)], new THREE.MeshStandardMaterial({ color: 0x8b8379, roughness: 0.35, metalness: 0.05 }));
+    const cols = [], benchBase = [], benchTop = [], boards = [], panels = [], beams = [], lamps = [], gb = [], glass = [], frames = [];
+    const zs = Array.from({ length: n }, (_, i) => rc.z0 + (L * (i + 0.5)) / n);
+    for (const z of zs) {
+      cols.push(new THREE.BoxGeometry(0.6, FH, 0.6).translate(x0 + 0.95, y + FH / 2, z));
+      lamps.push(new THREE.BoxGeometry(0.06, 0.26, 0.26).translate(x0 + 1.28, y + 2.35, z)); // 柱の照明
     }
+    const kinds = ["art", "glass", "niche", "glass"];
+    for (let i = 0; i < n - 1; i++) {
+      const za = zs[i] + 0.3, zb = zs[i + 1] - 0.3, zc = (za + zb) / 2, len = zb - za, kind = kinds[i];
+      beams.push(new THREE.BoxGeometry(0.75, 0.5, len).translate(x0 + 0.4, y + FH - 0.6, zc)); // 上の白い梁
+      if (kind === "glass") {
+        // ガラスブロックの腰壁と、その上の銀の枠の窓（外が見える）
+        frames.push(new THREE.BoxGeometry(0.12, 0.3, len).translate(x0 + 0.1, y + 0.15, zc));
+        gb.push(glassBlockBox(false, len, 0.85, x0 + 0.1, y + 0.3 + 0.425, zc, 0.12));
+        frames.push(new THREE.BoxGeometry(0.16, 0.06, len).translate(x0 + 0.1, y + 1.18, zc), new THREE.BoxGeometry(0.12, 0.06, len).translate(x0 + 0.1, y + 2.4, zc));
+        glass.push(new THREE.BoxGeometry(0.03, 1.2, len).translate(x0 + 0.1, y + 1.8, zc));
+        const m = Math.max(1, Math.round(len / 0.9));
+        for (let k = 0; k <= m; k++) frames.push(new THREE.BoxGeometry(0.1, 1.2, 0.05).translate(x0 + 0.1, y + 1.8, za + (len * k) / m));
+        frames.push(new THREE.BoxGeometry(0.1, FH - 0.6 - 2.43, len).translate(x0 + 0.1, y + 2.43 + (FH - 0.6 - 2.43) / 2, zc)); // 窓の上の壁
+        continue;
+      }
+      // くぼみ：ベンチ（黄色い台に木の天板）。奥は作品の掲示板か青灰色の壁
+      benchBase.push(new THREE.BoxGeometry(0.6, 0.4, len - 0.2).translate(x0 + 0.45, y + 0.2, zc));
+      benchTop.push(new THREE.BoxGeometry(0.66, 0.05, len - 0.14).translate(x0 + 0.45, y + 0.425, zc));
+      (kind === "art" ? boards : panels).push(new THREE.BoxGeometry(0.05, FH - 0.6 - 0.45, len - 0.1).translate(x0 + 0.13, y + 0.45 + (FH - 0.6 - 0.45) / 2, zc));
+    }
+    const art = canvasTex(256, 160, (c, w, h) => { c.fillStyle = "#4a4f52"; c.fillRect(0, 0, w, h); const cs = ["#f2c14e", "#e4572e", "#4c9fd6", "#76b041", "#ffffff", "#d96fa8"]; for (let x = 6; x < w - 20; x += 22) for (let yy = 10; yy < h - 24; yy += 24) { c.fillStyle = "#fafafa"; c.fillRect(x, yy, 18, 20); c.fillStyle = cs[(x + yy) % cs.length]; c.fillRect(x + 3, yy + 5, 12, 9); } }, false);
+    add(cols, white); add(beams, white);
+    add(benchBase, new THREE.MeshStandardMaterial({ color: 0xe6d3a3, roughness: 0.8 }));
+    add(benchTop, new THREE.MeshStandardMaterial({ color: 0xa8703c, roughness: 0.6 }));
+    add(boards, new THREE.MeshStandardMaterial({ map: art, roughness: 0.9 }));
+    add(panels, new THREE.MeshStandardMaterial({ color: 0x66737a, roughness: 0.85 }));
+    add(lamps, new THREE.MeshStandardMaterial({ color: 0xe8e4d8, emissive: 0xfff1c8, emissiveIntensity: 0.6 }));
+    add(gb, matGlassBlockIn); add(frames, matInnerFrame);
+    const gm = new THREE.Mesh(mergeGeometries(glass), matInnerGlass); g.add(gm);
   }
 }
 

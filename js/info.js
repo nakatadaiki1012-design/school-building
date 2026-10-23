@@ -515,7 +515,7 @@ export const ROOM_EDITS = [
   { name: "整理室", floor: 2, set: { r0: 53, r1: 55 } },
   { name: "資料室", floor: 2, set: { r0: 56, r1: 58 } },
   // 放送室は間に壁があり、廊下側（北）がミキサー室、奥（南）が録音室
-  { name: "放送室", floor: 2, set: { name: "放送室（ミキサー室）", r1: 55.5 } },
+  { name: "放送室", floor: 2, set: { name: "放送室（ミキサー室）", r1: 55.5, desc: "放送室です。お昼の放送や、メディア研究部の活動に活用されています。手前のミキサー室で、ミキサー（音の調整機械）を操作して校内放送を流します。", photos: ["images/hoso-1.jpg", "images/hoso-2.jpg", "images/hoso-3.jpg", "images/hoso-4.jpg"] } },
   // 社会科教室の西のバルコニーはせまい
   { name: "バルコニー", floor: 3, at: 33, set: { c0: 34 } },
   { name: "体育館", floor: 2, set: { desc: "体育館です。バスケットボールやバレーボールのコートが2面取れる広さです。" } },
@@ -545,7 +545,7 @@ export const EXTRA_ROOMS = [
   { id: "F2-CS", name: "コモンスペース", floor: 2, c0: 33, r0: 23, c1: 41, r1: 28 },
   // 2階：STUDY HALL の前、吹き抜けの横の展示スペース（美術作品）。北の渡り廊下のギャラリースペースもあわせて紹介
   { id: "F2-EX", name: "2階廊下の展示スペース", floor: 2, c0: 38, r0: 47, c1: 41, r1: 49, desc: "美術作品が飾られています。STUDY HALL の前と、北へのびる2階の渡り廊下（ギャラリースペース）に、生徒の作品が展示されています。", photos: ["images/tenji-1.jpg", "images/tenji-2.jpg", "images/tenji-3.jpg", "images/tenji-4.jpg", "images/tenji-5.jpg"] },
-  { id: "F2-AP126R", name: "放送室（録音室）", floor: 2, c0: 42, r0: 56.5, c1: 44, r1: 58 },
+  { id: "F2-AP126R", name: "放送室（録音室）", floor: 2, c0: 42, r0: 56.5, c1: 44, r1: 58, desc: "放送室の奥の録音室です。お昼の放送や、メディア研究部の活動に活用されています。マイクに向かって放送や録音をするので、ドアには「録音中 お静かにお願いします」の札があります。", photos: ["images/hoso-5.jpg", "images/hoso-4.jpg"] },
   // 音楽室の北の2つの練習室：壁1枚をはさんでくっついている
   { id: "F2-SWC2", name: "職員女子トイレ", floor: 2, c0: 55.5, r0: 47, c1: 56, r1: 51 },
   { id: "F1-SWC2", name: "職員女子トイレ", floor: 1, c0: 55.5, r0: 47, c1: 56, r1: 51 },

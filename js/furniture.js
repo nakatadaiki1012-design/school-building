@@ -426,6 +426,13 @@ const SHAPES = {
   // ハンガーラック（服がかかっている。白いカバー）
   hangerRack: [[MAT.metal, merge([b(1.2, 0.03, 0.03, 0, 1.7), b(0.03, 1.7, 0.03, -0.58), b(0.03, 1.7, 0.03, 0.58)])], [M(0xeeeeea, { transparent: true, opacity: 0.85 }), merge([b(1.0, 1.3, 0.5, 0, 0.35)])]],
   cardboard: [[MAT.cardboard, merge([b(0.5, 0.35, 0.4), b(0.4, 0.3, 0.35, 0.05, 0.35)])]],
+  // 放送室のミキサー卓（クリーム色の台に、つまみとフェーダーの並んだ灰色の機械と、マイク）
+  mixerDesk: [[M(0xe8e4d8), merge([b(2.2, 0.72, 0.7), b(2.2, 0.05, 0.75, 0, 0.72)])], [M(0x6a6e72), merge([b(1.2, 0.12, 0.5, -0.3, 0.77)])], [MAT.black, merge([b(0.03, 0.4, 0.03, 0.5, 0.77), b(0.06, 0.05, 0.06, 0.5, 1.17)])], [M(0xd0d4d8), merge([-0.75, -0.55, -0.35, -0.15, 0.05].map((x) => b(0.03, 0.02, 0.3, x, 0.84)))]],
+  whiteboard: [[M(0xf6f6f4), merge([b(0.04, 0.9, 1.4, 0, 1.0)])], [MAT.metal, merge([b(0.05, 0.03, 1.45, 0, 1.9), b(0.05, 0.03, 1.45, 0, 0.98), b(0.08, 0.04, 1.3, 0.03, 0.96)])]],
+  // 壁にたくさんかけたケーブルの輪
+  cableWall: [[MAT.black, merge([0.3, 0.7, 1.1, 1.5].flatMap((h) => [-0.6, -0.2, 0.2, 0.6].map((z) => new THREE.TorusGeometry(0.16, 0.025, 6, 14).rotateY(Math.PI / 2).translate(0.03, h, z).toNonIndexed())))]],
+  micStand: [[MAT.metal, merge([new THREE.CylinderGeometry(0.012, 0.012, 1.6, 6).translate(0, 0.8, 0), b(0.3, 0.02, 0.3)])], [MAT.black, merge([b(0.04, 0.12, 0.04, 0, 1.6)])]],
+  printer: [[M(0xf2f2ee), merge([b(0.45, 0.2, 0.4, 0, 0.74)])], [MAT.black, merge([b(0.35, 0.03, 0.3, 0, 0.94)])]],
   hallWindow: [[MAT.transom, merge([b(1.7, 0.42, 0.24, 0, 1.92), b(1.7, 0.32, 0.24, 0, 0.12)])], [MAT.doorFrame, merge([b(1.78, 0.04, 0.26, 0, 2.34), b(1.78, 0.04, 0.26, 0, 1.88), b(0.04, 0.46, 0.26, 0, 1.88)])]],
   // 壁より厚くして、教室の中からも廊下からも見えるようにする
   // 4枚の大きな両引き戸（体育館の入口）。ガラスの入ったアルミの戸
@@ -1061,19 +1068,6 @@ const LAYOUTS = [
     o.push({ t: "officeDesk", x: cx + 0.36, z: cz, rot: Math.PI }, { t: "officeChair", x: cx + 1.1, z: cz, rot: 0 });
     along(o, "cabinet", R.x0 + 0.3, R.z0 + 0.6, R.z1 - 0.6, 0.95, 0);
   }],
-  // 放送室：ミキサー室は奥の壁ぎわにミキサーの机（録音室のほうを向く）、録音室はマイクを置いた机と椅子
-  [/ミキサー室/, (o, R) => {
-    const cx = (R.x0 + R.x1) / 2;
-    o.push({ t: "officeDesk", x: cx - 0.5, z: R.z1 - 0.45, rot: -Math.PI / 2 }, { t: "officeDesk", x: cx + 0.6, z: R.z1 - 0.45, rot: -Math.PI / 2 });
-    o.push({ t: "monitor", x: cx - 0.5, z: R.z1 - 0.3, rot: Math.PI / 2 }, { t: "pc", x: cx + 0.6, z: R.z1 - 0.35, rot: Math.PI / 2 });
-    o.push({ t: "officeChair", x: cx, z: R.z1 - 1.2, rot: Math.PI / 2 });
-    o.push({ t: "cabinet", x: R.x0 + 0.3, z: R.z0 + 0.6, rot: 0 });
-  }],
-  [/録音室/, (o, R) => {
-    const cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2;
-    o.push({ t: "table", x: cx, z: cz, rot: Math.PI / 2 });
-    o.push({ t: "officeChair", x: cx - 0.5, z: cz + 0.8, rot: -Math.PI / 2 }, { t: "officeChair", x: cx + 0.5, z: cz + 0.8, rot: -Math.PI / 2 });
-  }],
   // 生徒指導室（写真）：長机を「ロ」の字にならべ、まわりにパイプいす。黒板側（北）に小さな机、北の壁ぞいに書類の棚、東の壁ぞいにロッカー、
   // 窓ぎわ（南）にハンガーラックと制服のマネキン、入口の近くに段ボール
   [/生徒指導室/, (o, R) => {
@@ -1090,7 +1084,26 @@ const LAYOUTS = [
     for (let z = z0 + 0.8; z < z1 - 0.6; z += 1.0) o.push({ t: "cabinet", x: x1 - 0.3, z, rot: Math.PI });
     o.push({ t: "cardboard", x: x0 + 0.6, z: z0 + 0.4, rot: 0 }, { t: "cardboard", x: x0 + 1.2, z: z0 + 0.35, rot: 0.3 });
   }],
-  [/準備室|放送室|生徒会室|進路資料室|整理室|資料室/, prep],
+  // 放送室のミキサー室（写真）：録音室との窓の下（南）にミキサー卓、東の壁ぞいに机とパソコン、いすが3つ。西の壁にホワイトボードとケーブルのかかった壁、北東のすみに棚と段ボール
+  [/放送室（ミキサー室）/, (o, R) => {
+    const { x0, x1, z0, z1 } = R, cx = (x0 + x1) / 2;
+    o.push({ t: "mixerDesk", x: cx - 0.6, z: z1 - 0.45, rot: 0 });
+    o.push({ t: "officeDesk", x: x1 - 0.45, z: z1 - 1.5, rot: Math.PI }, { t: "monitor", x: x1 - 0.5, z: z1 - 1.5, rot: Math.PI }, { t: "officeDesk", x: x1 - 0.45, z: z1 - 2.6, rot: Math.PI });
+    o.push({ t: "officeChair", x: cx - 1.2, z: z1 - 1.2, rot: Math.PI / 2 }, { t: "officeChair", x: cx + 0.1, z: z1 - 1.2, rot: Math.PI / 2 }, { t: "officeChair", x: x1 - 1.2, z: z1 - 1.5, rot: 0 });
+    o.push({ t: "whiteboard", x: x0 + 0.1, z: z0 + (z1 - z0) * 0.55, rot: 0 }, { t: "cableWall", x: x0 + 0.08, z: z0 + 1.0, rot: 0 });
+    o.push({ t: "rack", x: x1 - 0.4, z: z0 + 1.0, rot: Math.PI }, { t: "cardboard", x: x1 - 1.2, z: z0 + 0.5, rot: 0 });
+  }],
+  // 放送室の録音室（写真）：まんなかに机を2つ合わせ、いす2つ。窓ぎわ（南）に長机、東の壁ぞいに金属の棚、マイクスタンドの束
+  [/放送室（録音室）/, (o, R) => {
+    const { x0, x1, z0, z1 } = R, cx = (x0 + x1) / 2 - 0.3, cz = (z0 + z1) / 2;
+    o.push({ t: "desk", x: cx - 0.33, z: cz, rot: 0 }, { t: "desk", x: cx + 0.33, z: cz, rot: 0 });
+    o.push({ t: "chair", x: cx - 0.33, z: cz + 0.6, rot: -Math.PI / 2 }, { t: "chair", x: cx + 0.33, z: cz - 0.6, rot: Math.PI / 2 });
+    o.push({ t: "longTable", x: x0 + 1.6, z: z1 - 0.4, rot: Math.PI / 2 }, { t: "printer", x: x0 + 2.2, z: z1 - 0.4, rot: 0 });
+    o.push({ t: "rack", x: x1 - 0.4, z: cz - 0.5, rot: Math.PI }, { t: "rack", x: x1 - 0.4, z: cz + 1.05, rot: Math.PI }); // 南の壁から出ないように
+    for (const k of [0, 0.25, 0.5]) o.push({ t: "micStand", x: x1 - 0.9 - k * 0.6, z: z0 + 0.5 + k, rot: 0 });
+    o.push({ t: "cardboard", x: x0 + 0.5, z: z1 - 1.1, rot: 0 });
+  }],
+  [/準備室|生徒会室|進路資料室|整理室|資料室/, prep],
   [/男子トイレ/, (o, R) => { toilet(o, R); urinals(o, R); }],
   [/トイレ/, toilet],
   [/ステージ/, stage],

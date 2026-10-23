@@ -1799,7 +1799,7 @@ function stairGuard(r, y, list) {
 }
 
 // 生徒や来校者が入らない部屋（準備室・倉庫・設備の部屋など）：うすく小さく表示し、押しても反応しない
-const STAFF_ONLY = /準備室|印刷室|保管室|倉庫|器具庫|器具室|電気室|受水槽|給湯室|技能員室|放送室|資料室|整理室|職員(男子|女子)?トイレ|職員更衣室|放送$/;
+const STAFF_ONLY = /準備室|印刷室|保管室|倉庫|器具庫|器具室|電気室|受水槽|給湯室|技能員室|資料室|整理室|職員(男子|女子)?トイレ|職員更衣室|放送$/;
 const isStaffOnly = (r) => r.kind !== "stairs" && STAFF_ONLY.test(r.kind === "part" ? r.parent.name : r.name);
 const styleOf = (r) => ROOM_STYLE.find((s) => s.name === r.name && s.floor === r.floor && (s.r0 === undefined || s.r0 === r.r0) && (s.c0 === undefined || s.c0 === r.c0));
 // 部屋の仕切りの壁の高さ（天井まで描くと中が見えにくいので、ドアの上が少し見える高さ）
@@ -1837,6 +1837,7 @@ for (const f of [1, 2, 3]) {
       else if (/卓球場/.test(r.name)) { map = null; tint = new THREE.Color(0x2f7a72); } // 卓球場の床は緑がかった青の樹脂の床（写真）
       else if (/^土間$/.test(r.name)) { map = texBrickFloor.clone(); map.needsUpdate = true; map.repeat.set(r.w / 3, r.d / 3); tint = new THREE.Color(0xffffff); } // 土間はレンガ色のタイル
       else if (/^美術教室$/.test(r.name)) { map = null; tint = new THREE.Color(0xc8c6be); } // 美術教室の床は明るい灰色（写真）
+      else if (/放送室/.test(r.name)) { map = null; tint = new THREE.Color(0x9a4a3c); } // 放送室の床は赤茶色（写真）
       else if (/生徒指導室/.test(r.name)) { map = null; tint = new THREE.Color(0xb9b3a6); } // 生徒指導室の床は灰色がかったベージュ（写真）
       else if (/調理室/.test(r.name)) { map = null; tint = new THREE.Color(0x8a9a88); } // 調理室の床は灰色がかった緑（写真）
       else if (/社会科教室/.test(r.name)) { map = null; tint = new THREE.Color(0x8a9c8c); } // 社会科教室の床は灰色がかった緑（写真）
@@ -2992,3 +2993,4 @@ if (m && ROOM_BY_ID[m[1]]) selectRoom(ROOM_BY_ID[m[1]]);
 requestAnimationFrame(tick);
 document.getElementById("loading").remove();
 
+window.__pick = (sx, sy) => { const cam = useCamera(); const rc = new THREE.Raycaster(); rc.setFromCamera(new THREE.Vector2(sx / innerWidth * 2 - 1, -(sy / innerHeight) * 2 + 1), cam); return rc.intersectObjects(scene.children, true).filter((h) => { let o = h.object; while (o) { if (!o.visible) return false; o = o.parent; } return true; }).slice(0, 2).map((h) => { const L = Object.entries(layers).find(([k, v]) => Object.values(v).some((g) => { let q = h.object; while (q) { if (q === g) return true; q = q.parent; } return false; })); return { p: h.point.toArray().map((v) => v.toFixed(1)), layer: L && L[0], floor: (() => { let q = h.object; while (q) { if (q.userData.floor) return q.userData.floor; q = q.parent; } return null; })(), geo: h.object.geometry.type, inst: h.instanceId, col: h.object.material?.color?.getHexString?.() }; }); };

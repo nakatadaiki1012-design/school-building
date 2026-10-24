@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { speckle, hsl } from "./tex.js";
 import { ROOMS_RAW } from "./data.js";
 import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY, ROOM_EDITS, EXTRA_ROOMS, ROOM_SPLITS, ROOM_STYLE, WALL_OPENINGS, PHOTOS, GEO_ALIGN, SEARCH_ALIASES, VENDING_NOTE } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
@@ -139,7 +140,7 @@ for (const f of [1, 2, 3]) {
 
 // ---------- three.js の準備 ----------
 const app = document.getElementById("viewer");
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" }); // 2つ画像処理の部品があるパソコンでは、速いほうを使う
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, Math.min(window.innerWidth, window.innerHeight) < 700 ? 1.5 : 1.75)); // 細かすぎると重いので、上限をおさえる
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -228,11 +229,7 @@ function skyTexture() {
 }
 
 function noise(g, w, h, alpha, n = 1800) {
-  for (let i = 0; i < n; i++) {
-    const v = Math.random() * 40 - 20;
-    g.fillStyle = `rgba(${v > 0 ? 255 : 0},${v > 0 ? 255 : 0},${v > 0 ? 255 : 0},${Math.abs(v) / 20 * alpha})`;
-    g.fillRect(Math.random() * w, Math.random() * h, 2, 2);
-  }
+  speckle(g, w, h, n, [[255, 255, 255], [0, 0, 0]], alpha);
 }
 
 // 1ベイ（幅3m × 高さ3.6m）分の外壁。px = 80 / m
@@ -391,11 +388,9 @@ const texGrass = canvasTex(512, 512, (g, w, h) => {
     gr.addColorStop(0, Math.random() < 0.5 ? "rgba(60,85,35,0.08)" : "rgba(170,180,100,0.07)"); gr.addColorStop(1, "rgba(0,0,0,0)");
     g.fillStyle = gr; g.fillRect(x - r, y - r, r * 2, r * 2);
   }
-  for (let i = 0; i < 40000; i++) {
-    const l = 38 + Math.random() * 18; // 模様はうすめ
-    g.fillStyle = `hsla(${80 + Math.random() * 20},${30 + Math.random() * 14}%,${l}%,0.45)`;
-    const x = Math.random() * w, y = Math.random() * h;
-    g.fillRect(x, y, 1.2, 1.5 + Math.random() * 2.5); // 細長い葉
+  { // 細長い葉（模様はうすめ）
+    const pal = Array.from({ length: 24 }, () => hsl(80 + Math.random() * 20, 30 + Math.random() * 14, 38 + Math.random() * 18));
+    speckle(g, w, h, 40000, pal, 0.45 * 2, 1, () => 2 + ((Math.random() * 3) | 0));
   }
 });
 texGrass.repeat.set(60, 60);
@@ -652,7 +647,7 @@ const texCorridor = (() => {
   const cv = document.createElement("canvas"); cv.width = cv.height = 256;
   const c = cv.getContext("2d");
   c.fillStyle = "#efe7d8"; c.fillRect(0, 0, 256, 256); // うすいベージュ
-  for (let i = 0; i < 2500; i++) { c.fillStyle = `rgba(${Math.random() < 0.5 ? "255,255,255" : "90,100,90"},${Math.random() * 0.08})`; c.fillRect(Math.random() * 256, Math.random() * 256, 2, 2); }
+  speckle(c, 256, 256, 2500, [[255, 255, 255], [90, 100, 90]], 0.08);
   c.fillStyle = "rgba(150,135,110,0.18)"; c.fillRect(0, 0, 256, 1.5); // 1.8m おきのつなぎ目
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.anisotropy = 4;
@@ -3081,3 +3076,26 @@ if (m && ROOM_BY_ID[m[1]]) selectRoom(ROOM_BY_ID[m[1]]);
 requestAnimationFrame(tick);
 document.getElementById("loading").remove();
 
+
+// 階を切りかえたときに一瞬止まらないように、最初の画面が出たあと、ひまなときに
+// 全部の階の材質（色や光の計算のしかた）と模様の画像を、先に画面の部品へ準備しておく
+setTimeout(() => {
+  const saved = [];
+  const show = (g) => { saved.push([g, g.visible]); g.visible = true; };
+  for (const k of ["exterior", "roofs", "inner", "wallsBelow", "slab", "rooms"]) for (const g of Object.values(layers[k])) show(g);
+  for (const g of [gymBelow, entranceBelow, gymRoof]) show(g);
+  for (const r of ROOMS) if (r.mesh && !r.mesh.visible && !r.mesh.material.transparent) show(r.mesh);
+  const texs = new Set();
+  scene.traverseVisible((o) => { if (o.isMesh) for (const m of [].concat(o.material)) if (m.map) texs.add(m.map); });
+  renderer.compileAsync(scene, persp).catch(() => { /* 準備できなくても、使うときに準備される */ });
+  for (const [g, v] of saved) g.visible = v;
+  // 模様の画像は、少しずつ（1回8ミリ秒まで）送る
+  const list = [...texs];
+  let i = 0;
+  const step = () => {
+    const t0 = performance.now();
+    while (i < list.length && performance.now() - t0 < 8) renderer.initTexture(list[i++]);
+    if (i < list.length) setTimeout(step, 30);
+  };
+  step();
+}, 600);

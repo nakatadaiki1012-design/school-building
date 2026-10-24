@@ -1,6 +1,7 @@
 // 校舎のまわり（グラウンド・テニスコート・駐輪場）と、航空写真の重ね表示
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { speckle, hsl } from "./tex.js";
 import { hedgeBox, hedgeMass, buildTrees } from "./nature.js";
 
 function canvasTex(w, h, draw) {
@@ -104,10 +105,7 @@ function buildGround(cfg) {
   const P = (x, z) => [(x - bb.x0) * S, (z - bb.z0) * S];
   const tex = canvasTex(Math.ceil((bb.x1 - bb.x0) * S), Math.ceil((bb.z1 - bb.z0) * S), (c, W, H) => {
     c.fillStyle = "#a9a8a2"; c.fillRect(0, 0, W, H); // 写真：灰色の土（全天候型のような灰色）
-    for (let i = 0; i < 30000; i++) {
-      c.fillStyle = `rgba(${Math.random() > 0.5 ? "255,255,255" : "60,50,40"},${Math.random() * 0.07})`;
-      c.fillRect(Math.random() * W, Math.random() * H, 2, 2);
-    }
+    speckle(c, W, H, 30000, [[255, 255, 255], [60, 50, 40]], 0.07);
     // 雨のあとのような濃い部分
     for (let i = 0; i < 6; i++) {
       c.globalAlpha = 0.05;
@@ -251,7 +249,7 @@ function buildTennisArea({ w, d }) {
   const S = 10;
   const tex = canvasTex(Math.round(w * S), Math.round(d * S), (c, W, H) => {
     c.fillStyle = "#d8c39a"; c.fillRect(0, 0, W, H);
-    for (let i = 0; i < 9000; i++) { c.fillStyle = `rgba(${Math.random() > 0.5 ? "255,255,255" : "120,90,50"},${Math.random() * 0.1})`; c.fillRect(Math.random() * W, Math.random() * H, 2, 2); }
+    speckle(c, W, H, 9000, [[255, 255, 255], [120, 90, 50]], 0.1);
     c.strokeStyle = "rgba(255,255,255,0.95)"; c.lineWidth = 2;
     // 写真：ネットは区画を分けるフェンスと平行（東西むき）。コートの長い向きは南北で、2面が東西にならぶ
     for (let k = 0; k < 2; k++) {

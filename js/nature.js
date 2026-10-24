@@ -70,7 +70,14 @@ texHedge.repeat.set(1.5, 0.8);
 export const matHedge = new THREE.MeshStandardMaterial({ map: texHedge, color: 0xffffff, roughness: 1 });
 
 // でこぼこした丸い形（葉のかたまり）。seed で形を少しずつ変える
+// 読み込みを速くするため、形は「細かさ・でこぼこの量」ごとに8通りだけ作って使い回す（大きさは拡大で合わせ、向きを回して変化をつける）
+const lumpyCache = new Map();
 function lumpy(radius, detail, seed, amount = 0.22) {
+  const v = ((Math.round(Math.abs(seed) * 7) % 8) + 8) % 8, key = `${detail}|${amount}|${v}`;
+  if (!lumpyCache.has(key)) lumpyCache.set(key, lumpyBase(1, detail, v * 1.37 + 0.5, amount));
+  return lumpyCache.get(key).clone().rotateY(seed * 2.399).scale(radius, radius, radius);
+}
+function lumpyBase(radius, detail, seed, amount) {
   // 頂点をつなげておくと、陰影がなめらかになる（三角形の数は同じなので重くならない）
   let g = new THREE.IcosahedronGeometry(radius, detail);
   g.deleteAttribute("normal"); g.deleteAttribute("uv");

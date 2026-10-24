@@ -2,6 +2,7 @@
 // 家具の種類ごとに InstancedMesh をまとめて作るので、数が多くても軽く動く
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { speckle, hsl } from "./tex.js";
 
 // ---------- 材質 ----------
 function canvasTex(w, h, draw, rx = 1, ry = 1) {
@@ -35,7 +36,7 @@ const texBooks = canvasTex(128, 128, (g, w, h) => {
 // 黒板（チョークの字と、右はしの日付・日直）
 const texBoard = canvasTex(512, 160, (g, w, h) => {
   g.fillStyle = "#2f5a45"; g.fillRect(0, 0, w, h);
-  for (let i = 0; i < 1500; i++) { g.fillStyle = `rgba(255,255,255,${Math.random() * 0.04})`; g.fillRect(Math.random() * w, Math.random() * h, 3, 1); }
+  speckle(g, w, h, 1500, [[255, 255, 255]], 0.04, 3, 1);
   g.strokeStyle = "rgba(255,255,255,0.55)"; g.lineWidth = 2;
   for (let i = 0; i < 5; i++) {
     g.beginPath();
@@ -73,7 +74,7 @@ const texEboard = canvasTex(256, 150, (g, w, h) => {
 // 掲示板（コルクにプリント）
 const texCork = canvasTex(256, 96, (g, w, h) => {
   g.fillStyle = "#b98a57"; g.fillRect(0, 0, w, h);
-  for (let i = 0; i < 2500; i++) { g.fillStyle = `rgba(80,50,20,${Math.random() * 0.15})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); }
+  speckle(g, w, h, 2500, [[80, 50, 20]], 0.15);
   const papers = ["#ffffff", "#fff6c9", "#e8f2ff", "#ffe3e3", "#ffffff"];
   for (let i = 0; i < 9; i++) {
     const x = 8 + (i % 5) * 50 + Math.random() * 6, y = 6 + Math.floor(i / 5) * 46 + Math.random() * 4;

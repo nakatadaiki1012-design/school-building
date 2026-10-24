@@ -449,8 +449,8 @@ export const PILOTIS = { cells: [33, 34, 41, 44], bridge: [38, 41] };
 // 図面で名前のない区画を、となりの部屋の一部にする（事務室は正面玄関の手前までのL字型）
 export const ROOM_PARTS = [
   { name: "事務室", floor: 1, c0: 63, r0: 52, c1: 65, r1: 53 },
-  // 職員室も同じ位置の区画で北へのび、職員更衣室兼休養室とつながる（L字）
-  { name: "職員室", floor: 2, c0: 63, r0: 52, c1: 65, r1: 53, join: "職員更衣室兼休養室" },
+  // 職員室も同じ位置の区画で北へのびる（L字）。北どなりの職員更衣室兼休養室とは壁で分かれている
+  { name: "職員室", floor: 2, c0: 63, r0: 52, c1: 65, r1: 53 },
 ];
 
 // 下の階に部屋がない、上の階の張り出し部分。1階に柱を立てて支える [c0, r0, c1, r1, 何階の床まで]
@@ -467,6 +467,8 @@ export const GYM_GALLERY = [[25, 4, 26, 34], [23, 4, 26, 7], [23, 33, 26, 38]];
 // 前の年度の図面のとおり、北側に左右に分かれた小さな練習室が2つある（あいだは通路）
 export const ROOM_EDITS = [
   { name: "音楽室", floor: 2, set: { r0: 12 } },
+  // 職員更衣室兼休養室は、西と東で半分に分かれている
+  { name: "職員更衣室兼休養室", floor: 2, set: { c1: 62, name: "職員更衣室兼休養室（西）" } },
   { name: "生徒指導室", floor: 2, set: { photos: ["images/seitoshido-1.jpg"] } },
   // 体育館2階の南：3階の卓球場が張り出しているので、玄関と体育準備室は1列引っこむ
   { name: "保健体育科準備室", floor: 2, set: { r1: 37 } },
@@ -547,6 +549,7 @@ export const EXTRA_ROOMS = [
   { id: "F2-EX", name: "2階廊下の展示スペース", floor: 2, c0: 38, r0: 47, c1: 41, r1: 49, desc: "美術作品が飾られています。STUDY HALL の前と、北へのびる2階の渡り廊下（ギャラリースペース）に、生徒の作品が展示されています。", photos: ["images/tenji-1.jpg", "images/tenji-2.jpg", "images/tenji-3.jpg", "images/tenji-4.jpg", "images/tenji-5.jpg"] },
   { id: "F2-AP126R", name: "放送室（録音室）", floor: 2, c0: 42, r0: 56.5, c1: 44, r1: 58, desc: "放送室の奥の録音室です。お昼の放送や、メディア研究部の活動に活用されています。マイクに向かって放送や録音をするので、ドアには「録音中 お静かにお願いします」の札があります。", photos: ["images/hoso-5.jpg", "images/hoso-4.jpg"] },
   // 音楽室の北の2つの練習室：壁1枚をはさんでくっついている
+  { id: "F2-KOUI-E", name: "職員更衣室兼休養室（東）", floor: 2, c0: 63, r0: 47, c1: 65, r1: 51 },
   { id: "F2-SWC2", name: "職員女子トイレ", floor: 2, c0: 55.5, r0: 47, c1: 56, r1: 51 },
   { id: "F1-SWC2", name: "職員女子トイレ", floor: 1, c0: 55.5, r0: 47, c1: 56, r1: 51 },
   // 体育館の1階の西の部室（写真）：西の外に入口が5つならぶ。北の2つはせまい
@@ -578,6 +581,8 @@ export const ROOM_STYLE = [
   { name: "玄関", floor: 1, r0: 19, open: ["n"], doors: ["s"] },
   // 事務室：廊下側（北）の入口は西のはし寄り
   { name: "事務室", floor: 1, doors: ["n@-0.38"] },
+  // 職員更衣室兼休養室：西の部屋は南の廊下から、東の部屋は南の職員室（北へのびたところ）から入る
+  { name: "職員更衣室兼休養室（西）", floor: 2, doors: ["s"] }, { name: "職員更衣室兼休養室（東）", floor: 2, doors: ["s"] },
   { name: "らくらくスペース", floor: 1, doors: ["w@-0.2"] }, { name: "土間", floor: 1, open: ["n", "s", "w"], noLabel: true },
   // 体育館の1階の部室：外への入口は両引き戸（北の部室は北、西の部室は西）
   { name: "部室1", floor: 1, doors: ["n:clubDoor"] }, { name: "部室2", floor: 1, doors: ["n:clubDoor"] }, { name: "部室3", floor: 1, doors: ["n:clubDoor"] }, { name: "部室4", floor: 1, doors: ["n:clubDoor"] }, { name: "部室5", floor: 1, doors: ["n:clubDoor"] }, { name: "部室6", floor: 1, doors: ["n:clubDoor"] }, { name: "部室7", floor: 1, doors: ["n:clubDoor"] }, { name: "部室8", floor: 1, doors: ["n:clubDoor"] },

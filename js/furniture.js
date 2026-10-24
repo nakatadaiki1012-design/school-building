@@ -652,7 +652,8 @@ function staffRoom(out, R) {
 // 職員室の東のはしで北へ折れるL字の部分：3年の机の列は職員室のほうで置く。北の壁ぎわに戸棚
 function staffRoomL(out, R) {
   const { x0, x1, z0 } = R;
-  for (let x = x0 + 0.5; x < x1 - 0.6; x += 0.95) out.push({ t: "lowCab", x, z: z0 + 0.25, rot: Math.PI / 2 });
+  const xd = (x0 + x1) / 2; // 北の壁のまんなかは、更衣室（東）の入口
+  for (let x = x0 + 0.5; x < x1 - 0.4; x += 0.95) if (Math.abs(x - xd) > 1.2) out.push({ t: "lowCab", x, z: z0 + 0.25, rot: Math.PI / 2, sy: 1.35 });
 }
 
 // STUDY HALL（写真）：仕切り板とデスクライトのついた自習机。西の窓ぎわと北のガラスぎわに壁を向いた机。
@@ -1127,7 +1128,7 @@ const LAYOUTS = [
   // ここから下は、図面では中身がわからない部屋に、それらしい物を少しだけ置く
   [/倉庫|器具庫|器具室|保管室/, (o, R) => { along(o, "rack", R.x0 + 0.3, R.z0 + 0.9, R.z1 - 0.9, 1.6, 0); along(o, "rack", R.x1 - 0.3, R.z0 + 0.9, R.z1 - 0.9, 1.6, Math.PI); }],
   [/^部室（|^部室(9|10)$/, (o, R) => along(o, "tallLocker", R.x1 - 0.3, R.z0 + 0.5, R.z1 - 0.5, 0.92, Math.PI)], // 西の部室：入口が西なのでロッカーは東の壁
-  [/^(?!職員).*更衣室|部室/, (o, R) => { along(o, "tallLocker", R.x0 + 0.3, R.z0 + 0.6, R.z1 - 0.6, 0.92, 0); if (R.x1 - R.x0 > 3) o.push({ t: "bench", x: (R.x0 + R.x1) / 2 + 0.3, z: (R.z0 + R.z1) / 2, rot: 0 }); }],
+  [/更衣室|部室/, (o, R) => { along(o, "tallLocker", R.x0 + 0.3, R.z0 + 0.6, R.z1 - 0.6, 0.92, 0); if (R.x1 - R.x0 > 3) o.push({ t: "bench", x: (R.x0 + R.x1) / 2 + 0.3, z: (R.z0 + R.z1) / 2, rot: 0 }); }],
   [/受水槽/, (o, R) => o.push({ t: "tank", x: (R.x0 + R.x1) / 2, z: (R.z0 + R.z1) / 2, rot: 0 })],
   [/電気室/, (o, R) => along(o, "panel", R.x0 + 0.35, R.z0 + 0.8, R.z1 - 0.8, 1.25, 0)],
   [/給湯室/, (o, R) => o.push({ t: "kitchen", x: R.x0 + 0.35, z: (R.z0 + R.z1) / 2, rot: 0 })],

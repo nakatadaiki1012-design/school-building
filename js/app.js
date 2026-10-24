@@ -140,7 +140,9 @@ for (const f of [1, 2, 3]) {
 
 // ---------- three.js の準備 ----------
 const app = document.getElementById("viewer");
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" }); // 2つ画像処理の部品があるパソコンでは、速いほうを使う
+// スマホなど画面のきめが細かい（1つの点が小さい）ときは、ふちのギザギザが目立たないので、ギザギザをなめらかにする処理（重い）を省く
+const fineScreen = window.devicePixelRatio >= 2 && Math.min(window.innerWidth, window.innerHeight) < 700;
+const renderer = new THREE.WebGLRenderer({ antialias: !fineScreen, powerPreference: "high-performance" }); // 2つ画像処理の部品があるパソコンでは、速いほうを使う
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, Math.min(window.innerWidth, window.innerHeight) < 700 ? 1.5 : 1.75)); // 細かすぎると重いので、上限をおさえる
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -2613,7 +2615,7 @@ function declutter() {
       if (!el.__w) { el.__w = el.offsetWidth; el.__h = el.offsetHeight; }
       const x = ((_wp.x + 1) / 2) * W, y = ((1 - _wp.y) / 2) * H, hw = el.__w / 2, hh = el.__h / 2;
       let prio = labelPrio.get(el);
-      if (prio === undefined) { const r = ROOMS.find((q) => q.label === el); prio = r ? (r.grade ? 1e6 : 0) + r.w * r.d : 1e5; labelPrio.set(el, prio); }
+      if (prio === undefined) { const r = ROOMS.find((q) => q.label === el); prio = r ? (r.grade ? 1e6 : 0) + r.w * r.d : el.classList.contains("site") ? 5e4 : 1e5; labelPrio.set(el, prio); } // 外の施設の名前は、棟の名前より後回し
       if (el.classList.contains("selected")) prio = 1e9;
       items.push({ el, prio, left: x - hw, right: x + hw, top: y - hh, bottom: y + hh });
     });

@@ -78,7 +78,7 @@ main { position: fixed; inset: 0; }
 .room-label.hr { font-size: 15px; background: #2f6fa8; color: #fff; border-color: #2f6fa8; }
 .room-label.stairs { background: #5b6169; color: #fff; border-color: #5b6169; font-size: 10px; }
 .room-label.cat-open { background: rgba(255,255,255,0.6); color: var(--muted); font-weight: 400; }
-.room-label.overlap:not(:hover) { opacity: 0; pointer-events: none; }
+.room-label.overlap:not(:hover), .wing-label.overlap:not(:hover) { opacity: 0; pointer-events: none; }
 .room-label.selected { background: #ff9f1c; color: #fff; border-color: #ff9f1c; transform: scale(1.2); z-index: 3; }
 
 .wing-label {

@@ -13,6 +13,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { GTAOPass } from "three/addons/postprocessing/GTAOPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { Reflector } from "three/addons/objects/Reflector.js";
 
 const CEIL = 2.9; // 天井の高さ
 const view = document.getElementById("view");
@@ -105,6 +106,7 @@ const binders = [0x2a5ea8, 0xc23b3b, 0x2f8a55, 0xe0b22e, 0x6b4aa8, 0xf2f2f2].map
 // ---------- 床・天井・壁・柱 ----------
 // 床：つやのあるベージュの長尺シート（うすい目地）
 const floorTex = tex(256, 256, (g, w, h) => { g.fillStyle = "#cdbfa8"; g.fillRect(0, 0, w, h); for (let i = 0; i < 1800; i++) { g.fillStyle = `rgba(${rnd() < 0.5 ? "255,255,255" : "120,100,80"},${rnd() * 0.06})`; g.fillRect(rnd() * w, rnd() * h, 2, 2); } g.fillStyle = "rgba(120,105,85,0.25)"; g.fillRect(0, 0, w, 1.5); }, 24 / 1.8, 10 / 1.8);
+let mirror = null;
 const floorMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: floorTex, roughness: 0.32, metalness: 0, clearcoat: 0.8, clearcoatRoughness: 0.12 }); // ワックスのかかったつや
 {
   const s = new THREE.Shape([new THREE.Vector2(0, -7.4), new THREE.Vector2(24, -7.4), new THREE.Vector2(24, 2.5), new THREE.Vector2(14.4, 2.5), new THREE.Vector2(14.4, 0), new THREE.Vector2(0, 0)]);
@@ -112,6 +114,11 @@ const floorMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: floorTex
   const uv = g.attributes.uv, p = g.attributes.position; for (let i = 0; i < uv.count; i++) uv.setXY(i, p.getX(i) / 1.8, p.getZ(i) / 1.8);
   floorTex.repeat.set(1, 1);
   const f = new THREE.Mesh(g, floorMat); f.receiveShadow = true; scene.add(f);
+  // 写真：つやのある床に、蛍光灯や机がぼんやり映る。鏡の板を床のすぐ下に置き、床を少しすけさせて重ねる（止まったときだけ）
+  floorMat.transparent = true; floorMat.opacity = 0.8;
+  mirror = new Reflector(new THREE.PlaneGeometry(26, 12), { textureWidth: 1024, textureHeight: 512, color: 0x8f8a82 });
+  mirror.rotation.x = -Math.PI / 2; mirror.position.set(12, -0.002, 2.45); mirror.visible = false;
+  scene.add(mirror);
 }
 // 天井（上から見るときは消す）：白い化粧板と、蛍光灯、梁
 const ceiling = new THREE.Group();
@@ -298,9 +305,18 @@ for (const [a, b] of [[3.4, 9.0], [9.1, 11.9], [12.8, 16.9]]) for (let x = a + 0
 for (let x = 16.9 + 0.45; x <= 23.0 - 0.4; x += 0.92) cabs.push({ x, z: -2.2, rot: 0 });
 // 南の窓の下の低い棚（柱のところはあける）
 for (const [a, b] of [[1.2, 4.3], [5.3, 9.1], [10.1, 13.9], [14.9, 18.7], [19.7, 23.5]]) for (let x = a + 0.45; x <= b - 0.4; x += 0.92) lows.push({ x, z: 7.05, rot: Math.PI });
-// 東の壁ぎわの保管庫
+// 東の壁ぎわの戸棚（窓の下）
 for (let z = 2.1; z <= 6.3; z += 0.92) talls.push({ x: 23.7, z, rot: -Math.PI / 2 });
-place(cabKit, cabs); place(lowKit, lows); place(tallKit, talls);
+place(cabKit, cabs.concat(talls)); place(lowKit, lows); // 東の壁ぎわも、窓の下にかくれる高さの戸棚
+// 写真：机の上の銀色の電源タップ、窓の下の棚の上の段ボール、入口の横の白いオープン棚
+{
+  const tapK = kit([[M(0xc9cdd1, { roughness: 0.3, metalness: 0.6 }), R(0.36, 0.035, 0.05, 0, 0, 0, 0.01)], [black, B(0.3, 0.004, 0.02, 0, 0.035, 0)]]);
+  place(tapK, desks.filter(() => rnd() < 0.8).map((d) => { const r = d.rot, fx = -Math.sin(r), fz = -Math.cos(r), kx = Math.cos(r), kz = -Math.sin(r); return { x: d.x + kx * 0.05 + fx * 0.27, z: d.z + kz * 0.05 + fz * 0.27, y: DH, rot: r + (rnd() - 0.5) * 0.3 }; }));
+  const boxK = kit([[M(0xb68a58, { roughness: 0.9 }), B(0.5, 0.32, 0.36, 0, 0, 0)], [M(0xc9a36e, { roughness: 0.8 }), B(0.5, 0.004, 0.06, 0, 0.32, 0)]]);
+  place(boxK, lows.filter(() => rnd() < 0.35).map((c) => ({ x: c.x + (rnd() - 0.5) * 0.2, z: c.z, y: 0.8, rot: (rnd() - 0.5) * 0.3 })));
+  const shelfK = kit([[M(0xf4f4f0, { roughness: 0.4 }), B(0.9, 0.02, 0.4, 0, 0, 0)], ...[0.3, 0.6, 0.9, 1.2].map((y) => [M(0xf4f4f0, { roughness: 0.4 }), B(0.9, 0.02, 0.4, 0, y, 0)]), [M(0xf4f4f0, { roughness: 0.4 }), B(0.02, 1.24, 0.4, -0.44, 0, 0)], [M(0xf4f4f0, { roughness: 0.4 }), B(0.02, 1.24, 0.4, 0.44, 0, 0)], [M(0xf4f4f0, { roughness: 0.4 }), B(0.02, 1.24, 0.4, 0, 0, 0)], [M(0xf4f4f0, { roughness: 0.4 }), B(0.9, 1.24, 0.01, 0, 0, -0.2)]]);
+  place(shelfK, [{ x: 0.42, z: 3.2, rot: Math.PI / 2 }]);
+}
 // 戸棚の上のファイル（色とりどり）
 {
   const lists = binders.map(() => []);
@@ -410,6 +426,85 @@ place(cabKit, cabs); place(lowKit, lows); place(tallKit, talls);
 const tag = (text, color, x, y, z) => { const d = document.createElement("div"); d.className = "tag"; d.textContent = text; d.style.background = color; const o = new CSS2DObject(d); o.position.set(x, y, z); scene.add(o); return o; };
 const tags = [tag("1年", "#c2549a", 6.5, 1.6, 4.0), tag("2年", "#2b8fb4", 12.8, 1.6, 4.0), tag("3年", "#3c9a4a", 21.6, 1.6, 2.4), tag("業務アシスタント", "#6b6f78", 18.3, 1.6, 3.5), tag("共用スペース", "#8a7a5a", 19.2, 2.0, -1.2), tag("流し台", "#8a7a5a", 0.7, 1.6, 5.6)];
 
+// ---------- 歩く（一人称視点） ----------
+// ぶつかる物（机・戸棚・柱・テーブル・流し台）の四角を集めておく。いすはよけずに通れる
+const solids = [];
+const box2 = (x, z, w, d) => solids.push([x - w / 2, x + w / 2, z - d / 2, z + d / 2]);
+for (const d of desks) { const along = Math.abs(Math.sin(d.rot)) < 0.5; box2(d.x, d.z, along ? DW : DD, along ? DD : DW); }
+for (const c of [...cabs, ...lows, ...talls]) { const along = Math.abs(Math.sin(c.rot)) < 0.5; box2(c.x, c.z, along ? 0.9 : 0.45, along ? 0.45 : 0.9); }
+for (const x of [0, 4.8, 9.6, 14.4, 19.2, 24]) box2(x, 7.25, 0.76, 0.66);
+for (const x of [0, 4.8, 14.4, 24]) box2(x, 0.15, 0.76, 0.66);
+box2(19.2, 0.1, 0.76, 0.76); for (const x of [14.4, 19.2, 24]) box2(x, -2.35, 0.76, 0.5);
+box2(18.55, 5.3, 3.9, 0.6); box2(0.65, 5.4, 0.62, 2.4); box2(0.42, 3.2, 0.4, 0.9); box2(12.35, 0.45, 0.62, 0.6);
+const RAD = 0.22;
+const inRoom = (x, z) => (x > 0.12 + RAD && x < 23.88 - RAD && z > 0.08 + RAD && z < 7.25 - RAD) || (x > 14.5 + RAD && x < 23.88 - RAD && z > -2.42 + RAD && z < 0.5);
+const free = (x, z) => inRoom(x, z) && !solids.some(([a, b, c, d]) => x > a - RAD && x < b + RAD && z > c - RAD && z < d + RAD);
+const walk = { on: false, x: 0.9, z: 3.9, yaw: -Math.PI / 2, pitch: -0.05, keys: new Set(), pad: { f: 0, t: 0 }, saved: null };
+const EYE = 1.55;
+function setWalk(on) {
+  if (on === walk.on) return;
+  walk.on = on;
+  document.body.classList.toggle("walking", on);
+  document.getElementById("walk-btn").classList.toggle("active", on);
+  controls.enabled = !on;
+  if (on) {
+    anim = null;
+    walk.saved = [camera.position.clone(), controls.target.clone()];
+    // いま見ている場所の近くの、歩けるところから
+    let best = [0.9, 3.9], bd = Infinity;
+    for (let x = 0.5; x < 23.6; x += 0.25) for (let z = -2.2; z < 7.1; z += 0.25) if (free(x, z)) { const d = (x - camera.position.x) ** 2 + (z - camera.position.z) ** 2; if (d < bd) { bd = d; best = [x, z]; } }
+    [walk.x, walk.z] = best;
+    const d = controls.target.clone().sub(camera.position); walk.yaw = Math.atan2(-d.x, -d.z); walk.pitch = -0.05;
+  } else {
+    walk.keys.clear(); walk.pad.f = walk.pad.t = 0;
+    if (walk.saved) { camera.position.copy(walk.saved[0]); controls.target.copy(walk.saved[1]); }
+  }
+}
+function updateWalk(dt) {
+  const k = walk.keys;
+  const fwd = (k.has("w") || k.has("arrowup") ? 1 : 0) - (k.has("s") || k.has("arrowdown") ? 1 : 0) + walk.pad.f;
+  const side = (k.has("d") ? 1 : 0) - (k.has("a") ? 1 : 0);
+  walk.yaw += ((k.has("arrowleft") || k.has("q") ? 1 : 0) - (k.has("arrowright") || k.has("e") ? 1 : 0) + walk.pad.t) * dt * 1.8;
+  if (fwd || side) {
+    const sp = 1.4 * dt, fx = -Math.sin(walk.yaw), fz = -Math.cos(walk.yaw);
+    const mx = (fx * fwd - fz * side) * sp, mz = (fz * fwd + fx * side) * sp;
+    if (free(walk.x + mx, walk.z + mz)) { walk.x += mx; walk.z += mz; }
+    else if (free(walk.x + mx, walk.z)) walk.x += mx;
+    else if (free(walk.x, walk.z + mz)) walk.z += mz;
+  }
+  // 歩いているときは、ほんの少し上下にゆれる
+  const bob = fwd ? Math.sin(performance.now() / 160) * 0.015 : 0;
+  camera.position.set(walk.x, EYE + bob, walk.z);
+  const look = new THREE.Vector3(-Math.sin(walk.yaw) * Math.cos(walk.pitch), Math.sin(walk.pitch), -Math.cos(walk.yaw) * Math.cos(walk.pitch));
+  controls.target.copy(camera.position).add(look);
+  camera.lookAt(controls.target);
+}
+addEventListener("keydown", (e) => {
+  if (!walk.on) return;
+  const k = e.key.toLowerCase();
+  if (k === "escape") { setWalk(false); return; }
+  if (["w", "a", "s", "d", "q", "e", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)) { walk.keys.add(k); e.preventDefault(); }
+});
+addEventListener("keyup", (e) => walk.keys.delete(e.key.toLowerCase()));
+addEventListener("blur", () => walk.keys.clear());
+{
+  let last = null;
+  labels.domElement.addEventListener("pointerdown", (e) => { if (walk.on) last = [e.clientX, e.clientY]; });
+  addEventListener("pointermove", (e) => {
+    if (!walk.on || !last || !e.buttons) return;
+    walk.yaw += (e.clientX - last[0]) * 0.005;
+    walk.pitch = Math.max(-1.1, Math.min(0.9, walk.pitch + (e.clientY - last[1]) * 0.004));
+    last = [e.clientX, e.clientY];
+  });
+  addEventListener("pointerup", () => { last = null; });
+  const pad = document.getElementById("pad");
+  pad.addEventListener("pointerdown", (e) => { const b = e.target.closest("button"); if (!b) return; e.preventDefault(); if (b.dataset.end) { setWalk(false); return; } if (b.dataset.f) walk.pad.f = Number(b.dataset.f); if (b.dataset.t) walk.pad.t = Number(b.dataset.t); b.setPointerCapture(e.pointerId); });
+  const stop = (e) => { const b = e.target.closest?.("button"); if (b?.dataset.f) walk.pad.f = 0; if (b?.dataset.t) walk.pad.t = 0; };
+  pad.addEventListener("pointerup", stop); pad.addEventListener("pointercancel", stop);
+  pad.addEventListener("contextmenu", (e) => e.preventDefault());
+  document.getElementById("walk-btn").addEventListener("click", () => setWalk(!walk.on));
+}
+
 // ---------- 見る場所 ----------
 const VIEWS = {
   walk: [[0.9, 1.55, 3.9], [20, 1.1, 3.2]],
@@ -421,9 +516,9 @@ let anim = null;
 function go(name, ms = 900) {
   const [p, t] = VIEWS[name];
   anim = { t0: performance.now(), ms, p0: camera.position.clone(), t0v: controls.target.clone(), p1: new THREE.Vector3(...p), t1: new THREE.Vector3(...t) };
-  document.querySelectorAll(".views .btn").forEach((b) => b.classList.toggle("active", b.dataset.v === name));
+  document.querySelectorAll(".views .btn[data-v]").forEach((b) => b.classList.toggle("active", b.dataset.v === name));
 }
-document.querySelectorAll(".views .btn").forEach((b) => b.addEventListener("click", () => go(b.dataset.v)));
+document.querySelectorAll(".views .btn[data-v]").forEach((b) => b.addEventListener("click", () => { setWalk(false); go(b.dataset.v); }));
 camera.position.set(...VIEWS.walk[0]); controls.target.set(...VIEWS.walk[1]);
 document.querySelector('.views .btn[data-v="walk"]').classList.add("active");
 
@@ -445,21 +540,24 @@ renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = true; //
 // 動いているあいだは軽い描き方でなめらかに、止まったら1回だけきれいに描く
 let lastMove = 0, fine = false;
 const camKey = new Float64Array(16);
+let lastT = 0;
 function tick(now) {
+  if (walk.on) updateWalk(Math.min(0.1, (now - (lastT || now)) / 1000));
+  lastT = now;
   if (anim) {
     const k = Math.min(1, (now - anim.t0) / anim.ms), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
     camera.position.lerpVectors(anim.p0, anim.p1, e); controls.target.lerpVectors(anim.t0v, anim.t1, e);
     if (k >= 1) anim = null;
   }
-  controls.update();
+  if (!walk.on) controls.update();
   // 天井より上から見るときは、天井を消して中が見えるように。札も、上から見るときだけ出す
   const above = camera.position.y > CEIL - 0.05;
   ceiling.visible = outside.visible = !above;
   for (const t of tags) t.visible = above || camera.position.distanceTo(t.position) < 9;
   camera.updateMatrixWorld();
   let moved = false; const e = camera.matrixWorld.elements; for (let i = 0; i < 16; i++) if (camKey[i] !== e[i]) { camKey[i] = e[i]; moved = true; }
-  if (moved || anim) { lastMove = now; fine = false; renderer.render(scene, camera); labels.render(scene, camera); }
-  else if (!fine && now - lastMove > 180) { fine = true; composer.render(); labels.render(scene, camera); }
+  if (moved || anim) { lastMove = now; fine = false; if (mirror) mirror.visible = false; floorMat.opacity = 1; renderer.render(scene, camera); labels.render(scene, camera); }
+  else if (!fine && now - lastMove > 180) { fine = true; if (mirror) mirror.visible = !above; floorMat.opacity = above ? 1 : 0.8; composer.render(); labels.render(scene, camera); }
   else if (dirty) { dirty--; fine = false; lastMove = now; }
   requestAnimationFrame(tick);
 }

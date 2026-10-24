@@ -29,6 +29,14 @@
     .tag { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 10px; color: #fff; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,0.3); pointer-events: none; }
     .hint { position: fixed; left: 12px; bottom: 16px; background: var(--card); border-radius: 12px; padding: 8px 12px; font-size: 12px; line-height: 1.6; max-width: 280px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); z-index: 5; }
     #loading { position: fixed; inset: 0; display: grid; place-items: center; background: #dfe6ec; z-index: 10; font-size: 15px; }
+    .pad { display: none; position: fixed; right: 12px; bottom: 16px; z-index: 6; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(3, 56px); gap: 6px; }
+    body.walking .pad { display: grid; }
+    body.walking .hint { display: none; }
+    body.walking .views .btn[data-v] { display: none; }
+    body.walking .views { bottom: 210px; }
+    .pad button { border: 0; border-radius: 14px; background: rgba(255,255,255,0.9); box-shadow: 0 2px 8px rgba(0,0,0,0.25); font-size: 24px; touch-action: none; user-select: none; -webkit-user-select: none; }
+    .pad button:active { background: var(--accent); color: #fff; }
+    .pad [data-f="1"] { grid-column: 2; grid-row: 1; } .pad [data-t="1"] { grid-column: 1; grid-row: 2; } .pad [data-t="-1"] { grid-column: 3; grid-row: 2; } .pad [data-f="-1"] { grid-column: 2; grid-row: 3; } .pad .end { grid-column: 1; grid-row: 3; font-size: 13px; font-weight: 700; }
     @media (max-width: 600px) { .title span { display: none; } .hint { display: none; } }
   </style>
 </head>
@@ -41,12 +49,14 @@
     <span class="spacer"></span>
   </div>
   <div class="views">
+    <button class="btn" id="walk-btn">🚶 中を歩く</button>
     <button class="btn" data-v="walk">目の高さ（西から）</button>
     <button class="btn" data-v="east">目の高さ（東から）</button>
     <button class="btn" data-v="top">真上</button>
     <button class="btn" data-v="bird">ななめ上</button>
   </div>
-  <p class="hint">ドラッグで回す・右ドラッグ（2本指）で動かす・ホイール（ピンチ）で近づく。<br>上から見ると天井が消えます。</p>
+  <div id="pad" class="pad"><button data-f="1" aria-label="前へ">▲</button><button data-t="1" aria-label="左を向く">⟲</button><button data-t="-1" aria-label="右を向く">⟳</button><button data-f="-1" aria-label="後ろへ">▼</button><button data-end="1" class="end">おわる</button></div>
+  <p class="hint">ドラッグで回す・右ドラッグ（2本指）で動かす・ホイール（ピンチ）で近づく。上から見ると天井が消えます。<br>「中を歩く」：ドラッグで見まわし、W・S（↑・↓）で前後、A・D で横、←・→ で向きを変える。スマホは画面のボタン。Esc でおわり。</p>
   <script type="module" src="js/staffroom.js"></script>
 </body>
 </html>

@@ -18,7 +18,10 @@ import { Reflector } from "three/addons/objects/Reflector.js";
 const CEIL = 2.9; // 天井の高さ
 const view = document.getElementById("view");
 const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+// 画面のきめ細かさ。動きが重い端末では、あとで自動で少し下げる（maxDpr〜minDpr）
+const maxDpr = Math.min(devicePixelRatio, matchMedia("(pointer: coarse)").matches ? 1.5 : 1.75), minDpr = Math.min(maxDpr, 0.75);
+let dpr = maxDpr;
+renderer.setPixelRatio(dpr);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -53,8 +56,9 @@ scene.add(sun, sun.target);
 
 // 天井の蛍光灯のやわらかい光（面の光）。部屋のならびにそって帯で置く
 RectAreaLightUniformsLib.init();
-for (const [x, z, w, d] of [[6, 2.6, 11, 1.2], [6, 5.4, 11, 1.2], [18.5, 2.6, 10, 1.2], [18.5, 5.4, 10, 1.2], [19.2, -1.25, 9, 1.0]]) {
-  const l = new THREE.RectAreaLight(0xfff6e8, 1.3, w, d); l.position.set(x, 2.84, z); l.lookAt(x, 0, z); scene.add(l);
+// 面の光は1つごとに全部の点で計算するので重い。2列分を1枚にまとめて3枚にする
+for (const [x, z, w, d] of [[6, 4, 11, 4], [18.5, 4, 10, 4], [19.2, -1.25, 9, 1.0]]) {
+  const l = new THREE.RectAreaLight(0xfff6e8, 1.3 * (d > 2 ? 0.6 : 1), w, d); l.position.set(x, 2.84, z); l.lookAt(x, 0, z); scene.add(l);
 }
 
 // ---------- 道具 ----------
@@ -533,7 +537,7 @@ const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
 let dirty = 2;
-function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h); labels.setSize(w, h); composer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); dirty = 2; }
+function resize() { const w = innerWidth, h = innerHeight; renderer.setPixelRatio(dpr); composer.setPixelRatio(dpr); renderer.setSize(w, h); labels.setSize(w, h); composer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix(); dirty = 2; }
 addEventListener("resize", resize); resize();
 
 renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = true; // 物は動かないので、影は1回だけ計算
@@ -541,8 +545,20 @@ renderer.shadowMap.autoUpdate = false; renderer.shadowMap.needsUpdate = true; //
 let lastMove = 0, fine = false;
 const camKey = new Float64Array(16);
 let lastT = 0;
+// 動いているあいだのコマの間かくを見て、カクつくようなら画面のきめを少し下げる（なめらかさを優先）。余裕があれば少しずつ戻す
+let ema = 16, slow = 0, quick = 0, prevMoving = false, lastAdapt = 0;
+function adapt(now, interval) {
+  ema += (interval - ema) * 0.1;
+  slow = ema > 24 ? slow + 1 : 0; quick = ema < 17.5 ? quick + 1 : 0;
+  if (now - lastAdapt < 1500) return;
+  let next = dpr;
+  if (slow > 20 && dpr > minDpr) next = Math.max(minDpr, dpr * 0.82);
+  else if (quick > 240 && dpr < maxDpr) next = Math.min(maxDpr, dpr + 0.15);
+  if (next !== dpr) { dpr = next; lastAdapt = now; slow = quick = 0; resize(); }
+}
 function tick(now) {
-  if (walk.on) updateWalk(Math.min(0.1, (now - (lastT || now)) / 1000));
+  const interval = lastT ? now - lastT : 16;
+  if (walk.on) updateWalk(Math.min(0.1, interval / 1000));
   lastT = now;
   if (anim) {
     const k = Math.min(1, (now - anim.t0) / anim.ms), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
@@ -556,8 +572,11 @@ function tick(now) {
   for (const t of tags) t.visible = above || camera.position.distanceTo(t.position) < 9;
   camera.updateMatrixWorld();
   let moved = false; const e = camera.matrixWorld.elements; for (let i = 0; i < 16; i++) if (camKey[i] !== e[i]) { camKey[i] = e[i]; moved = true; }
-  if (moved || anim) { lastMove = now; fine = false; if (mirror) mirror.visible = false; floorMat.opacity = 1; renderer.render(scene, camera); labels.render(scene, camera); }
-  else if (!fine && now - lastMove > 180) { fine = true; if (mirror) mirror.visible = !above; floorMat.opacity = above ? 1 : 0.8; composer.render(); labels.render(scene, camera); }
+  const moving = moved || anim;
+  if (moving && prevMoving) adapt(now, interval);
+  prevMoving = moving;
+  if (moving) { lastMove = now; fine = false; if (mirror) mirror.visible = false; floorMat.opacity = 1; renderer.render(scene, camera); labels.render(scene, camera); }
+  else if (!fine && now - lastMove > (walk.on ? 450 : 250)) { fine = true; if (mirror) mirror.visible = !above; floorMat.opacity = above ? 1 : 0.8; composer.render(); labels.render(scene, camera); }
   else if (dirty) { dirty--; fine = false; lastMove = now; }
   requestAnimationFrame(tick);
 }

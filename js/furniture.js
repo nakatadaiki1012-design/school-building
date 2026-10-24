@@ -651,9 +651,9 @@ function staffRoom(out, R) {
 }
 // 職員室の東のはしで北へ折れるL字の部分：3年の机の列は職員室のほうで置く。北の壁ぎわに戸棚
 function staffRoomL(out, R) {
-  const { x0, x1, z0 } = R;
-  const xd = (x0 + x1) / 2; // 北の壁のまんなかは、更衣室（東）の入口
-  for (let x = x0 + 0.5; x < x1 - 0.4; x += 0.95) if (Math.abs(x - xd) > 1.2) out.push({ t: "lowCab", x, z: z0 + 0.25, rot: Math.PI / 2, sy: 1.35 });
+  // 図面：共用スペースは東西 14.3m〜24m（職員室の西のはしから）。北の壁ぎわの戸棚は 16.9m〜23.0m（両はしは更衣室の入口）
+  const { x0, x1, z0 } = R, sx = (x1 - x0) / (24 - 14.3), X = (m) => x0 + (m - 14.3) * sx;
+  for (let x = X(16.9) + 0.45; x < X(23.0); x += 0.95) out.push({ t: "lowCab", x, z: z0 + 0.25, rot: Math.PI / 2, sy: 1.35 });
 }
 
 // STUDY HALL（写真）：仕切り板とデスクライトのついた自習机。西の窓ぎわと北のガラスぎわに壁を向いた机。

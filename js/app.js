@@ -1869,7 +1869,8 @@ for (const f of [1, 2, 3]) {
     });
     if (r.kind === "stairs") { mat.transparent = true; mat.opacity = 0; mat.depthWrite = false; } // 階段は形で見せ、板はクリック用
     const th = /ステージ/.test(r.name) ? 1.0 : 0.14; // ステージは高くする
-    const tile = new THREE.Mesh(new THREE.BoxGeometry(r.w - 0.14, th, r.d - 0.14), mat);
+    const ins = r.kind === "part" || r.parts ? 0 : 0.14; // L字の部屋は、つながった部分とのあいだにすき間ができないように板をちぢめない
+    const tile = new THREE.Mesh(new THREE.BoxGeometry(r.w - ins, th, r.d - ins), mat);
     tile.position.set(r.cx, y + 0.01 + th / 2, r.cz);
     tile.receiveShadow = true;
     tile.userData.room = r.kind === "part" ? r.parent : r;

@@ -450,7 +450,7 @@ export const PILOTIS = { cells: [33, 34, 41, 44], bridge: [38, 41] };
 export const ROOM_PARTS = [
   { name: "事務室", floor: 1, c0: 63, r0: 52, c1: 65, r1: 53 },
   // 職員室も同じ位置の区画で北へのびる（L字）。北どなりの職員更衣室兼休養室とは壁で分かれている
-  { name: "職員室", floor: 2, c0: 63, r0: 52, c1: 65, r1: 53 },
+  { name: "職員室", floor: 2, c0: 60, r0: 52, c1: 65, r1: 53 }, // 図面：北へのびた共用スペースは、更衣室の前いっぱい（廊下は西で行き止まり、そこに入口）
 ];
 
 // 下の階に部屋がない、上の階の張り出し部分。1階に柱を立てて支える [c0, r0, c1, r1, 何階の床まで]
@@ -581,8 +581,8 @@ export const ROOM_STYLE = [
   { name: "玄関", floor: 1, r0: 19, open: ["n"], doors: ["s"] },
   // 事務室：廊下側（北）の入口は西のはし寄り
   { name: "事務室", floor: 1, doors: ["n@-0.38"] },
-  // 職員更衣室兼休養室：西の部屋は南の廊下から、東の部屋は南の職員室（北へのびたところ）から入る
-  { name: "職員更衣室兼休養室（西）", floor: 2, doors: ["s"] }, { name: "職員更衣室兼休養室（東）", floor: 2, doors: ["s"] },
+  // 職員更衣室兼休養室：どちらも南の、職員室の北へのびた共用スペースから入る
+  { name: "職員更衣室兼休養室（西）", floor: 2, doors: ["s@-0.28"] }, { name: "職員更衣室兼休養室（東）", floor: 2, doors: ["s@0.3"] }, // 図面：戸棚のない両はし
   { name: "らくらくスペース", floor: 1, doors: ["w@-0.2"] }, { name: "土間", floor: 1, open: ["n", "s", "w"], noLabel: true },
   // 体育館の1階の部室：外への入口は両引き戸（北の部室は北、西の部室は西）
   { name: "部室1", floor: 1, doors: ["n:clubDoor"] }, { name: "部室2", floor: 1, doors: ["n:clubDoor"] }, { name: "部室3", floor: 1, doors: ["n:clubDoor"] }, { name: "部室4", floor: 1, doors: ["n:clubDoor"] }, { name: "部室5", floor: 1, doors: ["n:clubDoor"] }, { name: "部室6", floor: 1, doors: ["n:clubDoor"] }, { name: "部室7", floor: 1, doors: ["n:clubDoor"] }, { name: "部室8", floor: 1, doors: ["n:clubDoor"] },
@@ -598,7 +598,7 @@ export const ROOM_STYLE = [
   // 第２職員室の引き戸は南側
   { name: "第２職員室", floor: 2, doors: ["s"] },
   // 職員室：廊下側（北）に3つ、北へのびた部分の西（階段側）に1つ、あわせて4つの入口
-  { name: "職員室", floor: 2, doors: ["n@-0.4", "n@-0.13", "n@0.12"], partDoors: ["w"] },
+  { name: "職員室", floor: 2, doors: ["n@-0.4", "n@-0.13"], partDoors: ["w"] }, // 共用スペースの前は壁がなく、ひとつながり
   // 3階の卓球場：東の階段からの通路の側（東）は壁なし
   { name: "卓球場", floor: 3, open: ["e"] },
   // コモンスペースは壁なし（まわりの廊下とひとつながり）

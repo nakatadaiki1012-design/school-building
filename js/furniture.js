@@ -435,8 +435,7 @@ const SHAPES = {
   micStand: [[MAT.metal, merge([new THREE.CylinderGeometry(0.012, 0.012, 1.6, 6).translate(0, 0.8, 0), b(0.3, 0.02, 0.3)])], [MAT.black, merge([b(0.04, 0.12, 0.04, 0, 1.6)])]],
   printer: [[M(0xf2f2ee), merge([b(0.45, 0.2, 0.4, 0, 0.74)])], [MAT.black, merge([b(0.35, 0.03, 0.3, 0, 0.94)])]],
   // 職員室の机（写真）：木の天板、白い引き出しと脚。座る人は +x 側。deskPanel は向かい側のふちの白い仕切り
-  staffDesk: [[M(0xd9c4a2, { roughness: 0.6 }), merge([b(0.7, 0.03, 0.95, 0, 0.72)])], [M(0xeeeeea), merge([b(0.6, 0.7, 0.4, 0, 0, 0.26), b(0.6, 0.7, 0.04, 0, 0, -0.45), b(0.04, 0.5, 0.95, -0.33, 0.2)])]],
-  deskPanel: [[M(0xf2f2ee), merge([b(0.03, 0.38, 0.95, -0.36, 0.75)])]],
+  staffDesk: [[M(0xd9c4a2, { roughness: 0.6 }), merge([b(0.7, 0.03, 1.04, 0, 0.72)])], [M(0xeeeeea), merge([b(0.6, 0.7, 0.4, 0, 0, 0.3), b(0.6, 0.7, 0.04, 0, 0, -0.5), b(0.04, 0.5, 1.0, -0.33, 0.2)])]],
   lowCab: [[M(0xe6e6e0), merge([b(0.45, 0.9, 0.9)])], [M(0x9aa0a6), merge([b(0.46, 0.02, 0.88, 0, 0.45)])]],
   hallWindow: [[MAT.transom, merge([b(1.7, 0.42, 0.24, 0, 1.92), b(1.7, 0.32, 0.24, 0, 0.12)])], [MAT.doorFrame, merge([b(1.78, 0.04, 0.26, 0, 2.34), b(1.78, 0.04, 0.26, 0, 1.88), b(0.04, 0.46, 0.26, 0, 1.88)])]],
   // 壁より厚くして、教室の中からも廊下からも見えるようにする
@@ -613,8 +612,8 @@ function pairColumn(out, cx, za, zb, step = 1.1) {
   }
 }
 // 職員室（配置図と写真）：配置図の寸法（東西24m × 南北7.4m）を、模型の部屋の大きさに合わせて置く。
-// 西から1年・2年の机のまとまり（北の壁ぎわに北を向く1列と、背中合わせの2列の島）、東に業務アシスタントの机と、
-// 南北にのびる3年の机の列（北のL字の部分まで続く）。机は白い脚と木の天板で、向かい合う机のあいだに白い仕切り
+// 西から1年・2年の机のまとまり（北の壁ぎわに北を向く1列と、くっついた背中合わせの2列の島）、東に業務アシスタントの机と、
+// 南北にのびる3年の机の列（北のL字の部分まで続く）。机は白い脚と木の天板で、仕切りはない。いすは机の下に入れてある。戸棚は机より高い
 function staffRoom(out, R) {
   const { x0, x1, z0, z1 } = R, sx = (x1 - x0) / 24, sz = (z1 - z0) / 7.4;
   const P = (xm, zm) => [x0 + xm * sx, z0 + zm * sz];
@@ -622,28 +621,28 @@ function staffRoom(out, R) {
   const unit = (xm, zm, face, panel = false) => {
     const [x, z] = P(xm, zm);
     out.push({ t: "staffDesk", x, z, rot: face });
-    if (panel) out.push({ t: "deskPanel", x, z, rot: face });
-    out.push({ t: "officeChair", x: x + Math.cos(face) * 0.62, z: z - Math.sin(face) * 0.62, rot: face });
+    out.push({ t: "officeChair", x: x + Math.cos(face) * 0.3, z: z - Math.sin(face) * 0.3, rot: face }); // いすは机の下に入れてある
   };
-  const row = (xs, zm, face, panel) => xs.forEach((xm) => unit(xm, zm, face, panel));
+  const row = (xs, zm, face) => xs.forEach((xm) => unit(xm, zm, face));
+  // 背中合わせの2列は、机どうしがくっついている（まんなかの線 zm から、机の奥行き0.7mの半分ずつ）
+  const D = 0.35 / sz, pairRows = (xs, zm) => { row(xs, zm - D, S); row(xs, zm + D, N); };
   // 1年（西）
   row([3.98, 4.99, 6.0, 7.02, 8.47], 2.53, N);
-  row([3.98, 4.99, 6.0, 7.02, 8.47, 9.46], 4.5, S, true);
-  row([3.98, 4.99, 6.0, 7.02, 8.47, 9.46], 5.5, N, true);
+  pairRows([3.98, 4.99, 6.0, 7.02, 8.47, 9.46], 5.0);
   // 2年（まんなか）
   row([9.58, 10.52, 11.5, 13.36, 14.4, 15.39, 16.4], 2.53, N);
-  row([10.59, 11.58, 13.1, 14.1, 15.08], 4.5, S, true);
-  row([10.59, 11.58, 13.1, 14.1, 15.08], 5.5, N, true);
+  pairRows([10.59, 11.58, 13.1, 14.1, 15.08], 5.0);
   // 業務アシスタント（2つ）と、3年（東。北のL字の部分まで南北に続く）
   for (const zm of [3.0, 4.1]) unit(18.28, zm, E);
   for (const zm of [1.94, 2.88, 3.83]) unit(18.9, zm, W);
-  for (const zm of [-0.71, 0.24, 1.18, 2.72, 3.66, 4.66, 5.63]) { unit(21.3, zm, E, true); unit(21.95, zm, W, true); }
+  const Dx = 0.35 / sx;
+  for (const zm of [-0.71, 0.24, 1.18, 2.72, 3.66, 4.66, 5.63]) { unit(21.62 - Dx, zm, E); unit(21.62 + Dx, zm, W); }
   // 打ち合わせのテーブル（業務アシスタントの南）といす
   for (const xm of [16.95, 18.85]) { const [x, z] = P(xm, 5.48); out.push({ t: "table", x, z, rot: Math.PI / 2 }); }
   for (const xm of [18.0, 19.2]) { const [x, z] = P(xm, 6.1); out.push({ t: "officeChair", x, z, rot: N }); } // いす
   // 北の壁ぎわの白い戸棚（引き違い戸）と、1年・2年の北の列のうしろの低い棚
-  for (const [a, b] of [[2.3, 4.4], [5.7, 7.8], [9.9, 11.9]]) for (let xm = a + 0.45; xm < b; xm += 0.95) { const [x, z] = P(xm, 0.25); out.push({ t: "lowCab", x, z, rot: S }); }
-  for (const [a, b] of [[3.4, 9.0], [9.1, 11.9], [12.8, 16.9]]) for (let xm = a + 0.45; xm < b; xm += 0.95) { const [x, z] = P(xm, 1.95); out.push({ t: "lowCab", x, z, rot: S, sy: 0.6 }); }
+  for (const [a, b] of [[2.3, 4.4], [5.7, 7.8], [9.9, 11.9]]) for (let xm = a + 0.45; xm < b; xm += 0.95) { const [x, z] = P(xm, 0.25); out.push({ t: "lowCab", x, z, rot: S, sy: 1.35 }); }
+  for (const [a, b] of [[3.4, 9.0], [9.1, 11.9], [12.8, 16.9]]) for (let xm = a + 0.45; xm < b; xm += 0.95) { const [x, z] = P(xm, 1.95); out.push({ t: "lowCab", x, z, rot: S, sy: 1.35 }); }
   // 南の窓の下の低い戸棚（柱のところはあける）と、西のはしの流し台
   for (let xm = 4.5; xm < 23.4; xm += 0.95) { if ([[9.1, 10.0], [13.9, 14.8], [18.6, 19.5]].some(([a, b]) => xm > a && xm < b)) continue; const [x, z] = P(xm, 7.15); out.push({ t: "lowCab", x, z, rot: N }); }
   { const [x, z] = P(2.6, 7.05); out.push({ t: "kitchen", x, z, rot: Math.PI / 2 }); }

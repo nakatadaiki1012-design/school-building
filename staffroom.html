@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>職員室 くわしいモデル</title>
+  <meta name="robots" content="noindex">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <style>
+    :root { --ink: #1d2733; --card: rgba(255,255,255,0.92); --accent: #1a73e8; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #dfe6ec; font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; color: var(--ink); }
+    #view { position: fixed; inset: 0; }
+    .bar { position: fixed; top: 12px; left: 12px; right: 12px; display: flex; gap: 8px; align-items: center; z-index: 5; pointer-events: none; }
+    .bar > * { pointer-events: auto; }
+    .title { background: var(--card); border-radius: 14px; padding: 8px 14px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); }
+    .title b { display: block; font-size: 16px; }
+    .title span { font-size: 12px; color: #5b6673; }
+    a.back, .btn { background: var(--card); border: 0; border-radius: 999px; padding: 9px 14px; font-size: 14px; color: var(--accent); text-decoration: none; box-shadow: 0 2px 10px rgba(0,0,0,0.15); cursor: pointer; white-space: nowrap; }
+    .btn.active { background: var(--accent); color: #fff; }
+    .spacer { flex: 1; }
+    .views { position: fixed; right: 12px; bottom: 16px; display: flex; flex-direction: column; gap: 6px; z-index: 5; }
+    .tag { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 10px; color: #fff; white-space: nowrap; box-shadow: 0 1px 4px rgba(0,0,0,0.3); pointer-events: none; }
+    .hint { position: fixed; left: 12px; bottom: 16px; background: var(--card); border-radius: 12px; padding: 8px 12px; font-size: 12px; line-height: 1.6; max-width: 280px; box-shadow: 0 2px 10px rgba(0,0,0,0.15); z-index: 5; }
+    #loading { position: fixed; inset: 0; display: grid; place-items: center; background: #dfe6ec; z-index: 10; font-size: 15px; }
+    @media (max-width: 600px) { .title span { display: none; } .hint { display: none; } }
+  </style>
+</head>
+<body>
+  <div id="loading">職員室を読み込んでいます…</div>
+  <div id="view"></div>
+  <div class="bar">
+    <a class="back" href="./#room=F2-AY126">← マップにもどる</a>
+    <div class="title"><b>職員室（くわしいモデル）</b><span>2号館2階・配置図の寸法どおり（東西24m × 南北7.4m）</span></div>
+    <span class="spacer"></span>
+  </div>
+  <div class="views">
+    <button class="btn" data-v="walk">目の高さ（西から）</button>
+    <button class="btn" data-v="east">目の高さ（東から）</button>
+    <button class="btn" data-v="top">真上</button>
+    <button class="btn" data-v="bird">ななめ上</button>
+  </div>
+  <p class="hint">ドラッグで回す・右ドラッグ（2本指）で動かす・ホイール（ピンチ）で近づく。<br>上から見ると天井が消えます。</p>
+  <script type="module" src="js/staffroom.js"></script>
+</body>
+</html>

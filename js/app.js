@@ -2275,6 +2275,17 @@ function selectRoom(r, { fly = true } = {}) {
   `;
   openPanel();
   history.replaceState(null, "", `#room=${r.id}`);
+  // シークレット：職員室の名前を5回つづけて押すと、職員室のくわしいモデルのページへ
+  if (r.name === "職員室") {
+    const h = panelBody.querySelector("h2");
+    let n = 0, t = 0;
+    h.addEventListener("click", () => {
+      const now = performance.now();
+      n = now - t < 1500 ? n + 1 : 1; t = now;
+      h.style.transform = `scale(${1 + n * 0.03})`;
+      if (n >= 5) location.href = "staffroom.html";
+    });
+  }
 }
 
 function showWing(w) {

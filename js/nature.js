@@ -4,7 +4,7 @@ import { mergeGeometries, mergeVertices } from "three/addons/utils/BufferGeometr
 
 // ---------- 軽くする：グループの中の動かない部品を、材質ごとに1つの形にまとめる ----------
 // （描画の回数が減るので、画面が軽くなる）。InstancedMesh はそのまま残す
-export function bakeStatic(group) {
+export function bakeStatic(group, { instances = false } = {}) {
   group.updateMatrixWorld(true);
   const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
   const buckets = new Map();
@@ -14,7 +14,20 @@ export function bakeStatic(group) {
     if (o === group) return;
     if (!o.isMesh) { if (!o.children.length && !o.isGroup) others.push([o, new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld)]); return; }
     const rel = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld);
-    if (o.isInstancedMesh) { keep.push([o, rel]); return; }
+    if (o.isInstancedMesh) {
+      // instances：同じ形をたくさん並べたもの（机・いすなど）も、1つずつの形に展開してまとめる（色を変えているものは除く）
+      if (!instances || o.instanceColor || Array.isArray(o.material)) { keep.push([o, rel]); return; }
+      const m = o.material, key = m.uuid;
+      if (!buckets.has(key)) buckets.set(key, { mat: m, geos: [], cast: false });
+      let base = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+      for (const name of Object.keys(base.attributes)) if (!["position", "normal", "uv"].includes(name)) base.deleteAttribute(name);
+      if (!base.attributes.normal) base.computeVertexNormals();
+      if (!base.attributes.uv) base.setAttribute("uv", new THREE.Float32BufferAttribute(new Float32Array(base.attributes.position.count * 2), 2));
+      const im = new THREE.Matrix4(), b = buckets.get(key);
+      for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, im); b.geos.push(base.clone().applyMatrix4(new THREE.Matrix4().multiplyMatrices(rel, im))); }
+      b.cast = b.cast || o.castShadow;
+      return;
+    }
     const m = o.material;
     if (Array.isArray(m)) { keep.push([o, rel]); return; }
     if (o.renderOrder || m.depthTest === false) { keep.push([o, rel]); return; } // 描く順番に意味があるものはまとめない

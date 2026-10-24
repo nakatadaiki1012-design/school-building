@@ -3069,6 +3069,9 @@ for (const f of [1, 2, 3]) {
 }
 // 処理落ち対策：動かない校舎の部品（外壁・屋根・床・壁の内側など）を、材質ごとに1つにまとめて描く回数を減らす
 for (const k of ["exterior", "roofs", "inner", "wallsBelow", "slab", "cut"]) for (const g of Object.values(layers[k])) bakeStatic(g);
+// 家具（机・いすなど）も、材質ごとに1つにまとめる
+for (const g of Object.values(layers.furniture)) bakeStatic(g, { instances: true });
+for (const g of Object.values(layers.exterior)) bakeStatic(g, { instances: true });
 bakeStatic(gymRoof);
 setFloor(0);
 const m = location.hash.match(/room=([\w-]+)/);

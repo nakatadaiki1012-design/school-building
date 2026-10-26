@@ -679,6 +679,92 @@ document.querySelectorAll(".views .btn[data-v]").forEach((b) => b.addEventListen
 camera.position.set(...VIEWS.walk[0]); controls.target.set(...VIEWS.walk[1]);
 document.querySelector('.views .btn[data-v="walk"]').classList.add("active");
 
+// ---------- 操作（長い部屋でも動かしやすく） ----------
+// ・ドラッグで回す中心は、部屋の真ん中ではなく「いま画面のまん中に見えている所」（部屋の中では目の前 2m ほど）
+// ・真上から見ているときは、1本指（左ドラッグ）で地図のようにずらす
+// ・ホイールは指した方へ進む（中心にぶつかって止まらない）。ピンチは OrbitControls のまま
+// ・ダブルクリック／ダブルタップで、そこへ近づく
+controls.zoomToCursor = true;
+controls.minDistance = 0.05;
+const BOX = { x0: 0, x1: 24, z0: -2.5, z1: 7.4 };
+const fwd = new THREE.Vector3(), ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+// 部屋の中から：壁・床・天井までの距離。外（上）から：机の高さの面までの距離
+function hitDist(o, d) {
+  const inside = o.x > BOX.x0 && o.x < BOX.x1 && o.z > BOX.z0 && o.z < BOX.z1 && o.y < CEIL && o.y > 0;
+  if (inside) {
+    let t = Infinity;
+    for (const [p, v, lo, hi] of [[o.x, d.x, BOX.x0, BOX.x1], [o.y, d.y, 0, CEIL], [o.z, d.z, BOX.z0, BOX.z1]]) { if (v > 1e-6) t = Math.min(t, (hi - p) / v); else if (v < -1e-6) t = Math.min(t, (lo - p) / v); }
+    return t;
+  }
+  return d.y < -0.05 ? (o.y - 0.7) / -d.y : null;
+}
+function repivot() {
+  camera.getWorldDirection(fwd);
+  const inside = camera.position.y < CEIL - 0.05;
+  const h = hitDist(camera.position, fwd);
+  if (h == null) return;
+  const dist = inside ? Math.max(0.4, Math.min(h * 0.8, 2.0)) : h;
+  controls.target.copy(camera.position).addScaledVector(fwd, dist);
+}
+const lookingDown = () => { camera.getWorldDirection(fwd); return fwd.y < -0.93; };
+view.addEventListener("pointerdown", (e) => {
+  if (walk.on || e.target.closest("button, a")) return;
+  anim = null;
+  repivot();
+  const pan = lookingDown();
+  controls.mouseButtons.LEFT = pan ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+  controls.mouseButtons.RIGHT = pan ? THREE.MOUSE.ROTATE : THREE.MOUSE.PAN;
+  controls.touches.ONE = pan ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+}, true);
+view.addEventListener("wheel", (e) => {
+  if (walk.on) return;
+  e.preventDefault(); e.stopPropagation(); anim = null;
+  repivot();
+  const r = view.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const d = ray.ray.direction, h = hitDist(camera.position, d) ?? 10;
+  const s = Math.sign(e.deltaY) * -1, step = Math.max(0.12, Math.min(s > 0 ? (h - 0.8) * 0.3 : h * 0.18, 3)) * Math.min(3, Math.abs(e.deltaY) / 100 || 1);
+  if (s > 0 && h < 0.9) return; // 壁や物の 1m 手前で止まる
+  const mv = d.clone().multiplyScalar(s * step), was = camera.position.clone();
+  camera.position.add(mv);
+  // 部屋の中にいたら、うしろに下がっても壁や床をつきぬけない
+  if (was.y < CEIL - 0.05) camera.position.set(Math.min(Math.max(camera.position.x, BOX.x0 + 0.15), BOX.x1 - 0.15), Math.min(Math.max(camera.position.y, 0.3), CEIL - 0.15), Math.min(Math.max(camera.position.z, (camera.position.x < 14.4 ? 0 : BOX.z0) + 0.15), BOX.z1 - 0.15));
+  controls.target.add(camera.position.clone().sub(was));
+}, { capture: true, passive: false });
+// ダブルクリック・ダブルタップ：その場所へ近づく
+const pickables = () => scene.children.filter((o) => o.isMesh && o.visible && o !== mirror);
+function flyToPoint(cx, cy) {
+  const r = view.getBoundingClientRect();
+  ndc.set(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObjects(pickables(), false)[0];
+  if (!hit) return;
+  const p = hit.point, off = camera.position.clone().sub(controls.target);
+  if (off.length() < 0.5) off.copy(fwd.set(0, 0.4, 1)); // 目の前を回っていたときは、手前ななめ上から
+  off.setLength(Math.min(Math.max(off.length(), 2.5), 5));
+  const cam = p.clone().add(off);
+  cam.y = Math.max(cam.y, 0.6);
+  anim = { t0: performance.now(), ms: 700, p0: camera.position.clone(), t0v: controls.target.clone(), p1: cam, t1: p.clone() };
+}
+view.addEventListener("dblclick", (e) => { if (!walk.on) flyToPoint(e.clientX, e.clientY); });
+{
+  let last = 0, lx = 0, ly = 0, sx = 0, sy = 0;
+  view.addEventListener("pointerdown", (e) => { sx = e.clientX; sy = e.clientY; });
+  view.addEventListener("pointerup", (e) => {
+    if (walk.on || e.pointerType !== "touch" || Math.hypot(e.clientX - sx, e.clientY - sy) > 12) return;
+    const now = performance.now();
+    if (now - last < 320 && Math.hypot(e.clientX - lx, e.clientY - ly) < 40) { flyToPoint(e.clientX, e.clientY); last = 0; } else { last = now; lx = e.clientX; ly = e.clientY; }
+  });
+}
+// 中心が部屋から遠くはなれないように（ずらしすぎて見失わない）
+const clampV = new THREE.Vector3();
+function keepNear() {
+  const t = controls.target;
+  clampV.set(Math.min(Math.max(t.x, BOX.x0 - 1), BOX.x1 + 1), Math.min(Math.max(t.y, 0), CEIL), Math.min(Math.max(t.z, BOX.z0 - 1), BOX.z1 + 1)).sub(t);
+  if (clampV.lengthSq() > 0) { t.add(clampV); camera.position.add(clampV); }
+}
+
 // 止まっているときだけ、すみや物のあいだのかげ（アンビエントオクルージョン）と、光のにじみを足して、写真のような絵にする
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
@@ -718,7 +804,7 @@ function tick(now) {
     camera.position.lerpVectors(anim.p0, anim.p1, e); controls.target.lerpVectors(anim.t0v, anim.t1, e);
     if (k >= 1) anim = null;
   }
-  if (!walk.on) controls.update();
+  if (!walk.on) { controls.update(); if (!anim) keepNear(); }
   // 天井より上から見るときは、天井を消して中が見えるように。札も、上から見るときだけ出す
   const above = camera.position.y > CEIL - 0.05;
   ceiling.visible = outside.visible = !above;

@@ -223,6 +223,13 @@ const MAT = {
   pingBlue: M(0x2a4f9a, { roughness: 0.5 }), // 卓球台（写真では青）
   doorFrame: M(0xc9b796, { roughness: 0.7 }), // ドアと窓の枠もベージュ
   tank: M(0x6d97b8, { roughness: 0.6 }),
+  // 図書室：チェックのテーブルクロス、雑誌の表紙、マンガのタグの掲示板、色紙のステンドグラス
+  checkPink: new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (g, w, h) => { g.fillStyle = "#f4f0ee"; g.fillRect(0, 0, w, h); g.fillStyle = "rgba(196,70,90,0.55)"; for (let i = 0; i < w; i += 4) { g.fillRect(i, 0, 2, h); g.fillRect(0, i, w, 2); } }, 4, 4), roughness: 0.95 }),
+  checkBeige: new THREE.MeshStandardMaterial({ map: canvasTex(64, 64, (g, w, h) => { g.fillStyle = "#faf3e4"; g.fillRect(0, 0, w, h); g.fillStyle = "rgba(226,190,120,0.55)"; for (let i = 0; i < w; i += 8) { g.fillRect(i, 0, 4, h); g.fillRect(0, i, w, 4); } }, 4, 4), roughness: 0.95 }),
+  checkYellow: M(0xf2d24e, { roughness: 0.95 }),
+  mags: new THREE.MeshStandardMaterial({ map: canvasTex(256, 64, (g, w, h) => { g.fillStyle = "#222"; g.fillRect(0, 0, w, h); const cs = ["#e8443a", "#f2f2f2", "#3a6fd8", "#f4c542", "#e98bb4", "#4caf6a", "#ffffff", "#7b4cc9"]; for (let i = 0; i < 6; i++) { g.fillStyle = cs[(i * 3) % cs.length]; g.fillRect(6 + i * 42, 4, 36, 56); g.fillStyle = "rgba(0,0,0,0.25)"; g.fillRect(10 + i * 42, 30, 28, 22); g.fillStyle = "#fff"; g.fillRect(10 + i * 42, 8, 24, 6); } }), roughness: 0.6 }),
+  mangaTags: new THREE.MeshStandardMaterial({ map: canvasTex(256, 128, (g, w, h) => { g.fillStyle = "#24503a"; g.fillRect(0, 0, w, h); for (let r = 0; r < 5; r++) for (let c = 0; c < 22; c++) { if ((r * 7 + c * 3) % 9 === 0) continue; const x = 6 + c * 11, y = 10 + r * 23; g.fillStyle = ["#e9b6c0", "#f5e6a8", "#ffffff", "#b6d4f0"][(r + c) % 4]; g.fillRect(x, y, 8, 6); g.fillStyle = "#f6d6dc"; g.fillRect(x, y + 7, 8, 9); } g.fillStyle = "#fff"; g.fillRect(4, 4, 10, 10); g.fillRect(4, 50, 10, 10); }), roughness: 0.8 }),
+  stained: (() => { const t = canvasTex(128, 96, (g, w, h) => { const cs = ["#f28aa0", "#f6c85a", "#5cc8e8", "#f7a07a", "#e46fd0", "#fbe8a0", "#ffffff"]; for (let i = 0; i < 70; i++) { g.fillStyle = cs[i % cs.length]; g.beginPath(); const x = Math.random() * w, y = Math.random() * h; g.moveTo(x, y); g.lineTo(x + 10 + Math.random() * 18, y + Math.random() * 14); g.lineTo(x + Math.random() * 12, y + 10 + Math.random() * 16); g.closePath(); g.fill(); } g.strokeStyle = "#1a1a1a"; g.lineWidth = 2; for (let i = 0; i < 26; i++) { g.beginPath(); g.moveTo(Math.random() * w, Math.random() * h); g.lineTo(Math.random() * w, Math.random() * h); g.stroke(); } g.fillStyle = "#1a1a1a"; g.fillRect(w / 2 - 1, 0, 2, h); }); return new THREE.MeshStandardMaterial({ map: t, roughness: 0.4, emissive: 0xffffff, emissiveMap: t, emissiveIntensity: 0.45 }); })(),
 };
 
 // ---------- 家具の形（床に置いたとき、正面が -x 向き） ----------
@@ -382,7 +389,25 @@ const SHAPES = {
   libColumn: [[M(0xf4f2ec), merge([b(0.9, 1.6, 0.9, 0, 1.5)])], [M(0x3f6b55), merge([b(0.92, 1.5, 0.92)])]],
   roundShelf: [[MAT.books, merge([new THREE.CylinderGeometry(0.55, 0.55, 1.3, 16).translate(0, 0.65, 0)])], [M(0xf4f2ec), merge([new THREE.CylinderGeometry(0.58, 0.58, 0.05, 16).translate(0, 1.32, 0), new THREE.CylinderGeometry(0.58, 0.58, 0.05, 16).translate(0, 0.65, 0)])]],
   cubeStool: [[M(0xc8553d), merge([b(0.42, 0.42, 0.42)])]],
-  displayTable: [[M(0xf1e2d0), merge([b(1.8, 0.7, 0.9)])], [MAT.books, merge([b(1.6, 0.06, 0.7, 0, 0.7)])]],
+  displayTable: [[MAT.checkBeige, merge([b(1.8, 0.7, 0.9)])], [MAT.books, merge([b(1.6, 0.06, 0.7, 0, 0.7)])]],
+  // 図書室（写真2）：壁ぞいの木の本棚（天井近くまで。上の段はまだ空きが多い）、窓ぎわの白いカウンターと緑の高いいす、
+  // 白い脚の木の小さなテーブルと緑の座面の木のいす、白っぽい積み重ねいす、雑誌の黒い棚、マンガの白い棚、黄色のブックトラック、
+  // チェックの布をかけた展示テーブル（ピンク・黄色）、柱の白い網のパネル、マンガのタグの緑の掲示板（キャスターつき）、窓のステンドグラス（色紙）
+  wallShelf: [[M(0xc89a62), merge([b(0.38, 0.04, 0.92, 0, 0), b(0.38, 0.04, 0.92, 0, 2.46), b(0.38, 2.5, 0.03, 0, 0, -0.45), b(0.38, 2.5, 0.03, 0, 0, 0.45), b(0.03, 2.5, 0.92, 0.18, 0), ...[0.45, 0.8, 1.15, 1.5, 1.85, 2.15].map((y) => b(0.36, 0.025, 0.9, 0, y))])], [MAT.books, merge([b(0.3, 1.38, 0.84, 0.03, 0.06)])]],
+  highCounter: [[M(0xf4f3ef), merge([b(0.45, 0.03, 1.5, 0, 1.0), b(0.02, 1.0, 0.02, -0.2, 0, -0.72), b(0.02, 1.0, 0.02, 0.2, 0, -0.72), b(0.02, 1.0, 0.02, -0.2, 0, 0.72), b(0.02, 1.0, 0.02, 0.2, 0, 0.72), b(0.42, 0.02, 0.02, 0, 0.05, -0.72), b(0.42, 0.02, 0.02, 0, 0.05, 0.72)])], [M(0xd9b98a), merge([b(0.45, 0.012, 1.5, 0, 0.99)])]],
+  barStool: [[M(0x9aa83c, { roughness: 0.95 }), merge([b(0.4, 0.07, 0.4, 0, 0.7), b(0.07, 0.25, 0.4, 0.17, 0.77)])], [M(0xf4f3ef), merge([b(0.02, 0.7, 0.02, -0.17, 0, -0.17), b(0.02, 0.7, 0.02, 0.17, 0, -0.17), b(0.02, 0.7, 0.02, -0.17, 0, 0.17), b(0.02, 0.7, 0.02, 0.17, 0, 0.17), b(0.38, 0.02, 0.02, 0, 0.25, -0.17), b(0.38, 0.02, 0.02, 0, 0.25, 0.17)])]],
+  woodTable: [[M(0xe3cfa8), merge([b(0.8, 0.035, 1.2, 0, 0.72)])], [MAT.black, merge(legs(0.8, 1.2, 0.72, 0.04))]],
+  woodChair: [[M(0xd9944e), merge([b(0.04, 0.42, 0.42, 0.2, 0.5)])], [M(0x9aa83c, { roughness: 0.95 }), merge([b(0.42, 0.05, 0.42, 0, 0.44)])], [M(0xf4f3ef), merge(legs(0.4, 0.4, 0.44, 0.025))]],
+  stackChair: [[M(0xe9e3d6, { roughness: 0.8 }), merge([b(0.42, 0.05, 0.42, 0, 0.44), b(0.05, 0.3, 0.42, 0.21, 0.58)])], [MAT.black, merge([...legs(0.4, 0.4, 0.44, 0.02), b(0.02, 0.45, 0.02, 0.22, 0.44, -0.2), b(0.02, 0.45, 0.02, 0.22, 0.44, 0.2)])]],
+  magRack: [[M(0x262729, { roughness: 0.5 }), merge([b(0.45, 1.9, 1.9), ...[0.3, 0.68, 1.06, 1.44].map((y) => b(0.12, 0.03, 1.86, -0.26, y))])], [MAT.mags, merge([0.32, 0.7, 1.08, 1.46].map((y) => b(0.02, 0.34, 1.8, -0.24, y).rotateZ(0.12)))]],
+  mangaRack: [[M(0xf4f4f0), merge([b(0.32, 1.55, 0.03, 0, 0, -0.45), b(0.32, 1.55, 0.03, 0, 0, 0.45), b(0.32, 0.04, 0.92, 0, 0), b(0.32, 0.04, 0.92, 0, 1.52), b(0.03, 1.55, 0.92, 0.15, 0)])], [MAT.books, merge([0.05, 0.42, 0.79, 1.16].map((y) => b(0.2, 0.3, 0.84, 0.03, y + 0.02)))]],
+  lowBookcase: [[M(0xa2683a), merge([b(0.38, 0.95, 0.03, 0, 0, -0.45), b(0.38, 0.95, 0.03, 0, 0, 0.45), b(0.38, 0.03, 0.92, 0, 0.93), b(0.38, 0.05, 0.92, 0, 0), b(0.03, 0.95, 0.92, 0.18, 0)])], [MAT.books, merge([b(0.28, 0.85, 0.84, 0.03, 0.06)])]],
+  yellowCart: [[M(0xf0d64a), merge([b(0.05, 1.15, 0.55, -0.42, 0.1), b(0.05, 1.15, 0.55, 0.42, 0.1), b(0.84, 0.03, 0.5, 0, 0.32), b(0.84, 0.03, 0.4, 0, 0.75)])], [MAT.books, merge([b(0.78, 0.26, 0.4, 0, 0.35).rotateX(0.15), b(0.78, 0.24, 0.32, 0, 0.78).rotateX(0.15)])], [MAT.black, merge([-0.4, 0.4].flatMap((x) => [-0.22, 0.22].map((z) => b(0.06, 0.1, 0.06, x, 0, z))))]],
+  pinkTable: [[MAT.checkPink, merge([b(0.7, 0.74, 1.6)])], [MAT.books, merge([b(0.4, 0.04, 1.4, 0.05, 0.74)])]],
+  yellowTable: [[MAT.checkYellow, merge([b(0.6, 0.72, 0.6)])], [MAT.books, merge([b(0.4, 0.04, 0.4, 0, 0.72)])]],
+  wirePanel: [[M(0xf6f6f2), merge([...[0, 1, 2, 3, 4, 5, 6, 7].map((k) => b(0.02, 1.3, 0.012, 0, 0.9, -0.5 + k * 0.143)), ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((k) => b(0.02, 0.012, 1.0, 0, 0.9 + k * 0.144))])], [MAT.books, merge([b(0.06, 0.24, 0.17, -0.05, 1.7, -0.3), b(0.06, 0.24, 0.17, -0.05, 1.7, 0.1), b(0.06, 0.24, 0.17, -0.05, 1.25, -0.15), b(0.06, 0.24, 0.17, -0.05, 1.25, 0.3)])]],
+  mangaBoard: [[MAT.mangaTags, merge([b(0.04, 1.2, 2.4, 0, 0.75)])], [M(0xc8ccd0, { metalness: 0.4, roughness: 0.4 }), merge([b(0.06, 1.95, 0.05, 0, 0, -1.25), b(0.06, 1.95, 0.05, 0, 0, 1.25), b(0.5, 0.04, 0.06, 0, 0.04, -1.25), b(0.5, 0.04, 0.06, 0, 0.04, 1.25), b(0.12, 0.03, 2.4, -0.05, 0.72)])], [MAT.paper, merge([b(0.02, 0.32, 0.45, -0.03, 1.98)])]],
+  stainedGlass: [[MAT.stained, merge([b(0.02, 1.1, 1.5, 0, 1.15)])], [MAT.black, merge([b(0.03, 0.04, 1.54, 0, 1.13), b(0.03, 0.04, 1.54, 0, 2.25), b(0.03, 1.1, 0.04, 0, 1.15, 0)])]],
   // 印刷室（写真）：コピー機・印刷機（白い箱に黒いふた）、紙を分ける機械（たてに長い）、机の上のプリンター
   copier: [[M(0xeceae4), merge([b(0.75, 0.95, 0.65)])], [M(0x2c2e30), merge([b(0.75, 0.1, 0.65, 0, 0.95), b(0.35, 0.04, 0.4, 0.5, 0.7)])]],
   riso: [[M(0xeceae4), merge([b(0.7, 1.0, 0.75)])], [M(0x2c2e30), merge([b(0.3, 0.05, 0.5, -0.5, 0.75), b(0.3, 0.05, 0.5, 0.5, 0.6)])]],
@@ -707,36 +732,67 @@ function meeting(out, R) {
   }
 }
 
-// 図書室：本棚は東側に南北の向きでならび、閲覧の机は西側
+// 図書室（写真）：西は大きな窓（窓ぎわにカウンター席）、北の壁は天井近くまでの木の本棚（まんなかにステンドグラスの窓）、
+// 東半分に黒い背の高い本棚が南北にならぶ。西半分に木の大きな閲覧テーブル。まんなかの柱のまわりに展示、南（廊下側）に雑誌・マンガ
+// rot：0 は正面が西（-x）、π/2 は南（+z）、-π/2 は北（-z）、π は東（+x）
 function library(out, R) {
   const { x0, x1, z0, z1 } = R;
-  const xm = x0 + (x1 - x0) * 0.45, zc = (z0 + z1) / 2, zs = z1 - 3.4; // zs：南（廊下側）の、新着本などの展示のところ
-  // 北と東の壁ぞいの本棚（北のまんなかの窓のところはあける）
+  const xm = x0 + (x1 - x0) * 0.45, zs = z1 - 3.4; // zs：南（廊下側）の、新着本などの展示のところ
   const xw = x0 + (x1 - x0) * 0.5;
-  alongX(out, "shelf", z0 + 0.25, x0 + 0.5, xw - 1.4, 0.92, -Math.PI / 2);
-  alongX(out, "shelf", z0 + 0.25, xw + 1.4, x1 - 0.8, 0.92, -Math.PI / 2);
-  along(out, "shelf", x1 - 0.25, z0 + 0.8, zs - 0.5, 0.92, Math.PI);
-  // 東半分：背の高い両面の本棚が南北にならぶ（写真：黒い枠、両はしは木）
-  for (let x = xm + 1.6; x < x1 - 1.3; x += 1.75) along(out, "tallShelf", x, z0 + 1.6, zs - 0.6, 0.88, 0);
-  // 西半分：こげ茶の大きな閲覧テーブルといす
-  grid(out, "bigTable", x0 + 1.8, xm - 1.0, z0 + 2.2, z1 - 2.2, 2, 3, 0);
-  for (const o of out.filter((p) => p.t === "bigTable" && p.x >= x0 && p.x <= x1 && p.z >= z0 && p.z <= z1)) {
-    for (const s of [-1, 1]) for (const k of [-0.7, 0, 0.7]) out.push({ t: "chair", x: o.x + s * 0.9, z: o.z + k, rot: s > 0 ? 0 : Math.PI });
+  // 北の壁：木の本棚（000 総記から順に）。まんなかの窓はステンドグラス（色紙）で、下に低い本棚
+  alongX(out, "wallShelf", z0 + 0.2, x0 + 0.3, xw - 1.0, 0.92, Math.PI / 2);
+  alongX(out, "wallShelf", z0 + 0.2, xw + 1.0, x1 - 0.5, 0.92, Math.PI / 2);
+  out.push({ t: "stainedGlass", x: xw, z: z0 + 0.06, rot: Math.PI / 2 });
+  alongX(out, "lowBookcase", z0 + 0.2, xw - 0.95, xw + 0.95, 0.92, Math.PI / 2);
+  // 東の壁：北半分は木の本棚、南は窓（窓ぎわに文房具の机とパソコンの机）
+  along(out, "wallShelf", x1 - 0.2, z0 + 0.6, zs - 0.6, 0.92, 0);
+  // 東半分：背の高い黒い両面の本棚が南北にならぶ。北のはしに赤いキューブのいす
+  const rows = [];
+  for (let x = xm + 1.6; x < x1 - 1.3; x += 1.75) { rows.push(x); along(out, "tallShelf", x, z0 + 1.6, zs - 0.6, 0.88, 0); out.push({ t: "cubeStool", x, z: z0 + 1.32, rot: 0 }); }
+  // 本棚の南のはしの、黄色い布の小さな展示テーブル
+  for (const x of rows.slice(1, 3)) out.push({ t: "yellowTable", x: x + 0.87, z: zs - 0.2, rot: 0 });
+  // 西の窓ぎわ：白いカウンターに緑の高いいす（2つずつ）
+  for (let z = z0 + 1.4; z < z1 - 1.0; z += 2.0) {
+    out.push({ t: "highCounter", x: x0 + 0.35, z, rot: 0 });
+    for (const k of [-0.38, 0.38]) out.push({ t: "barStool", x: x0 + 0.85, z: z + k, rot: 0 });
   }
-  // まんなかの四角い柱（下が緑。おすすめの本の掲示）
+  // 窓の近く：白い脚の木のテーブルと、緑の座面の木のいす
+  for (const z of [z0 + 2.0, z0 + 4.6]) {
+    out.push({ t: "woodTable", x: x0 + 2.4, z, rot: 0 });
+    for (const s of [-1, 1]) for (const k of [-0.3, 0.3]) out.push({ t: "woodChair", x: x0 + 2.4 + s * 0.62, z: z + k, rot: s > 0 ? 0 : Math.PI });
+  }
+  // 西半分：木の大きな閲覧テーブル（東西に長い）と、白っぽい積み重ねいす
+  for (const tx of [x0 + 5.0, x0 + 7.9]) for (const tz of [z0 + 2.0, z0 + 4.6, z0 + 7.2]) {
+    out.push({ t: "bigTable", x: tx, z: tz, rot: Math.PI / 2 });
+    for (const s of [-1, 1]) for (const k of [-0.75, 0, 0.75]) out.push({ t: "stackChair", x: tx + k, z: tz + s * 0.85, rot: s > 0 ? -Math.PI / 2 : Math.PI / 2 });
+  }
+  // 南西：木の低い本棚の前に赤いキューブのいす3つ。廊下側の壁に雑誌の黒い棚とマンガの白い棚
+  out.push({ t: "lowBookcase", x: x0 + 2.4, z: z0 + 7.1, rot: Math.PI / 2 });
+  for (const k of [-0.44, 0, 0.44]) out.push({ t: "cubeStool", x: x0 + 2.4 + k, z: z0 + 7.85, rot: 0 });
+  out.push({ t: "mangaRack", x: x0 + 1.2, z: z1 - 0.3, rot: -Math.PI / 2 });
+  out.push({ t: "magRack", x: x0 + 3.4, z: z1 - 0.3, rot: -Math.PI / 2 });
+  // マンガのタグの緑の掲示板（キャスターつき）
+  out.push({ t: "mangaBoard", x: xm - 1.6, z: z1 - 0.5, rot: -Math.PI / 2 });
+  // まんなかの四角い柱（下が緑）：西の面に白い網のパネル、前にピンクのチェックの布のテーブル（図書委員のおすすめ）
   out.push({ t: "libColumn", x: xm + 0.4, z: zs + 0.4, rot: 0 });
-  // 南（廊下側）：新着本の展示テーブル、ブックトラック2台、回る丸い本棚、赤いキューブのいす、窓ぎわにパソコンの机
+  out.push({ t: "wirePanel", x: xm - 0.07, z: zs + 0.4, rot: 0 });
+  out.push({ t: "pinkTable", x: xm - 0.5, z: zs + 0.4, rot: 0 });
+  // 南：新着本・話題の本のテーブル（ベージュのチェック）と黄色いブックトラック、回る丸い本棚、赤いキューブのいす
   out.push({ t: "displayTable", x: xm + 2.2, z: zs + 1.6, rot: Math.PI / 2 });
-  for (const k of [0, 1]) out.push({ t: "bookCart", x: xm + 0.6 + k * 0.7, z: zs + 1.6, rot: Math.PI / 2 });
+  for (const k of [0, 1]) out.push({ t: "yellowCart", x: xm + 0.6 + k * 0.75, z: zs + 1.6, rot: Math.PI / 2 });
   out.push({ t: "roundShelf", x: xm + 4.4, z: zs + 1.2, rot: 0 });
   for (const [dx, dz] of [[5.3, 1.8], [5.8, 1.3], [5.8, 2.2]]) out.push({ t: "cubeStool", x: xm + dx, z: zs + dz, rot: 0 });
+  // 東の窓ぎわ：パソコンの机と、文房具・おりがみの机
   for (const k of [0, 1]) {
     out.push({ t: "officeDesk", x: x1 - 0.5, z: zs + 0.9 + k * 1.3, rot: Math.PI });
     out.push({ t: "pc", x: x1 - 0.45, z: zs + 0.9 + k * 1.3, rot: Math.PI });
     out.push({ t: "officeChair", x: x1 - 1.3, z: zs + 0.9 + k * 1.3, rot: 0 });
   }
+  out.push({ t: "officeDesk", x: x1 - 0.5, z: zs - 0.2, rot: Math.PI });
+  // 南東（入口の近く）：ライトノベルのコーナーの白い棚
+  alongX(out, "mangaRack", z1 - 0.25, xm + 3.0, x1 - 1.8, 0.95, -Math.PI / 2);
   // 廊下側の壁の、本を見せるガラスの飾り棚
-  out.push({ t: "showcase", x: x0 + 2.2, z: z1 - 0.35, rot: Math.PI / 2 });
+  out.push({ t: "showcase", x: xm, z: z1 - 0.35, rot: Math.PI / 2 });
 }
 
 function music(out, R) {

@@ -1124,9 +1124,9 @@ for (const f of [1, 2, 3]) {
 // 図書室の棟のピンク色の寄棟屋根
 {
   // 寄棟は教室・図書室の部分だけ（南の廊下・階段・トイレの帯は3階まであるので、平らな屋上にする）
-  const rc = rectOf({ c0: 9, r0: 44, c1: 22, r1: 58 });
+  const rc = rectOf({ c0: 9, r0: 44, c1: 22, r1: 57 });
   const ov = 1.6, y = 2 * FH + 0.3, rise = 1.4; // 2階の上。写真：ゆるい勾配で、軒が大きく張り出している
-  const x0 = rc.x0 - ov, x1 = rc.x1 + ov, z0 = rc.z0 - ov, z1 = rc.z1 + ov;
+  const x0 = rc.x0 - ov, x1 = rc.x1 + ov, z0 = rc.z0 - ov, z1 = rc.z1 + 1.1; // 南の軒は、階段の塔とのすき間の上まで
   const h = (z1 - z0) / 2, zc = (z0 + z1) / 2;
   const v = [
     [x0, y, z0], [x1, y, z0], [x1, y, z1], [x0, y, z1],

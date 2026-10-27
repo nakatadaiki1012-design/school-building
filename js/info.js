@@ -9,7 +9,10 @@ export const FOOTPRINTS = {
     [7, 23, 19, 38, "school"],  // 体育館の下の南側（更衣室・シャワー・玄関）。東側は2階の下の屋外
     // 図書室の棟の1階は2階とほぼ同じ大きさ。工芸教室の西だけ少し引っこんで、上の階がひさしになる。窯は工芸教室の中
     [10, 44, 22, 52, "school"],
-    [9, 53, 22, 62, "school"],
+    // 写真：東側で、図書室の棟（寄棟屋根）と3号館の西階段の塔（3階建て）のあいだに、せまいすき間（屋外）がある
+    [9, 53, 22, 57, "school"],
+    [9, 58, 19, 58, "school"],
+    [9, 59, 22, 62, "school"],
     [33, 9, 41, 33, "school"], // 中央棟（北の昇降口まで。昇降口は中庭のほうへ少し出ている）
     [33, 45, 39, 46, "school"], // 南の昇降口の前の部分（中庭のほうへ出ている）
     [33, 47, 41, 62, "school"], // 中央棟（南の昇降口から南。昇降口の東の土間は、昇降口より引っこんでいる）
@@ -22,7 +25,9 @@ export const FOOTPRINTS = {
     [7, 1, 26, 37, "gym"],      // 体育館（南の玄関・体育準備室のところは、3階の卓球場より1列引っこむ）
     [19, 38, 26, 38, "gym"],
     [27, 19, 32, 21, "school"], // 体育館への渡り廊下
-    [9, 44, 22, 62, "school"],  // 図書室の棟（南に廊下・階段・トイレ）
+    [9, 44, 22, 57, "school"],  // 図書室の棟（南に廊下・階段・トイレ）。東のはしは階段の塔とのあいだにすき間
+    [9, 58, 19, 58, "school"],
+    [9, 59, 22, 62, "school"],
     [33, 9, 41, 31, "school"], // 中央棟（2つの昇降口のあいだは吹き抜けで床がない）
     [38, 32, 41, 46, "school"], // 2階の、1号館と2号館をつなぐ廊下（吹き抜け側に少し広い）
     [33, 47, 41, 62, "school"],
@@ -494,9 +499,9 @@ export const ROOM_EDITS = [
   { name: "正面玄関", floor: 1, set: { c0: 60, desc: "正面玄関です。ご来校の際はこちらからお入りください。" } },
   // 美術教室と工芸教室を南へ広げる：美術室横の玄関は南の階段のほうへ寄せ、美術準備室は男子トイレのほうへ寄せる
   { name: "工芸教室", floor: 1, set: { c0: 10, r1: 54, desc: "工芸室です。美術の授業で、陶芸に挑戦します。作品を完成させるための焼き窯が設置されています。", photos: ["images/kogei-1.jpg", "images/kogei-2.jpg", "images/kogei-3.jpg", "images/kogei-4.jpg"] } },
-  { name: "美術教室", floor: 1, set: { r1: 55, desc: "美術室です。2年生は美術の授業で半分に分かれて、美術や陶芸に取り組みます。美術部が普段の活動に使用しています。", photos: ["images/bijutsu-1.jpg", "images/bijutsu-2.jpg", "images/bijutsu-3.jpg", "images/bijutsu-4.jpg"] } },
+  { name: "美術教室", floor: 1, set: { r1: 54, desc: "美術室です。2年生は美術の授業で半分に分かれて、美術や陶芸に取り組みます。美術部が普段の活動に使用しています。", photos: ["images/bijutsu-1.jpg", "images/bijutsu-2.jpg", "images/bijutsu-3.jpg", "images/bijutsu-4.jpg"] } },
   { name: "美術準備室", floor: 1, set: { r0: 55, r1: 58 } },
-  { name: "玄関", floor: 1, at: 20, set: { r0: 56, r1: 58 } },
+  { name: "玄関", floor: 1, at: 20, set: { r0: 55, r1: 57 } }, // 写真：階段の塔とのすき間のすぐ北
   // 小会議室は、今は第2職員室
   { name: "小会議室", floor: 2, set: { name: "第２職員室" } },
   // 1号館1階の北側：みんなのトイレと電気室はもう少し小さく、化学実験室は2階の物理実験室くらい広い
@@ -511,7 +516,7 @@ export const ROOM_EDITS = [
   { name: "男子トイレ", floor: 2, at: 13, set: { xBlock: "art", c0: 12, c1: 13.7 } },
   { name: "男子トイレ", floor: 3, at: 13, set: { xBlock: "art", c0: 12, c1: 13.7 } },
   // 2階の美術・図書館棟：図書室と選択第２教室を南北に広げ、選択第２教室は男子トイレにくっつける
-  { name: "図書室", floor: 2, set: { r1: 52, photos: ["images/tosho-1.jpg", "images/tosho-2.jpg", "images/tosho-3.jpg"] } },
+  { name: "図書室", floor: 2, set: { r1: 52, desc: "図書室です。木の大きな閲覧テーブルや、窓ぎわのカウンター席（緑の高いいす）で、本を読んだり調べ物をしたりできます。本は日本十進分類（NDC）の順に、壁ぞいの木の本棚と、まんなかの黒い本棚にならんでいます。新着本・話題の本のコーナー、図書委員がPOPでおすすめした本、雑誌のコーナー、ライトノベルのコーナーもあります。マンガは、借りたいマンガのタグをカウンターへ持っていって借ります。窓ぎわの文房具やおりがみは自由に使えます。", photos: ["images/tosho-4.jpg", "images/tosho-5.jpg", "images/tosho-6.jpg", "images/tosho-7.jpg", "images/tosho-8.jpg", "images/tosho-9.jpg", "images/tosho-10.jpg", "images/tosho-11.jpg", "images/tosho-12.jpg", "images/tosho-13.jpg", "images/tosho-14.jpg", "images/tosho-15.jpg", "images/tosho-1.jpg", "images/tosho-2.jpg", "images/tosho-3.jpg"] } },
   { name: "選択第２教室", floor: 2, set: { r0: 53, r1: 58 } },
   { name: "バルコニー", floor: 2, at: 9, set: { r0: 53, r1: 58 } },
   { name: "整理室", floor: 2, set: { r0: 53, r1: 55 } },
@@ -574,7 +579,7 @@ export const ROOM_STYLE = [
   { name: "ステージ", floor: 2, open: ["s"] },
   { name: "体育館", floor: 2, open: ["n"] }, // ステージの前は壁なし（ステージがひらけて見える）
   // 美術室横の玄関は壁なし（南の階段とひとつながり）
-  { name: "玄関", floor: 1, r0: 56, open: ["n", "s", "e", "w"] },
+  { name: "玄関", floor: 1, r0: 55, open: ["n", "s", "e", "w"] },
   // 正面玄関：南の廊下側は壁なし（事務室の壁はそのまま）
   { name: "正面玄関", floor: 1, open: ["s"] },
   // 体育館の下の武道場の玄関：武道場側（北）は壁なし、南（レンガの広場側）に両引き戸の入口

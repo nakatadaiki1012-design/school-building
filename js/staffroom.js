@@ -105,7 +105,6 @@ const alu = M(0xb7bdc2, { roughness: 0.3, metalness: 0.7 });
 const wallUp = M(0xece6d8, { roughness: 0.9 });
 const wallLow = M(0xbfae93, { roughness: 0.85 });
 const curtain = M(0xe8d48e, { roughness: 0.95, side: THREE.DoubleSide });
-const binders = [0x2a5ea8, 0xc23b3b, 0x2f8a55, 0xe0b22e, 0x6b4aa8, 0xf2f2f2].map((c) => M(c, { roughness: 0.7 }));
 
 // ---------- 床・天井・壁・柱 ----------
 // 床：つやのあるベージュの長尺シート（うすい目地）
@@ -272,7 +271,6 @@ const cabKit = kit([[steelG, R(0.9, 1.12, 0.45, 0, 0.03, 0, 0.008)], [steelW, B(
 // 窓の下の低い棚（高さ 0.8m）と、背の高い保管庫
 const lowKit = kit([[steelG, B(0.9, 0.78, 0.4, 0, 0.02, 0)], [steelW, B(0.44, 0.68, 0.012, -0.22, 0.06, 0.2)], [steelW, B(0.44, 0.68, 0.012, 0.22, 0.06, 0.21)], [steelD, B(0.9, 0.02, 0.38, 0, 0, 0)]]);
 const tallKit = kit([[steelG, R(0.9, 1.8, 0.45, 0, 0, 0, 0.008)], [steelW, B(0.44, 1.7, 0.012, -0.22, 0.05, 0.226)], [steelW, B(0.44, 1.7, 0.012, 0.22, 0.05, 0.226)], [steelD, B(0.02, 0.2, 0.02, -0.03, 0.9, 0.24)], [steelD, B(0.02, 0.2, 0.02, 0.03, 0.9, 0.24)], [steelD, B(0.25, 0.08, 0.01, -0.22, 1.5, 0.235)], [steelD, B(0.25, 0.08, 0.01, 0.22, 1.5, 0.235)]]);
-const binderKit = binders.map((m, i) => kit([[m, B(0.045, 0.25, 0.2, 0, 0, 0)], [M(0xf4f4f0), B(0.002, 0.06, 0.12, 0.024, 0.15, 0)]])); // ファイル（背に白い見出し）
 
 // 座る人の向き（face）→ 机の rot（座る人は机の +z 側。N：北を向く＝机の北に座る人ではなく、机の南に座って北を向く）
 const ROT = { N: 0, S: Math.PI, E: -Math.PI / 2, W: Math.PI / 2 };
@@ -305,11 +303,17 @@ for (const z of [1.94, 2.88, 3.83]) desk(18.9, z, "W");
 for (const z of [-0.71, 0.24, 1.18, 2.72, 3.66, 4.66, 5.63]) { desk(21.62 - DD / 2, z, "E"); desk(21.62 + DD / 2, z, "W"); }
 place(deskKit, desks); place(chairKit, chairs); place(laptopKit, laptops); place(monitorKit, monitors); place(papersKit, papers); place(penKit, pens);
 
-// 打ち合わせのテーブル（業務アシスタントの南）
+// 教頭と副校長の机（業務アシスタントの南の、横に長い机。ふつうの机より奥行きがある）。座る人は南側で北を向く
+const VD = 0.85, VZ = 5.4; // 奥行きと、まん中の z
 {
-  const t = kit([[M(0xe9e6df, { roughness: 0.4 }), B(1.3, 0.03, 0.6, 0, 0.7, 0)], [steelD, B(0.04, 0.7, 0.04, -0.6, 0, -0.25)], [steelD, B(0.04, 0.7, 0.04, 0.6, 0, -0.25)], [steelD, B(0.04, 0.7, 0.04, -0.6, 0, 0.25)], [steelD, B(0.04, 0.7, 0.04, 0.6, 0, 0.25)]]);
-  place(t, [{ x: 17.25, z: 5.3 }, { x: 18.55, z: 5.3 }, { x: 19.85, z: 5.3 }]);
-  place(chairKit, [{ x: 18.55, z: 5.95, rot: 0.1 }, { x: 19.85, z: 5.95, rot: -0.1 }]);
+  const t = kit([[woodTop, R(1.3, 0.03, VD, 0, DH - 0.03, 0, 0.006)], [M(0xb89a72, { roughness: 0.5 }), B(1.298, 0.004, VD - 0.002, 0, DH - 0.034, 0)],
+    [steelW, R(0.42, DH - 0.06, VD - 0.1, 0.4, 0.03, 0, 0.01)], [steelW, B(0.03, DH - 0.03, VD - 0.06, -0.62, 0, 0)], [steelW, B(0.82, 0.4, 0.02, -0.17, 0.3, -VD / 2 + 0.04)],
+    [steelG, B(0.4, 0.14, 0.012, 0.4, 0.52, VD / 2 - 0.04)], [steelG, B(0.4, 0.16, 0.012, 0.4, 0.34, VD / 2 - 0.04)], [steelG, B(0.4, 0.28, 0.012, 0.4, 0.04, VD / 2 - 0.04)],
+    [steelD, B(0.16, 0.015, 0.02, 0.4, 0.6, VD / 2 - 0.03)], [steelD, B(0.16, 0.015, 0.02, 0.4, 0.44, VD / 2 - 0.03)], [steelD, B(0.16, 0.015, 0.02, 0.4, 0.3, VD / 2 - 0.03)]]);
+  place(t, [{ x: 17.25, z: VZ }, { x: 18.55, z: VZ }, { x: 19.85, z: VZ }]);
+  place(chairKit, [{ x: 18.55, z: VZ + VD / 2 + 0.3, rot: 0.1 }, { x: 19.85, z: VZ + VD / 2 + 0.3, rot: -0.1 }]);
+  place(monitorKit, [{ x: 18.45, z: VZ - 0.15, y: DH }, { x: 19.75, z: VZ - 0.15, y: DH }]);
+  place(papersKit, [{ x: 18.9, z: VZ + 0.15, y: DH, rot: 0.1 }, { x: 20.2, z: VZ + 0.1, y: DH, rot: -0.15 }, { x: 17.3, z: VZ, y: DH, rot: 0.3 }]);
 }
 // 北の壁ぎわの戸棚（引き違い）と、1年・2年の北の列のうしろの戸棚
 const cabs = [], lows = [], talls = [];
@@ -320,18 +324,10 @@ for (const [a, b] of [[2.5, 4.3], [5.3, 9.1], [10.1, 13.9], [14.9, 18.7], [19.7,
 // 東の壁ぎわの戸棚（窓の下）
 for (let z = 2.1; z <= 6.3; z += 0.92) talls.push({ x: 23.7, z, rot: -Math.PI / 2 });
 place(cabKit, cabs.concat(talls)); place(lowKit, lows); // 東の壁ぎわも、窓の下にかくれる高さの戸棚
-// 写真：机の上の銀色の電源タップ、窓の下の棚の上の段ボール
+// 写真：机の上の銀色の電源タップ
 {
   const tapK = kit([[M(0xc9cdd1, { roughness: 0.3, metalness: 0.6 }), R(0.36, 0.035, 0.05, 0, 0, 0, 0.01)], [black, B(0.3, 0.004, 0.02, 0, 0.035, 0)]]);
   place(tapK, desks.filter(() => rnd() < 0.8).map((d) => { const r = d.rot, fx = -Math.sin(r), fz = -Math.cos(r), kx = Math.cos(r), kz = -Math.sin(r); return { x: d.x + kx * 0.05 + fx * 0.27, z: d.z + kz * 0.05 + fz * 0.27, y: DH, rot: r + (rnd() - 0.5) * 0.3 }; }));
-  const boxK = kit([[M(0xb68a58, { roughness: 0.9 }), B(0.5, 0.32, 0.36, 0, 0, 0)], [M(0xc9a36e, { roughness: 0.8 }), B(0.5, 0.004, 0.06, 0, 0.32, 0)]]);
-  place(boxK, lows.filter(() => rnd() < 0.35).map((c) => ({ x: c.x + (rnd() - 0.5) * 0.2, z: c.z, y: 0.8, rot: (rnd() - 0.5) * 0.3 })));
-}
-// 戸棚の上のファイル（色とりどり）
-{
-  const lists = binders.map(() => []);
-  for (const c of [...cabs, ...lows]) { const h = c.z > 6 ? 0.8 : 1.15; let u = -0.4; while (u < 0.38) { if (rnd() < 0.45) { u += 0.12; continue; } const k = (rnd() * binders.length) | 0, kx = Math.cos(c.rot), kz = -Math.sin(c.rot); lists[k].push({ x: c.x + kx * u, z: c.z + kz * u, y: h, rot: c.rot + (rnd() - 0.5) * 0.06 }); u += 0.05; } }
-  binderKit.forEach((k, i) => place(k, lists[i]));
 }
 // 西のはし（写真）：西の壁ぞいに、南から流し台・製氷機・冷蔵庫・食器棚・電子レンジの台、印刷室への入口。
 // 前に木の打ち合わせテーブルと折りたたみいす。南の窓の下に木の棚（トースター・電子レンジ・ポット）
@@ -576,7 +572,7 @@ place(cabKit, cabs.concat(talls)); place(lowKit, lows); // 東の壁ぎわも、
 
 // ---------- 名前の札 ----------
 const tag = (text, color, x, y, z) => { const d = document.createElement("div"); d.className = "tag"; d.textContent = text; d.style.background = color; const o = new CSS2DObject(d); o.position.set(x, y, z); scene.add(o); return o; };
-const tags = [tag("1年", "#c2549a", 6.5, 1.6, 4.0), tag("2年", "#2b8fb4", 12.8, 1.6, 4.0), tag("3年", "#3c9a4a", 21.6, 1.6, 2.4), tag("業務アシスタント", "#6b6f78", 18.3, 1.6, 3.5), tag("共用スペース", "#8a7a5a", 19.2, 2.0, -1.2), tag("流し・給湯", "#8a7a5a", 0.5, 1.9, 5.9), tag("打ち合わせテーブル", "#8a7a5a", 1.75, 1.2, 2.75), tag("クラス別の配布棚", "#8a7a5a", 3.42, 1.5, 0.4), tag("予定表", "#8a7a5a", 10.9, 2.15, 0.4), tag("丸テーブル", "#8a7a5a", 16.0, 1.4, -1.1)];
+const tags = [tag("1年", "#c2549a", 6.5, 1.6, 4.0), tag("2年", "#2b8fb4", 12.8, 1.6, 4.0), tag("3年", "#3c9a4a", 21.6, 1.6, 2.4), tag("業務アシスタント", "#6b6f78", 18.3, 1.6, 3.5), tag("教頭・副校長", "#6b6f78", 18.9, 1.6, 5.4), tag("共用スペース", "#8a7a5a", 19.2, 2.0, -1.2), tag("流し・給湯", "#8a7a5a", 0.5, 1.9, 5.9), tag("打ち合わせテーブル", "#8a7a5a", 1.75, 1.2, 2.75), tag("クラス別の配布棚", "#8a7a5a", 3.42, 1.5, 0.4), tag("予定表", "#8a7a5a", 10.9, 2.15, 0.4), tag("丸テーブル", "#8a7a5a", 16.0, 1.4, -1.1)];
 
 // ---------- 歩く（一人称視点） ----------
 // ぶつかる物（机・戸棚・柱・テーブル・流し台）の四角を集めておく。いすはよけずに通れる
@@ -587,7 +583,7 @@ for (const c of [...cabs, ...lows, ...talls]) { const along = Math.abs(Math.sin(
 for (const x of [0, 4.8, 9.6, 14.4, 19.2, 24]) box2(x, 7.25, 0.76, 0.66);
 for (const x of [0, 4.8, 9.6, 14.4, 24]) box2(x, 0.15, 0.76, 0.66);
 box2(19.2, 0.1, 0.76, 0.76); for (const x of [14.4, 19.2, 24]) box2(x, -2.35, 0.76, 0.5);
-box2(18.55, 5.3, 3.9, 0.6);
+box2(18.55, VZ, 3.9, VD);
 // 北の壁ぞいの分別カート・白い棚とごみ箱、共用スペースのロッカー・丸テーブル・すみの棚
 box2(7.6, 0.3, 0.5, 0.42); box2(11.0, 0.3, 1.9, 0.42); box2(14.73, -0.65, 0.5, 0.9); box2(17.5, -2.17, 1.8, 0.5); box2(20.95, -2.17, 2.7, 0.5); box2(16.0, -1.15, 1.3, 1.3); box2(15.1, -2.25, 1.0, 0.34);
 // 西のはし：流し台・製氷機・冷蔵庫・食器棚・レンジ台、窓の下の棚、打ち合わせテーブル、配布棚、ホワイトボード、ごみの分別箱

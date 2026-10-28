@@ -2350,6 +2350,7 @@ function showWing(w) {
   panelBody.innerHTML = `
     <div class="chip" style="--c:#c7d2dc">建物</div>
     <h2>${w.name}</h2>
+    ${photosHtml([].concat(w.photos || []), w.name)}
     <p class="desc">${w.note}</p>
     ${byFloor}
   `;

@@ -248,8 +248,11 @@ function buildTennisArea({ w, d }) {
   const g = new THREE.Group();
   const S = 10;
   const tex = canvasTex(Math.round(w * S), Math.round(d * S), (c, W, H) => {
-    c.fillStyle = "#d8c39a"; c.fillRect(0, 0, W, H);
-    speckle(c, W, H, 9000, [[255, 255, 255], [120, 90, 50]], 0.1);
+    // 写真：古いコートは灰色がかった砂色で、雨のあとのような黒いしみと、すみの草がある
+    c.fillStyle = "#bdb5a2"; c.fillRect(0, 0, W, H);
+    speckle(c, W, H, 9000, [[255, 255, 255], [90, 80, 60]], 0.12);
+    for (let i = 0; i < 38; i++) { const x = Math.random() * W, y = Math.random() * H, r = 12 + Math.random() * 34; const gr = c.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, "rgba(70,66,56,0.28)"); gr.addColorStop(1, "rgba(70,66,56,0)"); c.fillStyle = gr; c.fillRect(x - r, y - r, r * 2, r * 2); }
+    for (let i = 0; i < 160; i++) { c.fillStyle = `rgba(${80 + Math.random() * 40},${110 + Math.random() * 40},50,0.5)`; const e = Math.random() < 0.5; c.fillRect(e ? Math.random() * W : (Math.random() < 0.5 ? 0 : W - 3), e ? (Math.random() < 0.5 ? 0 : H - 3) : Math.random() * H, 3, 3); }
     c.strokeStyle = "rgba(255,255,255,0.95)"; c.lineWidth = 2;
     // 写真：ネットは区画を分けるフェンスと平行（東西むき）。コートの長い向きは南北で、2面が東西にならぶ
     for (let k = 0; k < 2; k++) {
@@ -286,7 +289,32 @@ function buildTennisArea({ w, d }) {
       g.add(post);
     }
   }
-  fenceRect(g, -w / 2, -d / 2, w / 2, d / 2, 4);
+  // 写真：低い金網のフェンス（下の1.3mに緑の防風シート）。その外に、さびたオレンジ色の高い支柱に黒いネット（西のグラウンド側と南側）
+  const lowH = 1.3;
+  const sheet = new THREE.MeshStandardMaterial({ color: 0x2aa58b, roughness: 0.95, side: THREE.DoubleSide, transparent: true, opacity: 0.88 });
+  const lowLine = (ax, az, bx, bz) => {
+    const len = Math.hypot(bx - ax, bz - az), ang = -Math.atan2(bz - az, bx - ax);
+    const sh = new THREE.Mesh(new THREE.PlaneGeometry(len, lowH), sheet); sh.position.set((ax + bx) / 2, lowH / 2 - 0.15, (az + bz) / 2); sh.rotation.y = ang; g.add(sh);
+    const rail = new THREE.Mesh(new THREE.BoxGeometry(len, 0.05, 0.05), postMat); rail.position.set((ax + bx) / 2, lowH - 0.15, (az + bz) / 2); rail.rotation.y = ang; g.add(rail);
+    const n = Math.max(1, Math.ceil(len / 3));
+    for (let i = 0; i <= n; i++) { const p = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, lowH, 6), postMat); p.position.set(ax + (bx - ax) * i / n, lowH / 2 - 0.15, az + (bz - az) * i / n); g.add(p); }
+  };
+  const x0 = -w / 2, x1 = w / 2, z0 = -d / 2, z1 = d / 2;
+  lowLine(x0, z0, x1, z0); lowLine(x1, z0, x1, z1); lowLine(x1, z1, x0, z1); lowLine(x0, z1, x0, z0);
+  const tallH = 7, rust = new THREE.MeshStandardMaterial({ color: 0xb5693c, roughness: 0.8, metalness: 0.3 });
+  const blackNet = new THREE.MeshStandardMaterial({ color: 0x1c2024, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide });
+  const tallLine = (ax, az, bx, bz) => {
+    const len = Math.hypot(bx - ax, bz - az), ang = -Math.atan2(bz - az, bx - ax);
+    const net = new THREE.Mesh(new THREE.PlaneGeometry(len, tallH - lowH), blackNet); net.position.set((ax + bx) / 2, (tallH + lowH) / 2 - 0.15, (az + bz) / 2); net.rotation.y = ang; g.add(net);
+    const top = new THREE.Mesh(new THREE.BoxGeometry(len, 0.12, 0.12), rust); top.position.set((ax + bx) / 2, tallH - 0.15, (az + bz) / 2); top.rotation.y = ang; g.add(top);
+    const n = Math.max(1, Math.ceil(len / 6));
+    for (let i = 0; i <= n; i++) { const p = new THREE.Mesh(new THREE.BoxGeometry(0.18, tallH, 0.18), rust); p.position.set(ax + (bx - ax) * i / n, tallH / 2 - 0.15, az + (bz - az) * i / n); p.castShadow = true; g.add(p); }
+  };
+  tallLine(x0 - 0.5, z0, x0 - 0.5, z1); tallLine(x0 - 0.5, z1 + 0.5, x1, z1 + 0.5);
+  // 写真：西のへりのローラー（整地用）とオレンジのボールかご
+  const roll = new THREE.MeshStandardMaterial({ color: 0x3a3a36, roughness: 0.6, metalness: 0.4 });
+  for (const k of [0.15, 0.4, 0.7]) { const r = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.7, 12).rotateZ(Math.PI / 2), roll); r.position.set(x0 + 0.5, 0.2, z0 + d * k); g.add(r); }
+  const crate = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.35), M(0xd9532f)); crate.position.set(x0 + 1.2, 0.0, z0 + d * 0.55); g.add(crate);
   return g;
 }
 

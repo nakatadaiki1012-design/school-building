@@ -1467,18 +1467,41 @@ export function buildSite(scene, SITE) {
   // ごみ捨て場のまわりの植え込み
   if (SITE.garbage) {
     const gb = SITE.garbage, gg = new THREE.Group();
-    // 屋根（東屋）・床・ごみ箱は置かない。まわりの植え込みだけ
-    // まわりを生け垣でかこむ（片側のまんなかに入口のすきま）
-    const hw = 0.9, hh = 1.6, W2 = gb.w / 2 + hw, D2 = gb.d / 2 + hw;
-    const gap = 1.6, half = (gb.d + 2 * hw - gap) / 2; // 入口のすきま（片側の端）
-    for (const [w, d, x, z] of [[gb.w + 2 * hw * 2, hw, 0, -D2], [gb.w + 2 * hw * 2, hw, 0, D2], [hw, gb.d + 2 * hw, W2, 0],
-      [hw, half, -W2, -(gap + half) / 2], [hw, half, -W2, (gap + half) / 2]]) {
-      const h = hedgeBox(w, hh, d); h.position.set(x, -0.2, z); gg.add(h);
+    // 写真：アスファルトの広場の奥（北）に、左から ピンク色の屋根つきの小屋・緑の金網のかご（空きびんなど）・白い物置・
+    // 灰色の電気の箱2つ（緑の金網でかこむ）、右に灰色の青いふたつきの大きなごみ容器（網をかけてある。一般ごみ・プラスチック）
+    const bz = -2.6, boxM = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, ...o });
+    const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); gg.add(m); return m; };
+    // ピンク色の小屋（3方向が壁で、手前があいている。トタンの片流れ屋根）
+    add(new THREE.BoxGeometry(2.6, 2.1, 0.12), boxM(0xe8c8b0), -6.6, 1.05 - 0.17, bz - 0.9);
+    add(new THREE.BoxGeometry(0.12, 2.1, 1.8), boxM(0xe8c8b0), -7.9, 1.05 - 0.17, bz);
+    add(new THREE.BoxGeometry(0.12, 1.9, 1.8), boxM(0xe8c8b0), -5.3, 0.95 - 0.17, bz);
+    const roof = add(new THREE.BoxGeometry(3.0, 0.08, 2.3), boxM(0x9a7a60, { metalness: 0.2 }), -6.6, 2.2 - 0.17, bz); roof.rotation.x = 0.08;
+    // 緑の金網のかご（格子の箱）が3つ
+    const cageM = new THREE.MeshStandardMaterial({ color: 0x2f9a58, transparent: true, opacity: 0.45, side: THREE.DoubleSide, depthWrite: false });
+    for (const [cx, cz] of [[-9.2, bz + 0.9], [-7.9, bz + 1.5], [-9.6, bz + 2.4]]) add(new THREE.BoxGeometry(1.7, 1.1, 1.4), cageM, cx, 0.55 - 0.17, cz);
+    // 白いごみ袋の山と赤いかご
+    const bagM = boxM(0xf2f2ee, { roughness: 0.5 });
+    for (let i = 0; i < 6; i++) { const bg = add(new THREE.SphereGeometry(0.34, 8, 6), bagM, -4.7 + (i % 3) * 0.45, 0.3 - 0.17 + (i > 2 ? 0.3 : 0), bz + 0.5 + (i % 2) * 0.3); bg.scale.y = 0.8; }
+    add(new THREE.BoxGeometry(0.6, 0.3, 0.4), boxM(0xd9402f), -6.3, 0.0, bz + 1.6);
+    // 白い物置
+    add(new THREE.BoxGeometry(2.8, 1.9, 1.2), boxM(0xe4e6e4), -2.6, 0.95 - 0.17, bz - 0.3);
+    add(new THREE.BoxGeometry(2.9, 0.1, 1.3), boxM(0xcfd2d0), -2.6, 1.9 - 0.12, bz - 0.3);
+    // 灰色の電気の箱（コンクリートの台に2つ）と、まわりの緑の金網
+    add(new THREE.BoxGeometry(3.6, 0.3, 1.8), boxM(0xaeb0ae), 1.6, 0.15 - 0.17, bz - 0.4);
+    add(new THREE.BoxGeometry(1.3, 1.7, 1.0), boxM(0xcfd0cc), 0.8, 1.15 - 0.17, bz - 0.4);
+    add(new THREE.BoxGeometry(1.3, 1.7, 1.0), boxM(0xc4c6c2), 2.3, 1.15 - 0.17, bz - 0.4);
+    fenceLine(gg, -0.3, bz + 0.7, 3.9, bz + 0.7, 1.4); fenceLine(gg, -0.3, bz + 0.7, -0.3, bz - 1.2, 1.4); fenceLine(gg, 3.9, bz + 0.7, 3.9, bz - 1.2, 1.4);
+    // 右のごみ容器2つ（青みの灰色の箱。上に網、前に表示）
+    for (const [cx, label] of [[7.3, 0xdfe6ec], [10.6, 0xdfe6ec]]) {
+      add(new THREE.BoxGeometry(3.0, 0.9, 1.3), boxM(0x9fb0c0, { metalness: 0.2 }), cx, 0.55 - 0.17, bz);
+      add(new THREE.BoxGeometry(3.0, 0.25, 1.3), boxM(0x4f6a58, { roughness: 1 }), cx, 1.1 - 0.17, bz);
+      add(new THREE.BoxGeometry(0.9, 0.35, 0.03), boxM(label), cx, 0.6 - 0.17, bz + 0.66);
     }
     gg.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-    gg.position.set(gb.x, 0, gb.z); gg.rotation.y = THREE.MathUtils.degToRad(gb.rot || 0);
+    gg.scale.set(0.7, 1, 0.7); // 敷地の広場におさまる大きさに
+    gg.position.set(gb.x - 4.5, 0, gb.z - 2); gg.rotation.y = THREE.MathUtils.degToRad(gb.rot || 0);
     group.add(gg);
-    rects.push([gb.x - 5, gb.x + 5, gb.z - 5, gb.z + 5]);
+    rects.push([gb.x - 12, gb.x + 14, gb.z - 6, gb.z + 6]);
   }
   // テニスコートのそばの小屋と青いシート
   for (const p of SITE.props || []) {

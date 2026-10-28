@@ -389,6 +389,18 @@ const SHAPES = {
   libColumn: [[M(0xf4f2ec), merge([b(0.9, 1.6, 0.9, 0, 1.5)])], [M(0x3f6b55), merge([b(0.92, 1.5, 0.92)])]],
   roundShelf: [[MAT.books, merge([new THREE.CylinderGeometry(0.55, 0.55, 1.3, 16).translate(0, 0.65, 0)])], [M(0xf4f2ec), merge([new THREE.CylinderGeometry(0.58, 0.58, 0.05, 16).translate(0, 1.32, 0), new THREE.CylinderGeometry(0.58, 0.58, 0.05, 16).translate(0, 0.65, 0)])]],
   cubeStool: [[M(0xc8553d), merge([b(0.42, 0.42, 0.42)])]],
+  // 保健室（写真）：青い合皮のソファベッド、白い診察台、白い冷蔵庫（上に電子レンジ）、流しのタイル張りカウンター、白い薬品棚、灰色とクリーム色のロッカー、ひざ丈の白いついたて、空気清浄機、扇風機
+  blueSofa: [[M(0x2f8fc6, { roughness: 0.5 }), merge([b(0.9, 0.4, 2.0), b(0.25, 0.45, 2.0, 0.3, 0.4)])]],
+  examBench: [[M(0xf4f2ec, { roughness: 0.4 }), merge([b(0.6, 0.12, 1.8, 0, 0.45)])], [MAT.darkWood, merge(legs(0.55, 1.75, 0.45, 0.05))]],
+  fridge: [[M(0xf4f4f2, { roughness: 0.3 }), merge([b(0.6, 1.4, 0.6), b(0.012, 0.9, 0.35, 0.3, 0.48, 0)])], [M(0xf7f7f5), merge([b(0.5, 0.3, 0.4, 0, 1.4)])], [MAT.black, merge([b(0.02, 0.18, 0.28, 0.255, 1.46, 0)])]],
+  tileCounter: [[M(0xf0eee8, { roughness: 0.4 }), merge([b(0.6, 0.85, 1.0)])], [M(0xdadad5, { roughness: 0.3 }), merge([b(0.62, 0.03, 1.02, 0, 0.85), b(0.04, 0.4, 1.02, -0.3, 0.88)])], [M(0xe4ece8), merge([b(0.5, 0.18, 0.6, -0.04, 0.84, 0).translate(0, -0.05, 0)])]],
+  medCabinet: [[M(0xf4f4f2, { roughness: 0.4 }), merge([b(0.4, 1.6, 0.9), b(0.4, 0.04, 0.92, 0, 1.6)])], [MAT.transom, merge([b(0.01, 0.9, 0.8, 0.205, 0.6)])], [M(0xe9e0cd), merge([b(0.3, 0.12, 0.35, -0.02, 0.62, -0.2), b(0.3, 0.12, 0.35, -0.02, 0.92, 0.2), b(0.3, 0.12, 0.35, -0.02, 1.22, -0.1)])]],
+  tallLocker: [[M(0xcfc6aa, { roughness: 0.5 }), merge([b(0.45, 1.75, 0.45)])], [M(0x9a9690), merge([b(0.01, 0.12, 0.08, 0.23, 1.0, 0.1)])]],
+  grayLocker: [[M(0x9b9d96, { roughness: 0.5 }), merge([b(0.5, 1.8, 0.5)])], [M(0x6f716c), merge([b(0.01, 0.1, 0.06, 0.255, 1.0, 0.15)])]],
+  screenPanel: [[M(0xe9ecee, { roughness: 0.4 }), merge([b(0.03, 1.5, 0.5), b(0.03, 1.5, 0.5, 0.15, 0, 0.45).rotateY(0.6), b(0.04, 0.04, 1.5, 0, 1.5)])], [MAT.metal, merge([b(0.05, 1.55, 0.05, 0, 0, -0.25), b(0.05, 1.55, 0.05, 0, 0, 0.25)])]],
+  airPurifier: [[M(0xf6f6f4, { roughness: 0.4 }), merge([b(0.3, 0.65, 0.4)])], [M(0xdcdcd8), merge([b(0.31, 0.04, 0.3, 0, 0.62)])]],
+  fan: [[M(0xf4f2ec), merge([new THREE.CylinderGeometry(0.2, 0.2, 0.03, 12).translate(0, 0.015, 0), b(0.03, 1.1, 0.03), new THREE.CylinderGeometry(0.2, 0.2, 0.05, 16).rotateZ(Math.PI / 2).translate(-0.05, 1.2, 0)])], [M(0xe58a3c), merge([new THREE.CylinderGeometry(0.17, 0.17, 0.01, 8).rotateZ(Math.PI / 2).translate(-0.12, 1.2, 0)])]],
+  sickBook: [[M(0xcfd6d8), merge([b(0.03, 0.5, 1.4, 0, 1.2)])]],
   displayTable: [[MAT.checkBeige, merge([b(1.8, 0.7, 0.9)])], [MAT.books, merge([b(1.6, 0.06, 0.7, 0, 0.7)])]],
   // 図書室（写真2）：壁ぞいの木の本棚（天井近くまで。上の段はまだ空きが多い）、窓ぎわの白いカウンターと緑の高いいす、
   // 白い脚の木の小さなテーブルと緑の座面の木のいす、白っぽい積み重ねいす、雑誌の黒い棚、マンガの白い棚、黄色のブックトラック、
@@ -950,17 +962,35 @@ function stage(out, R) {
   out.push({ t: "stageSteps", x: x0 + 1.2, z: z1 + 0.65, rot: P, y: -0.15 }, { t: "stageSteps", x: x1 - 1.2, z: z1 + 0.65, rot: P, y: -0.15 });
 }
 
+// 保健室（写真）。窓は南（植え込みの中庭）。西の壁ぞいに、北から冷蔵庫・薬品棚・ロッカーと、流しのタイルカウンター。
+// 北の壁に診察台とドア、その東にロッカー。東の壁ぞいにベッド2床（カーテン）・本棚・机（養護の先生）、まんなかに茶色の長机と折りたたみいす
 function infirmary(out, R) {
-  const { x0, x1, z0, z1 } = R;
-  // ベッドは2床：東西に長い向きで、頭を東の壁にくっつけて南北にならべる（あいだと南にカーテン）
+  const { x0, x1, z0, z1 } = R, W = x1 - x0, D = z1 - z0;
+  // 西の壁（x0）：ロッカー・薬品棚・冷蔵庫・流し（正面は東向き）
+  out.push({ t: "grayLocker", x: x0 + 0.3, z: z0 + 0.4, rot: Math.PI });
+  out.push({ t: "medCabinet", x: x0 + 0.25, z: z0 + 1.4, rot: Math.PI });
+  out.push({ t: "fridge", x: x0 + 0.4, z: z0 + 2.3, rot: Math.PI });
+  out.push({ t: "tileCounter", x: x0 + 0.4, z: z0 + 3.3, rot: Math.PI }, { t: "tileCounter", x: x0 + 0.4, z: z0 + 4.3, rot: Math.PI });
+  // 北の壁（z0）：診察台とソファベッド、ドアの東にロッカー2本とついたて
+  out.push({ t: "examBench", x: x0 + 3.2, z: z0 + 0.5, rot: Math.PI / 2 });
+  out.push({ t: "blueSofa", x: x0 + 3.2, z: z0 + 2.0, rot: Math.PI / 2 });
+  out.push({ t: "tallLocker", x: x1 - 1.6, z: z0 + 0.3, rot: Math.PI / 2 }, { t: "tallLocker", x: x1 - 1.1, z: z0 + 0.3, rot: Math.PI / 2 }, { t: "grayLocker", x: x1 - 0.5, z: z0 + 0.3, rot: Math.PI / 2 });
+  out.push({ t: "screenPanel", x: x0 + 5.3, z: z0 + 0.9, rot: 0 });
+  out.push({ t: "airPurifier", x: x1 - 0.4, z: z0 + 1.2, rot: Math.PI }, { t: "airPurifier", x: x0 + 0.4, z: z1 - 0.4, rot: 0 });
+  // 東の壁（x1）：ベッド2床（頭を東の壁に。カーテン）
   for (let i = 0; i < 2; i++) {
-    const z = z0 + 0.75 + i * 1.35;
+    const z = z0 + 2.4 + i * 1.35;
     out.push({ t: "bed", x: x1 - 1.0, z, rot: Math.PI });
     out.push({ t: "curtain", x: x1 - 1.0, z: z + 0.67, rot: Math.PI / 2 });
   }
-  out.push({ t: "officeDesk", x: x0 + 0.6, z: z1 - 1.0, rot: 0 });
-  out.push({ t: "officeChair", x: x0 + 1.3, z: z1 - 1.0, rot: 0 });
-  out.push({ t: "table", x: (x0 + x1) / 2, z: z1 - 1.2, rot: 0 });
+  // 南（窓側）：養護の先生の机（灰色の事務机、青いいす2つ、プリンター）、本棚・書類の棚、東のすみの引き出しの棚
+  out.push({ t: "teacherDesk", x: x0 + 6.0, z: z1 - 1.1, rot: Math.PI / 2 }, { t: "teacherDesk", x: x0 + 6.0, z: z1 - 1.9, rot: Math.PI / 2 });
+  out.push({ t: "officeChair", x: x0 + 6.0, z: z1 - 2.8, rot: Math.PI / 2 }, { t: "officeChair", x: x0 + 6.6, z: z1 - 2.6, rot: Math.PI / 2 });
+  out.push({ t: "woodCase", x: x1 - 0.3, z: z1 - 1.0, rot: Math.PI }, { t: "locker", x: x1 - 0.3, z: z1 - 0.2, rot: Math.PI });
+  out.push({ t: "fan", x: x0 + 1.6, z: z1 - 0.8, rot: 0 });
+  // まんなか：茶色の長机2つをくっつけ、折りたたみいす
+  out.push({ t: "bigTable", x: x0 + 3.0, z: z0 + 4.3, rot: Math.PI / 2 }, { t: "bigTable", x: x0 + 3.0, z: z0 + 5.5, rot: Math.PI / 2 });
+  for (const [dx, dz] of [[-0.8, 3.8], [0.8, 3.8], [-0.8, 4.8], [0.8, 4.8]]) out.push({ t: "foldChair", x: x0 + 3.0 + dx, z: z0 + dz, rot: dx < 0 ? Math.PI : 0 });
 }
 
 function reception(out, R) {

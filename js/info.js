@@ -532,7 +532,7 @@ export const ROOM_EDITS = [
   { name: "バルコニー", floor: 3, at: 33, set: { c0: 34 } },
   { name: "体育館", floor: 2, set: { desc: "体育館です。体育の授業や部活動、全校集会などに使われます。" } },
   // 1号館側（北）の昇降口
-  { name: "昇降口", floor: 1, atR: 27, set: { r1: 33, desc: "1号館側の昇降口です。自動販売機が3台設置されています。", photos: ["images/shoko1-a.jpg", "images/shoko1-b.jpg"] } },
+  { name: "昇降口", floor: 1, atR: 27, set: { r1: 33, desc: "1号館側の昇降口です。自動販売機が3台設置されています。コカ・コーラ社の飲み物の自販機で、ペットボトルと缶が買えます。そのうち1台は「ピークシフト自販機」です。現金のほか、タッチ決済やコードの支払いにも対応しています。", photos: ["images/shoko1-a.jpg", "images/shoko1-b.jpg", "images/jihanki-3.jpg", "images/jihanki-4.jpg"] } },
   // 2号館・3号館側（南）の昇降口
   { name: "昇降口", floor: 1, atR: 47, set: { r0: 45, desc: "2号館・3号館側の昇降口です。3年生や、1年5組〜8組の生徒が利用します。自動販売機は、飲み物（コカ・コーラ社のものと、FVジャパンのもの）と、パン・お菓子などが買える軽食の自販機があります。現金のほか、タッチ決済やコードの支払いにも対応しています。", photos: ["images/shoko2-a.jpg", "images/shoko2-b.jpg", "images/jihanki-1.jpg", "images/jihanki-2.jpg"] } },
   { name: "売店", floor: 1, set: { desc: "売店です。昼食などをここで購入する生徒もいます。", photos: ["images/baiten.jpg"] } },

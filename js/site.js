@@ -1508,7 +1508,7 @@ export function buildSite(scene, SITE) {
     }
     gg.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     gg.scale.set(0.7, 1, 0.7); // 敷地の広場におさまる大きさに
-    gg.position.set(gb.x - 4.5, 0, gb.z - 2); gg.rotation.y = THREE.MathUtils.degToRad(gb.rot || 0);
+    gg.position.set(gb.x - 17.5, 0, gb.z - 7.5); gg.rotation.y = THREE.MathUtils.degToRad(gb.rot || 0);
     group.add(gg);
     rects.push([gb.x - 12, gb.x + 14, gb.z - 6, gb.z + 6]);
   }

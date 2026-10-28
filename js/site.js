@@ -1177,6 +1177,22 @@ export function buildRetaining(boundary, gates = []) {
   }
   // 正門（門柱・学校名の表札・開いた引き戸）
   for (const gt of gates) if (gt.main) g.add(mainGate(gt));
+  // 野球のバックネットうしろの門（白い門柱2本と、開けたままの柵）
+  for (const gt of gates) if (gt.back) {
+    let best = null, bd = Infinity;
+    for (let i = 0; i < boundary.length; i++) {
+      const A = boundary[i], B = boundary[(i + 1) % boundary.length], m = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
+      const d = Math.hypot(m[0] - gt.x, m[1] - gt.z); if (d < bd) { bd = d; best = [A, B]; }
+    }
+    const [A, B] = best, L = Math.hypot(B[0] - A[0], B[1] - A[1]), ux = (B[0] - A[0]) / L, uz = (B[1] - A[1]) / L, ang = -Math.atan2(uz, ux);
+    const post = new THREE.MeshStandardMaterial({ color: 0xe9e6de, roughness: 0.7 });
+    for (const s of [-1, 1]) {
+      const p = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.8, 0.4), post);
+      p.position.set(gt.x + ux * s * gt.w / 2, 0.8, gt.z + uz * s * gt.w / 2); p.castShadow = true; g.add(p);
+      const leaf = new THREE.Mesh(new THREE.PlaneGeometry(gt.w / 2 - 0.4, 1.3), netMat);
+      leaf.position.set(gt.x + ux * s * (gt.w / 2 + (gt.w / 2 - 0.4) / 2 + 0.2) , 0.5, gt.z + uz * s * (gt.w / 2 + (gt.w / 2 - 0.4) / 2 + 0.2)); leaf.rotation.y = ang; g.add(leaf);
+    }
+  }
   return g;
 }
 

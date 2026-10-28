@@ -1680,10 +1680,10 @@ scene.add(outdoor);
   const bx0 = X(PILOTIS.bridge[0]), bx1 = X(PILOTIS.bridge[1] + 1);
   box(low, bx1 - bx0, 0.4, d, (bx0 + bx1) / 2, FH - 0.2, (rc.z0 + rc.z1) / 2);
   box(high, bx0 - rc.x0, 0.4, d, (rc.x0 + bx0) / 2, 2 * FH - 0.2, (rc.z0 + rc.z1) / 2);
-  // 柱は1列に3本（写真）。1階から3階の床まで、上まで茶色
+  // 柱は1列に3本（写真）。1階から3階の床まで、上まで茶色（内側の3本はなくした）
   const colsHigh = [];
   for (const z of [0.18, 0.5, 0.82].map((k) => rc.z0 + (rc.z1 - rc.z0) * k)) {
-    for (const x of [rc.x0 + 0.4, (rc.x0 + bx0) / 2]) {
+    for (const x of [rc.x0 + 0.4]) { // 内側（まんなか）の3本はなし
       box(cols, 0.6, FH, 0.6, x, FH / 2 - 0.2, z);
       box(colsHigh, 0.6, FH, 0.6, x, FH * 1.5 - 0.2, z);
     }

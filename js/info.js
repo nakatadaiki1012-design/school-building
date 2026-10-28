@@ -525,7 +525,7 @@ export const ROOM_EDITS = [
   { name: "放送室", floor: 2, set: { name: "放送室（ミキサー室）", r1: 55.5, desc: "放送室です。お昼の放送や、メディア研究部の活動に活用されています。手前のミキサー室で、ミキサー（音の調整機械）を操作して校内放送を流します。", photos: ["images/hoso-1.jpg", "images/hoso-2.jpg", "images/hoso-3.jpg", "images/hoso-4.jpg"] } },
   // 社会科教室の西のバルコニーはせまい
   { name: "バルコニー", floor: 3, at: 33, set: { c0: 34 } },
-  { name: "体育館", floor: 2, set: { desc: "体育館です。バスケットボールやバレーボールのコートが2面取れる広さです。" } },
+  { name: "体育館", floor: 2, set: { desc: "体育館です。体育の授業や部活動、全校集会などに使われます。" } },
   // 1号館側（北）の昇降口
   { name: "昇降口", floor: 1, atR: 27, set: { r1: 33, desc: "1号館側の昇降口です。自動販売機が3台設置されています。", photos: ["images/shoko1-a.jpg", "images/shoko1-b.jpg"] } },
   // 2号館・3号館側（南）の昇降口
@@ -617,7 +617,7 @@ export const ROOM_STYLE = [
   // 練習室の入口は廊下側ではなく、音楽室の中から（南）。内側に開く押し扉
   { name: "練習室", floor: 2, c0: 33, doors: ["s@-0.3:swing"] }, { name: "練習室", floor: 2, c0: 36.5, doors: ["s@0.3:swing"] }, // 入口は両はし
   // 体育館の2階の玄関：南（外廊下側）の入口は4枚の大きな両引き戸
-  { name: "玄関", floor: 2, doors: ["s:door4"] },
+  { name: "玄関", floor: 2, doors: ["s:door4"], open: ["n"] }, // 内側（北）の壁は開いて体育館とつながる
   // 武道場の南の壁は描かない（器具室・トイレの側はそれぞれの部屋の壁があるので、玄関のところだけ開く）
   { name: "武道場", floor: 1, open: ["s"] },
   // ラウンジはみんなが使うコモンスペース：廊下側（南）は壁なしで、入り口をふさがない

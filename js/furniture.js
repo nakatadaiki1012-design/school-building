@@ -528,7 +528,7 @@ const alongX = (out, t, z, x0, x1, step, rot = Math.PI / 2) => {
 // 普通教室：前（-x側）に黒板と教卓、後ろにロッカー、机は 6列 × 7行
 // 普通教室は40人（6列×7行から、いちばん後ろの両はしの2席を除く）
 // cols：横の列の数、rows：縦の列の数、back：後ろに空けるスペース（部屋の奥行きに対する割合）
-function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back = 0, doorT = "door", gap = 0.95, empty = false } = {}) {
+function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back = 0, doorT = "door", gap = 0.95, empty = false, deskX0 = 2.2 } = {}) {
   const { x0, x1, z0, z1 } = R;
   out.push({ t: "blackboard", x: x0 + 0.12, z: (z0 + z1) / 2, rot: 0 });
   // 教壇は窓側の壁からドア側の壁まで、部屋の幅いっぱい
@@ -551,7 +551,7 @@ function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back
   for (let x = x0 + 3.5; x < x1 - 2.9; x += 1.85) out.push({ t: "hallWindow", x, z: z0 - 0.2, rot: 0 });
   // 窓側（南）のカーテン（柱のところにまとめてある）
   for (let x = x0 + 0.5; x < x1 - 0.3; x += 2.25) out.push({ t: "curtainPanel", x, z: z1 + 0.1, rot: 0 });
-  const dx0 = x0 + 2.2, dx1 = x1 - 1.3 - (x1 - x0) * back;
+  const dx0 = x0 + deskX0, dx1 = x1 - 1.3 - (x1 - x0) * back;
   const dz0 = z0 + 0.7, dz1 = z1 - 0.7;
   const rr = rows, cc = cols;
   const skip = rr * cc - seats; // いちばん後ろの列の両はしから空ける
@@ -1092,8 +1092,8 @@ const LAYOUTS = [
   [/コンピューター/, computers],
   [/視聴覚/, theater],
   // 音楽室：横8列×縦5列の机、黒板は北側、前のすみにピアノ
-  [/練習室/, (o, R) => { o.push({ t: "piano", x: (R.x0 + R.x1) / 2 - 0.5, z: (R.z0 + R.z1) / 2, rot: 0 }); o.push({ t: "chair", x: (R.x0 + R.x1) / 2 + 1.2, z: (R.z0 + R.z1) / 2, rot: 0 }); }],
-  [/音楽室/, (o, R) => { classroom(o, R, { cols: 8, rows: 5, seats: 40, eboard: false, doorT: "swing" });
+  [/練習室/, () => {}], // 空っぽ
+  [/音楽室/, (o, R) => { classroom(o, R, { cols: 8, rows: 5, seats: 40, eboard: false, doorT: "swing", deskX0: 4.6 }); // 机は後ろへ（ピアノは前のまま）
     // ピアノは前のまんなか。先生は黒板側に座り、生徒の方を向いて弾く。教卓は窓側へよける
     const zc = (R.z0 + R.z1) / 2;
     // ピアノと重なる前の机・椅子はどける

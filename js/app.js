@@ -1691,8 +1691,8 @@ scene.add(outdoor);
     box(cols, 0.5, FH, 0.5, bx1 - 0.3, FH / 2 - 0.2, z);
     box(cols, 0.5, FH, 0.5, bx0 + 0.3, FH / 2 - 0.2, z);
   }
-  // 写真：柱は赤みのあるテラコッタ色で、たての溝が2本。下のほうは灰色のコンクリートの台
-  const colTex = canvasTex(64, 128, (c, w, h) => { c.fillStyle = "#a8705e"; c.fillRect(0, 0, w, h); noise(c, w, h, 0.12, 600); c.fillStyle = "rgba(60,30,20,0.35)"; c.fillRect(w * 0.3, 0, 2, h); c.fillRect(w * 0.68, 0, 2, h); c.fillStyle = "#9a9a90"; c.fillRect(0, h * 0.86, w, h * 0.14); });
+  // 写真：柱は赤みのあるテラコッタ色で、たての溝が2本。途中に灰色の帯は入れず、上まで全部茶色
+  const colTex = canvasTex(64, 128, (c, w, h) => { c.fillStyle = "#a8705e"; c.fillRect(0, 0, w, h); noise(c, w, h, 0.12, 600); c.fillStyle = "rgba(60,30,20,0.35)"; c.fillRect(w * 0.3, 0, 2, h); c.fillRect(w * 0.68, 0, 2, h); });
   const brownCol = new THREE.MeshStandardMaterial({ map: colTex, roughness: 0.85 });
   for (const [list, f] of [[cols, 1], [colsHigh, 2]]) {
     const cm = new THREE.Mesh(mergeGeometries(list), brownCol);
@@ -1984,9 +1984,21 @@ for (const f of [1, 2, 3]) {
           inBlock(grp, r.block).add(fm);
           continue;
         }
-        const g = new THREE.BoxGeometry(w, h, d);
-        g.translate(x, y + h / 2, z);
-        (walls[r.block.id] ||= []).push(g);
+        // となりの部屋が、この壁の側を「あける」と指定しているところ（体育館と玄関のあいだなど）は、壁を立てない
+        let segs = [[x - w / 2, x + w / 2]];
+        if (side === "n" || side === "s") {
+          for (const q of ROOMS) {
+            if (q === r || q.floor !== f || q.kind !== "room" || !styleOf(q)?.open?.includes(side === "s" ? "n" : "s")) continue;
+            if (Math.abs((side === "s" ? q.cz - q.d / 2 : q.cz + q.d / 2) - z) > 0.3) continue;
+            const q0 = q.cx - q.w / 2, q1 = q.cx + q.w / 2;
+            segs = segs.flatMap(([a0, a1]) => (q1 <= a0 || q0 >= a1 ? [[a0, a1]] : [[a0, q0], [q1, a1]].filter(([u, v]) => v - u > 0.05)));
+          }
+        }
+        for (const [a0, a1] of segs) {
+          const g = new THREE.BoxGeometry(a1 - a0, h, d);
+          g.translate((a0 + a1) / 2, y + h / 2, z);
+          (walls[r.block.id] ||= []).push(g);
+        }
       }
     }
 

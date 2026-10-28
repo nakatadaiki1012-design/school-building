@@ -1213,13 +1213,22 @@ export function buildRetaining(boundary, gates = []) {
       const d = Math.hypot(m[0] - gt.x, m[1] - gt.z); if (d < bd) { bd = d; best = [A, B]; }
     }
     const [A, B] = best, L = Math.hypot(B[0] - A[0], B[1] - A[1]), ux = (B[0] - A[0]) / L, uz = (B[1] - A[1]) / L, ang = -Math.atan2(uz, ux);
-    const post = new THREE.MeshStandardMaterial({ color: 0xe9e6de, roughness: 0.7 });
-    for (const s of [-1, 1]) {
-      const p = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.8, 0.4), post);
-      p.position.set(gt.x + ux * s * gt.w / 2, 0.8, gt.z + uz * s * gt.w / 2); p.castShadow = true; g.add(p);
-      const leaf = new THREE.Mesh(new THREE.PlaneGeometry(gt.w / 2 - 0.4, 1.3), netMat);
-      leaf.position.set(gt.x + ux * s * (gt.w / 2 + (gt.w / 2 - 0.4) / 2 + 0.2) , 0.5, gt.z + uz * s * (gt.w / 2 + (gt.w / 2 - 0.4) / 2 + 0.2)); leaf.rotation.y = ang; g.add(leaf);
-    }
+    // 写真（ストリートビュー）：門の両わきはコンクリートの壁。西（左）の壁は長く、学校名の銘板がある。東（右）は角ばった太い門柱。
+    // 門の口には黄色い鎖がたれ下がり、奥にはゆるい上り坂の舗装と、緑・白の引き戸の柵
+    const conc = new THREE.MeshStandardMaterial({ color: 0xb7b3a8, roughness: 0.95 });
+    const nx = -uz, nz = ux; // 道の線に直角（グラウンド側へ）
+    const place = (u0, u1, h, th) => { const len = u1 - u0; const m = new THREE.Mesh(new THREE.BoxGeometry(len, h, th), conc); m.position.set(gt.x + ux * (u0 + u1) / 2, h / 2 - 0.3, gt.z + uz * (u0 + u1) / 2); m.rotation.y = ang; m.castShadow = true; g.add(m); return m; };
+    place(-gt.w / 2 - 6, -gt.w / 2, 1.9, 0.35);   // 西の長い壁
+    place(gt.w / 2, gt.w / 2 + 0.7, 2.3, 0.7);    // 東の太い門柱
+    place(gt.w / 2 + 0.7, gt.w / 2 + 5, 1.2, 0.3); // その東の低い壁（石積みの上）
+    const plate = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.5), new THREE.MeshStandardMaterial({ map: canvasTex(128, 36, (c, W, H) => { c.fillStyle = "#c7c3b8"; c.fillRect(0, 0, W, H); c.fillStyle = "#555"; c.font = "bold 16px sans-serif"; c.fillText("麻生高等学校", 10, 24); }), roughness: 0.9 }));
+    plate.position.set(gt.x + ux * (-gt.w / 2 - 3) + nx * -0.19, 1.1, gt.z + uz * (-gt.w / 2 - 3) + nz * -0.19); plate.rotation.y = ang + Math.PI; g.add(plate);
+    // たれ下がる黄色い鎖
+    const pts = []; for (let k = 0; k <= 12; k++) { const t = k / 12, u = -gt.w / 2 + gt.w * t; pts.push(new THREE.Vector3(gt.x + ux * u, 1.0 - Math.sin(Math.PI * t) * 0.3 - 0.3, gt.z + uz * u)); }
+    g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 0.03, 4), new THREE.MeshStandardMaterial({ color: 0xc9a43a, roughness: 0.5, metalness: 0.5 })));
+    // 奥の緑の引き戸の柵（グラウンド側、少し奥）
+    const lf = new THREE.Mesh(new THREE.PlaneGeometry(gt.w, 1.5), new THREE.MeshStandardMaterial({ color: 0x3aa07a, transparent: true, opacity: 0.55, side: THREE.DoubleSide }));
+    lf.position.set(gt.x + nx * 4.5, 0.45, gt.z + nz * 4.5); lf.rotation.y = ang; g.add(lf);
   }
   return g;
 }

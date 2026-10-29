@@ -1152,10 +1152,10 @@ for (const f of [1, 2, 3]) {
 }
 
 // 3階：視聴覚教室の前（写真）。廊下から2段上がった広い踊り場に視聴覚教室の両開きの扉（上に「使用中」の灯り）。
-// 南側は5段の階段で、さらに高い細い通路へ（突きあたりに準備室の扉、まわりは暗い）。踊り場の奥は壁
+// 南側は5段の階段で、さらに高い細い通路が西の奥まで続き、その北側の横に準備室の扉（まわりは暗い）。踊り場の奥は壁
 {
   const R = rectOf({ c0: 37, r0: 23, c1: 39, r1: 25 });
-  const y = base(3) + 0.02, P = 1.3, xd = R.x0 + 1.2, xs = R.x0 + 2.6, top = 0.3 + 5 * 0.17; // P：通路の幅、xd：踊り場の奥の壁、xs：階段の下
+  const y = base(3) + 0.02, P = 1.3, xd = R.x0 + 1.2, xs = R.x0 + 2.6, top = 0.3 + 5 * 0.17, xw = X(33), zS = Z(25); // P：通路の幅、xd：踊り場の奥の壁、xs：階段の下
   const floorM = new THREE.MeshStandardMaterial({ color: 0xcfc6ad, roughness: 0.45 }), nose = new THREE.MeshStandardMaterial({ color: 0xe9e6de, roughness: 0.7 }), edge = new THREE.MeshStandardMaterial({ color: 0x5b5148, roughness: 0.6 });
   const wallM = new THREE.MeshStandardMaterial({ color: 0xe7e1d4, roughness: 0.95 }), darkM = new THREE.MeshStandardMaterial({ color: 0x9d9384, roughness: 0.9 });
   const Bx = (x0, x1, y0, y1, z0, z1) => new THREE.BoxGeometry(x1 - x0, y1 - y0, z1 - z0).translate((x0 + x1) / 2, y + (y0 + y1) / 2, (z0 + z1) / 2);
@@ -1167,11 +1167,12 @@ for (const f of [1, 2, 3]) {
   // 南側の5段の階段（西へ上がる）と、高い通路
   for (let i = 0; i < 5; i++) { const h = 0.3 + 0.17 * (i + 1), x = xs - 0.28 * (i + 1); fl.push(Bx(x, x + 0.28, 0.3, h, R.z1 - P, R.z1)); ns.push(Bx(x + 0.26, x + 0.28, h - 0.17, h, R.z1 - P, R.z1)); ed.push(Bx(x + 0.24, x + 0.28, h - 0.01, h + 0.01, R.z1 - P, R.z1)); }
   fl.push(Bx(R.x0, xd, 0, top, R.z1 - P, R.z1));
+  fl.push(Bx(xw, R.x0, 0, top, zS, R.z1)); // 通路は西へ奥まで続く（北どなりの細い準備室の南の壁ぞい）
   // 階段の北の側面（白い）と、踊り場の奥の壁・通路の北の壁（暗い通路）
   ns.push(Bx(xd, xs, 0.3, 0.3 + 0.12, R.z1 - P - 0.12, R.z1 - P));
   wl.push(Bx(xd - 0.12, xd, 0, FH - 0.3, R.z0, R.z1 - P), Bx(R.x0, xd, 0, FH - 0.3, R.z1 - P - 0.12, R.z1 - P));
-  // 通路の突きあたりの準備室の扉（両開き）と、通路の北の壁の扉
-  dk.push(Bx(R.x0 + 0.01, R.x0 + 0.05, top, top + 1.95, R.z1 - P + 0.12, R.z1 - 0.08), Bx(R.x0 + 0.25, R.x0 + 1.0, top, top + 1.95, R.z1 - P - 0.02, R.z1 - P));
+  // 準備室の扉：通路の北の壁（奥のほう）。通路の突きあたりは壁
+  dk.push(Bx(xw + 1.6, xw + 2.5, top, top + 1.95, zS, zS + 0.04));
   const add = (list, m) => { const mesh = new THREE.Mesh(mergeGeometries(list), m); mesh.castShadow = mesh.receiveShadow = true; return mesh; };
   const g = new THREE.Group();
   g.add(add(fl, floorM), add(ns, nose), add(ed, edge), add(wl, wallM), add(dk, darkM));
@@ -1184,9 +1185,9 @@ for (const f of [1, 2, 3]) {
   const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.14, 0.06), new THREE.MeshStandardMaterial({ color: 0xf4f1ea, emissive: 0x332a20 }));
   lamp.position.set(R.x0 + 2.95, y + 2.75, R.z0 + 0.06);
   const cone = new THREE.Mesh(new THREE.ConeGeometry(0.17, 0.7, 16).translate(0, 0.35, 0), new THREE.MeshStandardMaterial({ color: 0xf2f2ee, roughness: 0.6 }));
-  cone.position.set(R.x0 + 0.35, y + top + 0.15, R.z1 - 0.35);
+  cone.position.set(xw + 0.35, y + top + 0.15, R.z1 - 0.35);
   const boards = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.15, 0.45), new THREE.MeshStandardMaterial({ color: 0xd9c49a, roughness: 0.9 }));
-  boards.position.set(R.x0 + 0.35, y + top + 0.075, R.z1 - 0.35);
+  boards.position.set(xw + 0.35, y + top + 0.075, R.z1 - 0.35);
   g.add(lamp, cone, boards);
   inBlock(layers.inner[3], blockById("spine")).add(g);
 }

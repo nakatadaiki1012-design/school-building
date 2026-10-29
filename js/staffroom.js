@@ -89,12 +89,12 @@ let seed = 7;
 const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
 
 // ---------- 材質 ----------
-const woodTop = M(0xd8c2a0, { roughness: 0.45, map: tex(256, 64, (g, w, h) => { g.fillStyle = "#d9c3a1"; g.fillRect(0, 0, w, h); for (let i = 0; i < 70; i++) { g.strokeStyle = `rgba(${150 + rnd() * 40},${110 + rnd() * 30},${70 + rnd() * 20},${0.12 + rnd() * 0.12})`; g.lineWidth = 0.6 + rnd(); g.beginPath(); const y = rnd() * h; g.moveTo(0, y); g.bezierCurveTo(w * 0.3, y + rnd() * 6 - 3, w * 0.7, y + rnd() * 6 - 3, w, y + rnd() * 4 - 2); g.stroke(); } }) });
+const woodTop = M(0xe9d7b4, { roughness: 0.5, map: tex(256, 64, (g, w, h) => { g.fillStyle = "#ead9b7"; g.fillRect(0, 0, w, h); for (let i = 0; i < 60; i++) { g.strokeStyle = `rgba(${190 + rnd() * 30},${160 + rnd() * 30},${115 + rnd() * 25},${0.1 + rnd() * 0.12})`; g.lineWidth = 0.5 + rnd() * 0.8; g.beginPath(); const y = rnd() * h; g.moveTo(0, y); g.bezierCurveTo(w * 0.3, y + rnd() * 4 - 2, w * 0.7, y + rnd() * 4 - 2, w, y + rnd() * 3 - 1.5); g.stroke(); } }) }); // 写真：明るい木目（淡いオーク）
 const steelW = M(0xeeeeea, { roughness: 0.35, metalness: 0.15 });
 const steelG = M(0xd9dbdc, { roughness: 0.4, metalness: 0.2 });
 const steelD = M(0x8b9096, { roughness: 0.35, metalness: 0.6 });
 const black = M(0x22252a, { roughness: 0.5 });
-const chairFab = M(0x2b3442, { roughness: 0.95, map: tex(64, 64, (g, w, h) => { g.fillStyle = '#5b6574'; g.fillRect(0, 0, w, h); g.fillStyle = 'rgba(0,0,0,0.35)'; for (let y = 0; y < h; y += 3) g.fillRect(0, y, w, 1); for (let x = 0; x < w; x += 3) g.fillRect(x, 0, 1, h); }, 6, 6) }); // 布の織り目
+const chairFab = M(0x141c44, { roughness: 0.95 }); // 写真：紺色のひじかけいす
 const plastic = M(0x3a3d42, { roughness: 0.55 });
 const chrome = M(0xc8ccd0, { roughness: 0.2, metalness: 0.9 });
 const greenCable = M(0x1e8a4c, { roughness: 0.45 });
@@ -104,7 +104,7 @@ const glass = new THREE.MeshPhysicalMaterial({ color: 0xcfe6f2, roughness: 0.05,
 const alu = M(0xb7bdc2, { roughness: 0.3, metalness: 0.7 });
 const wallUp = M(0xece6d8, { roughness: 0.9 });
 const wallLow = M(0xbfae93, { roughness: 0.85 });
-const curtain = M(0xe8d48e, { roughness: 0.95, side: THREE.DoubleSide });
+const curtain = M(0xe9dfa6, { roughness: 0.95, side: THREE.DoubleSide }); // 写真：うすい黄色の厚いカーテン
 
 // ---------- 床・天井・壁・柱 ----------
 // 床：つやのあるベージュの長尺シート（うすい目地）
@@ -187,8 +187,8 @@ wall(0, 7.4, 24, 7.4, [[0.4, 4.4, 0.85, 2.55], [5.2, 9.2, 0.85, 2.55], [10.0, 14
     for (let i = 0; i <= n; i++) fr.push(P((L * i) / n, y0, 0.045, y1 - y0, 0.08));
     // カーテン：両はしにまとめた、ひだのある布（波の形）
     for (const s of [0, 1]) {
-      const W = 0.42, H = y1 - y0 + 0.25, g = new THREE.PlaneGeometry(W, H, 24, 1), p = g.attributes.position;
-      for (let i = 0; i < p.count; i++) p.setZ(i, Math.sin((p.getX(i) / W) * Math.PI * 10) * 0.035);
+      const W = 0.95, H = y1 - y0 + 0.25, g = new THREE.PlaneGeometry(W, H, 48, 1), p = g.attributes.position;
+      for (let i = 0; i < p.count; i++) p.setZ(i, Math.sin((p.getX(i) / W) * Math.PI * 18) * 0.04);
       g.computeVertexNormals(); g.translate(W / 2, H / 2, 0);
       const u0 = s ? L - 0.05 - W : 0.05;
       if (alongX) g.translate(x0 + u0, y0 - 0.05, z - 0.16); else g.rotateY(Math.PI / 2).translate(z - 0.16, y0 - 0.05, x0 + u0 + W);
@@ -274,12 +274,13 @@ const tallKit = kit([[steelG, R(0.9, 1.8, 0.45, 0, 0, 0, 0.008)], [steelW, B(0.4
 
 // 座る人の向き（face）→ 机の rot（座る人は机の +z 側。N：北を向く＝机の北に座る人ではなく、机の南に座って北を向く）
 const ROT = { N: 0, S: Math.PI, E: -Math.PI / 2, W: Math.PI / 2 };
-const desks = [], chairs = [], laptops = [], monitors = [], papers = [], pens = [];
+const cushions = [], desks = [], chairs = [], laptops = [], monitors = [], papers = [], pens = [];
 function desk(x, z, face, chairOut = 0.28) {
   const r = ROT[face], dx = -Math.sin(r), dz = -Math.cos(r); // 向いている方向
   desks.push({ x, z, rot: r });
   const out = chairOut + (rnd() < 0.3 ? 0.25 : 0); // ところどころ、いすを少し引いてある
   chairs.push({ x: x - dx * out, z: z - dz * out, rot: r + (rnd() - 0.5) * 0.3 });
+  if (rnd() < 0.18) cushions.push({ x: x - dx * out, z: z - dz * out, y: 0.5, rot: r });
   const kx = Math.cos(r), kz = -Math.sin(r); // 机の横方向
   const onTop = (u, w) => ({ x: x + kx * u - dx * w, z: z + kz * u - dz * w, y: DH, rot: r + (rnd() - 0.5) * 0.2 });
   if (rnd() < 0.55) laptops.push(onTop(-0.05 + (rnd() - 0.5) * 0.1, 0.02));
@@ -301,7 +302,7 @@ for (const z of [3.0, 4.1]) desk(18.28, z, "E");
 // 3年
 for (const z of [1.94, 2.88, 3.83]) desk(18.9, z, "W");
 for (const z of [-0.71, 0.24, 1.18, 2.72, 3.66, 4.66, 5.63]) { desk(21.62 - DD / 2, z, "E"); desk(21.62 + DD / 2, z, "W"); }
-place(deskKit, desks); place(chairKit, chairs); place(laptopKit, laptops); place(monitorKit, monitors); place(papersKit, papers); place(penKit, pens);
+place(deskKit, desks); place(chairKit, chairs); place(kit([[M(0x9bb04a, { roughness: 1 }), R(0.4, 0.05, 0.38, 0, 0, 0.02, 0.02)]]), cushions); place(laptopKit, laptops); place(monitorKit, monitors); place(papersKit, papers); place(penKit, pens);
 
 // 教頭と副校長の机（写真：業務アシスタントの南の、横に長い机。明るい木目の天板、白い引き出し、紺色のひじかけいす、黒いノートパソコンとモニター、
 // クリーム色の引き出し式の整理ケース。ふつうの机より奥行きがある）。座る人は南側で北を向く
@@ -313,7 +314,7 @@ const VD = 0.85, VZ = 5.4; // 奥行きと、まん中の z
     [steelG, B(0.38, 0.14, 0.012, 0.4, 0.52, VD / 2 - 0.04)], [steelG, B(0.38, 0.16, 0.012, 0.4, 0.34, VD / 2 - 0.04)], [steelG, B(0.38, 0.28, 0.012, 0.4, 0.04, VD / 2 - 0.04)],
     [steelD, B(0.14, 0.015, 0.02, 0.4, 0.6, VD / 2 - 0.03)], [steelD, B(0.14, 0.015, 0.02, 0.4, 0.44, VD / 2 - 0.03)], [steelD, B(0.14, 0.015, 0.02, 0.4, 0.3, VD / 2 - 0.03)]]);
   place(t, [{ x: 17.25, z: VZ }, { x: 18.55, z: VZ }, { x: 19.85, z: VZ }]);
-  const navy = M(0x1c2a62, { roughness: 0.95 });
+  const navy = M(0x141c44, { roughness: 0.95 });
   const navyKit = kit(chairParts.map(([m, g]) => [m === chairFab ? navy : m, g.clone()]));
   place(navyKit, [{ x: 18.55, z: VZ + VD / 2 + 0.3, rot: 0.1 }, { x: 19.85, z: VZ + VD / 2 + 0.3, rot: -0.1 }]);
   place(monitorKit, [{ x: 18.45, z: VZ - 0.15, y: DH }, { x: 19.75, z: VZ - 0.15, y: DH }]);
@@ -593,7 +594,7 @@ place(cabKit, cabs.concat(talls)); place(lowKit, lows); // 東の壁ぎわも、
   ceiling.add(new THREE.Mesh(mergeGeometries(det.map((g) => g.toNonIndexed())), M(0xf6f6f3)));
   ceiling.add(new THREE.Mesh(mergeGeometries(spr.map((g) => g.toNonIndexed())), chrome));
   // 幅木（壁の下のふちの、こげ茶の帯）
-  const bb = M(0x5a4a3a, { roughness: 0.6 });
+  const bb = M(0x8a909c, { roughness: 0.5 }); // 写真：床のふちの灰青色のゴムの幅木
   add([B(14.4, 0.08, 0.015, 7.2, 0, 0.085), B(9.6, 0.08, 0.015, 19.2, 0, -2.415), B(0.015, 0.08, 7.4, 0.085, 0, 3.7), B(0.015, 0.08, 9.9, 23.915, 0, 2.45), B(24, 0.08, 0.015, 12, 0, 7.315)], bb, false);
 }
 

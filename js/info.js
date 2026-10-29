@@ -493,7 +493,8 @@ export const ROOM_EDITS = [
   { name: "職員トイレ", floor: 1, set: { name: "職員男子トイレ", c1: 54.5 } },
   { name: "事務室", floor: 1, set: { desc: "ご来校の際は、こちらから事務室にお声掛けください。", photos: ["images/jimu.jpg", "images/jimu-2.jpg"] } },
   // 視聴覚教室は北の壁まで広い（北の壁には窓がない）
-  { name: "視聴覚教室", floor: 3, set: { r0: 9 } },
+  { name: "視聴覚教室", floor: 3, set: { r0: 9, photos: ["images/shichokaku-1.jpg", "images/shichokaku-2.jpg", "images/shichokaku-3.jpg"] } },
+  { name: "作法室", floor: 3, set: { photos: ["images/sahou-1.jpg", "images/sahou-2.jpg", "images/sahou-3.jpg", "images/sahou-4.jpg"] } },
   // 視聴覚準備室は細い（南の1行は、階段を上がった先の高い通路になる）
   { name: "準備室", floor: 3, set: { r1: 24 } },
   // 音楽室・視聴覚教室のある中央棟の北の部分は、トイレの並ぶ1号館より北へ少し出ている（航空写真）。

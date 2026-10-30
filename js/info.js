@@ -600,6 +600,8 @@ export const ROOM_STYLE = [
   { name: "視聴覚教室", floor: 3, doors: ["s@0.33"] }, { name: "準備室", floor: 3, r0: 23, doors: [] },
   // 職員更衣室兼休養室：どちらも南の、職員室の北へのびた共用スペースから入る
   { name: "職員更衣室兼休養室（西）", floor: 2, doors: ["s@-0.28"] }, { name: "職員更衣室兼休養室（東）", floor: 2, doors: ["s@0.3"] }, // 図面：戸棚のない両はし
+  // 1階：受水槽の横の生徒更衣室は、ドアが東側。1号館の男子WC（みんなのWCの西どなり）は、入口が南側
+  { name: "生徒更衣室", floor: 1, doors: ["e"] }, { name: "男子トイレ", floor: 1, c0: 42, r0: 15, doors: ["s"] },
   { name: "らくらくスペース", floor: 1, doors: ["w@-0.2"] }, { name: "土間", floor: 1, open: ["n", "s", "w"], noLabel: true },
   // 体育館の1階の部室：外への入口は両引き戸（北の部室は北、西の部室は西）
   { name: "部室1", floor: 1, doors: ["n:clubDoor"] }, { name: "部室2", floor: 1, doors: ["n:clubDoor"] }, { name: "部室3", floor: 1, doors: ["n:clubDoor"] }, { name: "部室4", floor: 1, doors: ["n:clubDoor"] }, { name: "部室5", floor: 1, doors: ["n:clubDoor"] }, { name: "部室6", floor: 1, doors: ["n:clubDoor"] }, { name: "部室7", floor: 1, doors: ["n:clubDoor"] }, { name: "部室8", floor: 1, doors: ["n:clubDoor"] },

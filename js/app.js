@@ -1403,25 +1403,17 @@ function rustTex() {
   }
   stair(geos1, gxe + dw + 1.2, zTop + 2.4 + sl, gxe + dw + 1.2, zTop + 2.4, -0.2, ty, 2.3);
   // 1階の南側の柱（柱が並ぶ吹きさらしの部分）
-  for (let x = gx + 9; x < gxe; x += 4.2) box(geos2, 0.5, ty, 0.5, x, ty / 2 - 0.2, gz1 + 0.3);
-  // その奥の茶色い壁と、柱のあいだのアーチ（写真：大きなアーチが並び、奥が茶色）
+  // （写真）柱は、白い大きな角柱で、足もとだけ灰色。柱のあいだにアーチはない
+  const pilBase = [];
+  for (let x = gx + 9; x < gxe; x += 4.2) { box(geos2, 0.9, ty, 0.7, x, ty / 2 - 0.2, gz1 + 0.3); pilBase.push(new THREE.BoxGeometry(1.0, 0.4, 0.8).translate(x, 0, gz1 + 0.3)); }
+  if (pilBase.length) { const pb = new THREE.Mesh(mergeGeometries(pilBase), new THREE.MeshStandardMaterial({ color: 0x8e8b84, roughness: 0.95 })); pb.castShadow = pb.receiveShadow = true; gymExtras.add(pb); }
+  // その奥の茶色い壁（アーチはない）
   {
     const brown = new THREE.MeshStandardMaterial({ color: 0x7a4b38, roughness: 0.9 });
     const back = new THREE.Mesh(new THREE.BoxGeometry(gxe - gx - 8.5, ty - 0.2, 0.3), brown);
     back.position.set((gx + 8.5 + gxe) / 2, ty / 2 - 0.3, gz1 - 2.5);
     back.receiveShadow = true;
     gymExtras.add(back);
-    for (let x = gx + 9; x + 4.2 <= gxe + 0.1; x += 4.2) {
-      // 柱と柱のあいだの上を、半円にくりぬいた白い壁でふさぐ
-      const sh = new THREE.Shape();
-      sh.moveTo(0, -0.65); sh.lineTo(0, 1.6); sh.lineTo(4.2, 1.6); sh.lineTo(4.2, -0.65); sh.lineTo(3.95, -0.65);
-      sh.absarc(2.1, -0.65, 1.85, 0, Math.PI, false); sh.lineTo(0, -0.65);
-      const g = new THREE.ExtrudeGeometry(sh, { depth: 0.4, bevelEnabled: false, curveSegments: 16 });
-      const arch = new THREE.Mesh(g, white);
-      arch.position.set(x, FH - 1.8, gz1 + 0.1);
-      arch.castShadow = true;
-      gymExtras.add(arch);
-    }
   }
   // 南の2階の入口の上の庇（3階の通路）は、2階を見ているときはじゃまなので、2階の屋根と同じあつかい
   { const em = new THREE.Mesh(mergeGeometries(eaves), white); em.castShadow = em.receiveShadow = true; inBlock(layers.roofs[2], blockById("gym")).add(em); }
@@ -1713,6 +1705,34 @@ for (const [c0, r0, c1, r1] of COLUMN_AREAS) {
   const rc = rectOf({ c0, r0, c1, r1 });
   const b = blockAtCell(c0, r0);
   const geos = [];
+  // 体育館の東側のピロティ（写真）：東のふちに、白い大きな角柱（足もとは灰色）が1列。1本は、X形の柱
+  if (b.id === "gym" && c0 === 20 && r0 === 23) {
+    const ch = FH + GYM_LIFT, cream = new THREE.MeshStandardMaterial({ color: 0xece6d8, roughness: 0.9 }), gray = new THREE.MeshStandardMaterial({ color: 0x8e8b84, roughness: 0.95 });
+    const cx = rc.x1 - 0.7, zA = rc.z0 + 0.9, zB = rc.z1 - 0.9, n = Math.round((zB - zA) / 4.2), step = (zB - zA) / n, xIdx = n - 1; // xIdx：南から2本め
+    const body = [], base = [];
+    for (let i = 0; i <= n; i++) {
+      const z = zA + step * i;
+      if (i === xIdx) {
+        // X形の柱：板を斜めに2本交差させる（正面は東向き。厚み 0.5m）
+        const H = ch, hw = 1.25, t = 0.5;
+        for (const sgn of [1, -1]) {
+          const sh = new THREE.Shape();
+          sh.moveTo(-sgn * hw - t, 0); sh.lineTo(-sgn * hw + t, 0); sh.lineTo(sgn * hw + t, H - 0.6); sh.lineTo(sgn * hw - t, H - 0.6); sh.closePath();
+          const g = new THREE.ExtrudeGeometry(sh, { depth: 0.5, bevelEnabled: false });
+          g.rotateY(-Math.PI / 2).translate(cx + 0.25, -0.2, z); // 形の横方向を z に、厚みを x に
+          body.push(g);
+        }
+        body.push(new THREE.BoxGeometry(0.5, 0.6, 3.1).translate(cx, ch - 0.5, z)); // 上の梁（X の頭）
+      } else {
+        body.push(new THREE.BoxGeometry(1.0, ch, 0.7).translate(cx, ch / 2 - 0.2, z));
+        base.push(new THREE.BoxGeometry(1.1, 0.4, 0.8).translate(cx, 0.0, z));
+      }
+    }
+    const flat = (l) => mergeGeometries(l.map((g) => (g.index ? g.toNonIndexed() : g)));
+    const mb = new THREE.Mesh(flat(body), cream), mg = new THREE.Mesh(flat(base), gray);
+    for (const m of [mb, mg]) { m.castShadow = m.receiveShadow = true; inBlock(layers.exterior[1], b).add(m); }
+    continue;
+  }
   const xs = [], zs = [];
   for (let x = rc.x0 + 0.3; x <= rc.x1 - 0.2; x += Math.max(3, (rc.x1 - rc.x0 - 0.6) / Math.max(1, Math.round((rc.x1 - rc.x0) / 5)))) xs.push(x);
   if (rc.x1 - 0.3 - xs[xs.length - 1] > 1) xs.push(rc.x1 - 0.3);

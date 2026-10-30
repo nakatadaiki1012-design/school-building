@@ -363,8 +363,8 @@ export const SITE = {
 };
 
 export const SITE_INFO = [
-  { name: "体育館下のピロティ", x: -19.5, z: -6, desc: "体育館の下の、柱がならぶ屋根つきの広い場所です。レンガ敷きでベンチがあり、奥に武道場の入口、横にトイレがあります。", photos: ["images/piloti-1.jpg", "images/budo-1.jpg"] },
-  { name: "昇降口前", x: 2.7, z: 1, desc: "2つの昇降口のあいだの、柱がならぶ屋根つきの広い場所です。レンガ敷きで、上には2階の渡り廊下があります。", photos: ["images/shokoumae-1.jpg"] },
+  { name: "体育館下のピロティ", x: -19.5, z: -6, under: true, desc: "体育館の下の、柱がならぶ屋根つきの広い場所です。レンガ敷きでベンチがあり、奥に武道場の入口、横にトイレがあります。", photos: ["images/piloti-1.jpg", "images/budo-1.jpg"] },
+  { name: "昇降口前", x: 2.7, z: 1, under: true, desc: "2つの昇降口のあいだの、柱がならぶ屋根つきの広い場所です。レンガ敷きで、上には2階の渡り廊下があります。", photos: ["images/shokoumae-1.jpg"] },
   { key: "ground", name: "グラウンド", x: -10, z: -90, desc: "グラウンドの風景です。授業のほか、野球部やサッカー部、陸上競技部などが活動場所として使用しています。", photos: ["images/ground-a.jpg", "images/ground-b.jpg"] },
   { key: "tennis", name: "テニスコート", x: 74, z: -50, desc: "グラウンドの東側にある、テニスコートです（2区画、4面）。コートの外は、下に緑の防風シートをはった低いフェンスと、高い黒いネットでかこまれています。西側（グラウンドのほう）は石積みの斜面です。", photos: ["images/tennis-2.jpg", "images/tennis-1.jpg"] },
   { key: "pool", name: "プール", x: -58, z: -36, desc: "25mプールです。体育の水泳の選択授業のほか、水泳部の活動場所として使われています。", photos: ["images/pool-a.jpg", "images/pool-b.jpg"] },

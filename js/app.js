@@ -2095,6 +2095,7 @@ for (const it of SITE_INFO) {
   div.addEventListener("click", (e) => { e.stopPropagation(); showSite(it); });
   const obj = new CSS2DObject(div);
   obj.position.set(it.x, 5, it.z);
+  obj.userData.under = !!it.under; // 建物の下（1階のレベル）の場所：2・3階を見るときは文字を出さない
   siteLabels.add(obj);
 }
 scene.add(wingLabels, siteLabels);
@@ -2162,6 +2163,7 @@ function applyMode() {
   gymRoof.visible = f === 0;
   setLabelsVisible(wingLabels, f === 0 && labelsOn);
   setLabelsVisible(siteLabels, labelsOn && !ex.on);
+  siteLabels.children.forEach((o) => { if (o.userData.under && f >= 2) o.visible = false; });
   document.querySelectorAll(".floor-btn").forEach((b) => b.classList.toggle("active", Number(b.dataset.floor) === f));
   document.querySelectorAll(".view-btn").forEach((b) => b.classList.toggle("active", b.dataset.view === state.view));
   document.getElementById("view-toggle").classList.toggle("disabled", f === 0);

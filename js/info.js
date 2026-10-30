@@ -501,7 +501,9 @@ export const ROOM_EDITS = [
   { name: "準備室", floor: 3, set: { r1: 24 } },
   // 音楽室・視聴覚教室のある中央棟の北の部分は、トイレの並ぶ1号館より北へ少し出ている（航空写真）。
   // そのため図面の北のバルコニーの行まで建物にし、バルコニーはなくす（半円の塔だけが北に出る）
-  { name: "受水槽", floor: 1, set: { r0: 9 } },
+  // 受水槽と生徒更衣室は、同じくらいの広さ（あわせた奥行き14行を半分ずつ）
+  { name: "受水槽", floor: 1, set: { r0: 9, r1: 15 } },
+  { name: "生徒更衣室", floor: 1, set: { r0: 16 } },
   { name: "バルコニー", floor: 1, at: 38, atR: 9, set: { remove: true } },
   { name: "バルコニー", floor: 2, at: 38, atR: 9, set: { remove: true } },
   { name: "バルコニー", floor: 3, at: 38, atR: 9, set: { remove: true } },

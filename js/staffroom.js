@@ -14,6 +14,7 @@ import { GTAOPass } from "three/addons/postprocessing/GTAOPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { Reflector } from "three/addons/objects/Reflector.js";
+import { STAFF_ITEMS } from "./staffroom-items.js";
 
 const CEIL = 2.9; // 天井の高さ
 const view = document.getElementById("view");
@@ -845,3 +846,46 @@ function tick(now) {
 }
 requestAnimationFrame(tick);
 document.getElementById("loading").remove();
+
+// ---------- 備品をさがす ----------
+// 検索すると、その置き場所へカメラが飛んでいき、棚が光ってラベルが出る。一覧は js/staffroom-items.js
+{
+  const norm = (t) => t.normalize("NFKC").toLowerCase().replace(/[\u30a1-\u30f6]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0x60)).replace(/[\s　・（）()]/g, "");
+  const items = STAFF_ITEMS.map((it) => ({ ...it, key: norm(it.name + " " + (it.yomi || "") + " " + it.place + " " + (it.note || "")) }));
+  const btn = document.getElementById("sq-btn"), panel = document.getElementById("sq"), input = document.getElementById("sq-in"), list = document.getElementById("sq-list"), note = document.getElementById("sq-note");
+  let mark = null, markLabel = null;
+  const clearMark = () => { if (mark) { scene.remove(mark); mark = null; } if (markLabel) { scene.remove(markLabel); markLabel.element.remove(); markLabel = null; } note.style.display = "none"; dirty = 2; };
+  function show(it) {
+    clearMark(); setWalk(false);
+    const [cx, cy, cz, w, h, d] = it.box;
+    mark = new THREE.Group();
+    mark.add(new THREE.Mesh(new THREE.BoxGeometry(w + 0.06, h + 0.06, d + 0.06), new THREE.MeshBasicMaterial({ color: 0xffc23a, transparent: true, opacity: 0.28, depthWrite: false })));
+    mark.add(new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w + 0.06, h + 0.06, d + 0.06)), new THREE.LineBasicMaterial({ color: 0xff8a00 })));
+    mark.position.set(cx, cy, cz); scene.add(mark);
+    const el = document.createElement("div"); el.className = "tag"; el.style.background = "#e8730c"; el.textContent = it.name;
+    markLabel = new CSS2DObject(el); markLabel.position.set(cx, cy + h / 2 + 0.25, cz); scene.add(markLabel);
+    note.textContent = it.name + "：" + it.place; note.style.display = "block";
+    const p = new THREE.Vector3(...it.from), t = new THREE.Vector3(cx, cy, cz);
+    anim = { t0: performance.now(), ms: 1100, p0: camera.position.clone(), t0v: controls.target.clone(), p1: p, t1: t };
+    document.querySelectorAll(".views .btn[data-v]").forEach((b) => b.classList.remove("active"));
+    panel.classList.remove("open");
+  }
+  function render() {
+    const q = norm(input.value);
+    const hit = q ? items.filter((it) => it.key.includes(q)) : items;
+    list.innerHTML = "";
+    if (!hit.length) { list.innerHTML = '<div class="none">見つかりません。別の言い方で試してください。</div>'; return; }
+    for (const it of hit) {
+      const li = document.createElement("li"); li.tabIndex = 0;
+      li.innerHTML = "<b></b><span></span>"; li.firstChild.textContent = it.name; li.lastChild.textContent = it.place;
+      li.addEventListener("click", () => show(it));
+      li.addEventListener("keydown", (e) => { if (e.key === "Enter") show(it); });
+      list.appendChild(li);
+    }
+  }
+  btn.addEventListener("click", () => { const o = panel.classList.toggle("open"); if (o) { render(); input.focus(); } });
+  input.addEventListener("input", render);
+  input.addEventListener("keydown", (e) => { if (e.key === "Enter") { const f = list.querySelector("li"); if (f) f.click(); } if (e.key === "Escape") panel.classList.remove("open"); });
+  // 見る場所のボタンを押したら、光る印は消す
+  document.querySelectorAll(".views .btn[data-v]").forEach((b) => b.addEventListener("click", clearMark));
+}

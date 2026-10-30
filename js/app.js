@@ -2348,11 +2348,11 @@ function selectRoom(r, { fly = true, close = false } = {}) {
     if (state.view === "2d") {
       controls2d.target.set(r.wx, 0, r.wz);
       ortho.position.set(r.wx, 200, r.wz + 0.001);
-      ortho.zoom = Math.max(ortho.zoom, close ? 2.8 : 1.6);
+      ortho.zoom = Math.max(ortho.zoom, close ? 2.0 : 1.6);
       ortho.updateProjectionMatrix();
     } else {
       // close：部屋の大きさに合わせて、ぐっと近づく
-      const k = close ? Math.min(0.75, Math.max(0.28, Math.max(r.w, r.d) / 40)) : 1;
+      const k = close ? Math.min(0.9, Math.max(0.55, Math.max(r.w, r.d) / 30)) : 1;
       flyTo(new THREE.Vector3(r.wx + 10 * k, base(r.floor) + 26 * k, r.wz + 26 * k), new THREE.Vector3(r.wx, base(r.floor), r.wz));
     }
   }

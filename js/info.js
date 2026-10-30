@@ -495,6 +495,7 @@ export const ROOM_EDITS = [
   // 視聴覚教室は北の壁まで広い（北の壁には窓がない）
   { name: "視聴覚教室", floor: 3, set: { r0: 9, photos: ["images/shichokaku-1.jpg", "images/shichokaku-2.jpg", "images/shichokaku-3.jpg"] } },
   { name: "コンピューター教室", floor: 3, set: { photos: ["images/computer-1.jpg", "images/computer-2.jpg"] } },
+  { name: "オーラル教室", floor: 3, set: { photos: ["images/oral-1.jpg", "images/oral-2.jpg"] } },
   { name: "作法室", floor: 3, set: { photos: ["images/sahou-1.jpg", "images/sahou-2.jpg", "images/sahou-3.jpg", "images/sahou-4.jpg"] } },
   // 視聴覚準備室は細い（南の1行は、階段を上がった先の高い通路になる）
   { name: "準備室", floor: 3, set: { r1: 24 } },

@@ -129,7 +129,7 @@ const RULES = [
   [/ラウンジ/, "life", "休み時間などに過ごせる、廊下に面したスペースです。"],
   [/^土間$/, "entry", "昇降口の横の、タイル敷きの土間です。"],
   [/進路情報コーナー/, "life", "進路のパンフレットや本が置いてあるコーナーです。"],
-  [/らくらくスペース/, "life", "ひと休みしたり、落ち着いて過ごしたりできるスペースです。"],
+  [/らくらくスペース/, "life", "面談やカウンセリングなどに使われる部屋です。入口は南側にあります。"],
   [/生徒会室/, "life", "生徒会が活動の打ち合わせや準備をする部屋です。"],
   [/生徒指導室/, "office", "生徒指導の先生が相談や面談を行う部屋です。"],
   [/職員室/, "office", "先生方の机がある部屋です。用事があるときは入口で学年・組・名前と用件を伝えましょう。"],
@@ -557,7 +557,7 @@ export const ROOM_EDITS = [
 ];
 export const EXTRA_ROOMS = [
   // 2階：音楽準備室の南の広い場所（壁にアート）。テーブルと長椅子があり、西に渡り廊下へ少し上がる階段
-  // 1階：南の昇降口とらくらくスペースのあいだの土間（タイル）。らくらくスペースへはここのドアから入る
+  // 1階：南の昇降口のとなりの土間（タイル）。らくらくスペースの入口は南側だけ（土間からは入れない）
   { id: "F1-DOMA", name: "土間", floor: 1, c0: 40, r0: 47, c1: 41, r1: 49 },
   // 1階：売店のとなり、進路資料室の前の廊下の壁ぞいの進路情報コーナー（パンフレットの棚と掲示板）
   { id: "F1-SHINRO", name: "進路情報コーナー", floor: 1, c0: 41, r0: 55.5, c1: 41, r1: 58, desc: "大学・短大・専門学校のパンフレットや、進路の本・雑誌がたくさん置いてあります。棚のパンフレットは自由に持っていけます。掲示板にはオープンキャンパスの案内などが貼られています。", photos: ["images/shinro-1.jpg"] },
@@ -604,7 +604,7 @@ export const ROOM_STYLE = [
   { name: "職員更衣室兼休養室（西）", floor: 2, doors: ["s@-0.28"] }, { name: "職員更衣室兼休養室（東）", floor: 2, doors: ["s@0.3"] }, // 図面：戸棚のない両はし
   // 1階：受水槽の横の生徒更衣室は、ドアが東側。1号館の男子WC（みんなのWCの西どなり）は、入口が南側
   { name: "生徒更衣室", floor: 1, doors: ["e"] }, { name: "男子トイレ", floor: 1, c0: 42, r0: 15, doors: ["s"] },
-  { name: "らくらくスペース", floor: 1, doors: ["w@-0.2"] }, { name: "土間", floor: 1, open: ["n", "s", "w"], noLabel: true },
+  { name: "らくらくスペース", floor: 1, doors: ["s"] }, { name: "土間", floor: 1, open: ["n", "s", "w"], noLabel: true },
   // 体育館の1階の部室：外への入口は両引き戸（北の部室は北、西の部室は西）
   { name: "部室1", floor: 1, doors: ["n:clubDoor"] }, { name: "部室2", floor: 1, doors: ["n:clubDoor"] }, { name: "部室3", floor: 1, doors: ["n:clubDoor"] }, { name: "部室4", floor: 1, doors: ["n:clubDoor"] }, { name: "部室5", floor: 1, doors: ["n:clubDoor"] }, { name: "部室6", floor: 1, doors: ["n:clubDoor"] }, { name: "部室7", floor: 1, doors: ["n:clubDoor"] }, { name: "部室8", floor: 1, doors: ["n:clubDoor"] },
   { name: "部室9", floor: 1, doors: ["w:clubDoor"] }, { name: "部室10", floor: 1, doors: ["w:clubDoor"] }, { name: "部室（女子陸上部）", floor: 1, doors: ["w:clubDoor"] }, { name: "部室（女子バスケ部）", floor: 1, doors: ["w:clubDoor"] }, { name: "部室（女子バレー部）", floor: 1, doors: ["w:clubDoor"] },

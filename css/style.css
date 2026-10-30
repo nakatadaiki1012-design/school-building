@@ -351,3 +351,19 @@ body.exploring .dir-box, body.exploring .key-hint { display: none; }
 .room-label.far, .wing-label.far { display: none !important; }
 body.exploring .aerial-box { bottom: 270px; } /* 探検中はスマホ用のボタンの上に */
 body.exploring .aerial-box .geo-msg { order: -1; } /* 説明はボタンの上に */
+
+/* ---------- 部屋一覧（右上の小さなボタンから、ひらいたときだけ出る） ---------- */
+.top-actions { position: relative; }
+#room-list {
+  position: absolute; top: calc(100% + 6px); right: 0; width: min(300px, 86vw); max-height: min(62vh, 480px);
+  display: flex; flex-direction: column; overflow: hidden; z-index: 40;
+  background: rgba(255, 255, 255, 0.97); border-radius: 12px; box-shadow: 0 6px 24px rgba(20, 40, 60, 0.22);
+}
+#room-list[hidden] { display: none; }
+#room-list .tabs { display: flex; gap: 4px; padding: 8px; border-bottom: 1px solid #e3e8ee; }
+#room-list .tabs button { flex: 1; padding: 6px 0; border: 0; border-radius: 8px; background: #eef2f6; font-size: 13px; cursor: pointer; }
+#room-list .tabs button.active { background: var(--accent); color: #fff; }
+#room-list ul { list-style: none; margin: 0; padding: 4px; overflow-y: auto; }
+#room-list li button { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: 8px; background: none; font-size: 14px; text-align: left; cursor: pointer; }
+#room-list li button:hover { background: var(--accent-soft); }
+#room-list .dot { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 50%; }

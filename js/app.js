@@ -2033,7 +2033,7 @@ for (const f of [1, 2, 3]) {
     div.textContent = shortName(r);
     if (r.d > r.w * 1.6 && small && !r.grade) div.classList.add("vertical");
     div.addEventListener("pointerdown", (e) => e.stopPropagation());
-    div.addEventListener("click", (e) => { e.stopPropagation(); selectRoom(r, { fly: false }); });
+    div.addEventListener("click", (e) => { e.stopPropagation(); selectRoom(r, { close: true }); }); // 名前を押すと、その部屋に寄る（紹介を閉じると元にもどる）
     const obj = new CSS2DObject(div);
     obj.position.set(r.cx, y + 1.6, r.cz);
     r.label = div;
@@ -2315,7 +2315,25 @@ window.addEventListener("keydown", (e) => {
 function showTile(r, on) {
   for (const q of [r, ...ROOMS.filter((x) => x.kind === "part" && x.parent === r)]) if (q.mesh && !q.mesh.material.transparent) q.mesh.visible = on;
 }
-function selectRoom(r, { fly = true } = {}) {
+// 部屋に寄る前の見え方（紹介を閉じたときに、ここへ戻る）
+let returnView = null;
+function saveReturnView() {
+  if (returnView) return;
+  returnView = state.view === "2d" && state.floor !== 0
+    ? { is2d: true, pos: ortho.position.clone(), target: controls2d.target.clone(), zoom: ortho.zoom }
+    : { is2d: false, pos: persp.position.clone(), target: controls3d.target.clone() };
+}
+function restoreView() {
+  const v = returnView; returnView = null;
+  if (!v) return;
+  const now2d = state.view === "2d" && state.floor !== 0;
+  if (v.is2d !== now2d) return; // 見え方（3D／2D）を切りかえたあとは、戻さない
+  if (v.is2d) {
+    controls2d.target.copy(v.target); ortho.position.copy(v.pos); ortho.zoom = v.zoom; ortho.updateProjectionMatrix(); controls2d.update();
+  } else flyTo(v.pos, v.target);
+}
+function selectRoom(r, { fly = true, close = false } = {}) {
+  if (fly) saveReturnView();
   if (state.selected?.mesh) {
     showTile(state.selected, false);
     state.selected.mesh.material.emissive.setHex(0x000000);
@@ -2330,10 +2348,12 @@ function selectRoom(r, { fly = true } = {}) {
     if (state.view === "2d") {
       controls2d.target.set(r.wx, 0, r.wz);
       ortho.position.set(r.wx, 200, r.wz + 0.001);
-      ortho.zoom = Math.max(ortho.zoom, 1.6);
+      ortho.zoom = Math.max(ortho.zoom, close ? 2.8 : 1.6);
       ortho.updateProjectionMatrix();
     } else {
-      flyTo(new THREE.Vector3(r.wx + 10, base(r.floor) + 26, r.wz + 26), new THREE.Vector3(r.wx, base(r.floor), r.wz));
+      // close：部屋の大きさに合わせて、ぐっと近づく
+      const k = close ? Math.min(0.75, Math.max(0.28, Math.max(r.w, r.d) / 40)) : 1;
+      flyTo(new THREE.Vector3(r.wx + 10 * k, base(r.floor) + 26 * k, r.wz + 26 * k), new THREE.Vector3(r.wx, base(r.floor), r.wz));
     }
   }
   const cat = CATEGORIES[r.cat];
@@ -2365,6 +2385,7 @@ function selectRoom(r, { fly = true } = {}) {
 }
 
 function showWing(w) {
+  returnView = null;
   const rooms = ROOMS.filter((r) => r.wing === w && r.kind === "room" && r.cat !== "open" && !isStaffOnly(r));
   const byFloor = [1, 2, 3].map((f) => {
     const list = rooms.filter((r) => r.floor === f).sort((a, b) => a.name.localeCompare(b.name, "ja"));
@@ -2385,6 +2406,7 @@ function showWing(w) {
 }
 
 function showSite(it) {
+  returnView = null;
   panelBody.innerHTML = `
     <div class="chip" style="--c:#cfe3c4">屋外の施設</div>
     <h2>${it.name}</h2>
@@ -2397,7 +2419,7 @@ function showSite(it) {
 }
 
 function openPanel() { panel.classList.add("open"); document.body.classList.add("panel-open"); }
-function closePanel() {
+function closePanel({ restore = true } = {}) {
   panel.classList.remove("open");
   document.body.classList.remove("panel-open");
   if (state.selected?.mesh) {
@@ -2406,6 +2428,7 @@ function closePanel() {
   }
   state.selected = null;
   history.replaceState(null, "", location.pathname + location.search);
+  if (restore) restoreView(); else returnView = null;
 }
 
 panel.addEventListener("click", (e) => {
@@ -2492,8 +2515,36 @@ results.addEventListener("click", (e) => {
 });
 document.addEventListener("click", (e) => { if (!e.target.closest(".search-box")) results.hidden = true; });
 
+// ---------- 部屋一覧（右上の小さなボタン。ひらいたときだけ、階ごとの一覧が出る） ----------
+{
+  const btn = document.getElementById("rooms-btn"), box = document.getElementById("room-list");
+  let tab = 1;
+  const roomsOf = (f) => ROOMS.filter((r) => r.kind === "room" && r.cat !== "open" && !isStaffOnly(r) && r.floor === f).sort((a, b) => a.name.localeCompare(b.name, "ja", { numeric: true }));
+  const sitesOf = () => SITE_INFO.map((it, i) => ({ it, i })).filter(({ it }) => !it.key || SITE[it.key]);
+  const render = () => {
+    const tabs = [1, 2, 3, 0].map((f) => `<button data-tab="${f}" class="${f === tab ? "active" : ""}">${f ? f + "階" : "屋外"}</button>`).join("");
+    const items = tab
+      ? roomsOf(tab).map((r) => `<li><button data-room="${r.id}"><span class="dot" style="background:${CATEGORIES[r.cat].color}"></span>${r.name}</button></li>`).join("")
+      : sitesOf().map(({ it, i }) => `<li><button data-site="${i}"><span class="dot" style="background:#cfe3c4"></span>${it.name}</button></li>`).join("");
+    box.innerHTML = `<div class="tabs">${tabs}</div><ul>${items}</ul>`;
+  };
+  const setOpen = (on) => { box.hidden = !on; btn.setAttribute("aria-expanded", on); if (on) { tab = state.floor || tab; render(); } };
+  btn.addEventListener("click", (e) => { e.stopPropagation(); setOpen(box.hidden); });
+  box.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const t = e.target.closest("button");
+    if (!t) return;
+    if (t.dataset.tab !== undefined) { tab = Number(t.dataset.tab); render(); return; }
+    setOpen(false);
+    if (t.dataset.site !== undefined) { if (ex.on) setExplore(false); showSite(SITE_INFO[Number(t.dataset.site)]); return; }
+    selectRoom(ROOM_BY_ID[t.dataset.room], { close: true });
+  });
+  document.addEventListener("click", (e) => { if (!box.hidden && !e.target.closest("#room-list, #rooms-btn")) setOpen(false); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !box.hidden) setOpen(false); });
+}
+
 // ---------- ボタン類 ----------
-document.querySelectorAll(".floor-btn").forEach((b) => b.addEventListener("click", () => { closePanel(); setFloor(Number(b.dataset.floor)); }));
+document.querySelectorAll(".floor-btn").forEach((b) => b.addEventListener("click", () => { closePanel({ restore: false }); setFloor(Number(b.dataset.floor)); }));
 document.querySelectorAll(".view-btn").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
 let labelsOn = true;
 document.getElementById("labels-toggle").addEventListener("change", (e) => { labelsOn = e.target.checked; applyMode(); });

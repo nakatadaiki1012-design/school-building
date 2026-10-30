@@ -2800,8 +2800,8 @@ function build2FHall(grp) {
     const rc = rectOf({ c0: 38, r0: 32, c1: 41, r1: 46 }), L = rc.z1 - rc.z0, n = 5, x0 = rc.x0;
     const g = inBlock(grp, blockAtCell(38, 32));
     const add = (geos, mat) => { if (!geos.length) return; const m = new THREE.Mesh(mergeGeometries(geos), mat); m.castShadow = m.receiveShadow = true; g.add(m); };
-    // 床（展示スペースまで）
-    const fr = rectOf({ c0: 38, r0: 32, c1: 41, r1: 49 });
+    // 床（展示スペースの手前まで。展示スペースの床は、他の場所と同じ色）
+    const fr = rectOf({ c0: 38, r0: 32, c1: 41, r1: 46 });
     add([new THREE.BoxGeometry(fr.x1 - fr.x0 - 0.1, 0.02, fr.z1 - fr.z0 - 0.1).translate((fr.x0 + fr.x1) / 2, y + 0.02, (fr.z0 + fr.z1) / 2)], new THREE.MeshStandardMaterial({ color: 0x8b8379, roughness: 0.35, metalness: 0.05 }));
     const cols = [], benchBase = [], benchTop = [], boards = [], panels = [], beams = [], lamps = [], gb = [], glass = [], frames = [];
     const zs = Array.from({ length: n }, (_, i) => rc.z0 + (L * (i + 0.5)) / n);

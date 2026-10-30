@@ -435,6 +435,9 @@ const SHAPES = {
   ],
   wcDoorM: [[M(0x2f7f8a), merge([b(0.62, 2.0, 0.3, 0.17, 0), b(1.25, 0.12, 0.34, 0, 2.0), b(0.08, 2.12, 0.34, -0.6), b(0.08, 2.12, 0.34, 0.6)])], [MAT.transom, merge([b(0.06, 0.45, 0.32, 0.32, 1.25)])], [M(0xc9ccd0), merge([b(0.22, 0.28, 0.33, 0, 2.25)])], [M(0x1f3d7a), merge([b(0.06, 0.18, 0.34, 0, 2.3)])]],
   wcDoorF: [[M(0xc9787a), merge([b(0.62, 2.0, 0.3, 0.17, 0), b(1.25, 0.12, 0.34, 0, 2.0), b(0.08, 2.12, 0.34, -0.6), b(0.08, 2.12, 0.34, 0.6)])], [MAT.transom, merge([b(0.06, 0.45, 0.32, 0.32, 1.25)])], [M(0xc9ccd0), merge([b(0.22, 0.28, 0.33, 0, 2.25)])], [M(0xc23b3b), merge([b(0.08, 0.18, 0.34, 0, 2.3)])]],
+  // パイプいすを折りたたんで、壁に立てかけて積んだ山（黒い座面・背もたれと、銀色のパイプ。7脚）
+  chairStack: [[MAT.black, merge(Array.from({ length: 7 }, (_, i) => b(0.05, 0.8, 0.42).rotateZ(-0.22).translate(0, 0, (i - 3) * 0.12)))],
+    [MAT.metal, merge(Array.from({ length: 7 }, (_, i) => [-0.2, 0.2].map((dz) => b(0.03, 0.85, 0.03, 0.03, 0, dz).rotateZ(-0.22).translate(0, 0, (i - 3) * 0.12))).flat())]],
   // キャスターつきの台にのせた大きなテレビ
   tvStand: [[MAT.black, merge([b(0.08, 0.75, 1.3, 0, 1.15), b(0.06, 1.15, 0.06, 0.05, 0), b(0.5, 0.04, 0.6, 0.05, 0.05)])]],
   // 台にのった地球儀
@@ -834,6 +837,8 @@ function theater(out, R) {
   out.push({ t: "bigScreen", x: x0 + 0.04, z: cz, rot: 0 });
   out.push({ t: "podium", x: x0 + 0.65, z: cz, rot: 0, len: (W - 1.0) / 4.4 });
   out.push({ t: "lectern", x: x0 + 1.4, z: z0 + 1.6, rot: 0, y: 0.18 });
+  // 壁ぎわに積んだパイプいす（写真：前の両はし）
+  for (const [x, z, r] of [[x0 + 2.2, z0 + 0.45, 0], [x0 + 3.0, z0 + 0.45, 0], [x0 + 2.4, z1 - 0.45, Math.PI], [x0 + 1.6, z1 - 0.45, Math.PI]]) out.push({ t: "chairStack", x, z, rot: r });
   const xs = x0 + (x1 - x0) * 0.5, xe = x1 - 0.5, n = 5, step = (xe - xs) / n;
   for (let i = 0; i < n; i++) {
     const xa = xs + step * i, h = 0.2 * (i + 1);

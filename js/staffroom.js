@@ -174,7 +174,7 @@ wall(14.4, -2.5, 14.4, 0, [[0.45, 1.35, 0, 2.05]]); // 西：廊下のつきあ�
 // 西の壁（写真）：下は水色、上は灰色がかった白。腰壁は 1.45m と高め
 const wallBlue = M(0xc7dde0, { roughness: 0.8 }), wallGrey = M(0xe3dfdb, { roughness: 0.9 });
 wall(0, 0, 0, 7.4, [[0.45, 1.35, 0, 2.05]], 0.15, { H: 1.45, lo: wallBlue, hi: wallGrey }); // 西：印刷室への入口（あけたまま）
-wall(24, -2.5, 24, 7.4, [[0.7, 1.6, 0, 2.05], [3.0, 9.3, 1.1, 2.45]]); // 東：外への出入口と窓
+wall(24, -2.5, 24, 7.4, [[0.7, 1.6, 0, 2.05], [3.0, 3.9, 1.1, 2.45], [7.8, 9.3, 1.1, 2.45]]); // 東：外への出入口と窓（ロッカーと棚のあいだ z=1.4〜5.3 は壁で窓なし）
 wall(0, 7.4, 24, 7.4, [[0.4, 4.4, 0.85, 2.55], [5.2, 9.2, 0.85, 2.55], [10.0, 14.0, 0.85, 2.55], [14.8, 18.8, 0.85, 2.55], [19.6, 23.6, 0.85, 2.55]]); // 南：窓
 
 // 窓（南と東）：アルミの枠とガラス、真ん中の桟、両はしにまとめたカーテン
@@ -197,7 +197,7 @@ wall(0, 7.4, 24, 7.4, [[0.4, 4.4, 0.85, 2.55], [5.2, 9.2, 0.85, 2.55], [10.0, 14
     }
   };
   for (const [a, b] of [[0.4, 4.4], [5.2, 9.2], [10.0, 14.0], [14.8, 18.8], [19.6, 23.6]]) win(a, b, 7.4, 0.85, 2.55);
-  win(0.5, 6.8, 24, 1.1, 2.45, false);
+  win(0.5, 1.4, 24, 1.1, 2.45, false); win(5.3, 6.8, 24, 1.1, 2.45, false); // 東の窓：ロッカーと棚の壁はあけない
   add(fr, alu); const gm = add(gl, glass, false); gm.receiveShadow = false; add(cu, curtain, false);
   // 窓台（白い板）
   add([0.4, 5.2, 10.0, 14.8, 19.6].map((a) => B(4.0, 0.03, 0.22, a + 2.0, 0.84, 7.28)), M(0xf1efe9, { roughness: 0.5 }));
@@ -271,6 +271,9 @@ const chairKit = kit(chairParts);
 const cabKit = kit([[steelG, R(0.9, 1.12, 0.45, 0, 0.03, 0, 0.008)], [steelW, B(0.44, 1.0, 0.012, -0.22, 0.08, 0.226)], [steelW, B(0.44, 1.0, 0.012, 0.22, 0.08, 0.235)], [steelD, B(0.015, 0.12, 0.02, -0.05, 0.55, 0.24)], [steelD, B(0.015, 0.12, 0.02, 0.05, 0.55, 0.245)], [steelD, B(0.9, 0.03, 0.42, 0, 0, 0)]]);
 // 窓の下の低い棚（高さ 0.8m）と、背の高い保管庫
 const lowKit = kit([[steelG, B(0.9, 0.78, 0.4, 0, 0.02, 0)], [steelW, B(0.44, 0.68, 0.012, -0.22, 0.06, 0.2)], [steelW, B(0.44, 0.68, 0.012, 0.22, 0.06, 0.21)], [steelD, B(0.9, 0.02, 0.38, 0, 0, 0)]]);
+// 少し背の高いロッカー（高さ 1.5m。管理職の机のうしろ。窓の下の低い棚より高く、保管庫より低い）
+const midKit = kit([[steelG, R(0.9, 1.5, 0.45, 0, 0, 0, 0.008)], [steelW, B(0.44, 1.4, 0.012, -0.22, 0.05, 0.226)], [steelW, B(0.44, 1.4, 0.012, 0.22, 0.05, 0.226)],
+  [steelD, B(0.02, 0.2, 0.02, -0.03, 0.75, 0.24)], [steelD, B(0.02, 0.2, 0.02, 0.03, 0.75, 0.24)], [steelD, B(0.36, 0.02, 0.01, -0.22, 1.2, 0.234)], [steelD, B(0.36, 0.02, 0.01, 0.22, 1.2, 0.234)]]);
 const tallKit = kit([[steelG, R(0.9, 1.8, 0.45, 0, 0, 0, 0.008)], [steelW, B(0.44, 1.7, 0.012, -0.22, 0.05, 0.226)], [steelW, B(0.44, 1.7, 0.012, 0.22, 0.05, 0.226)], [steelD, B(0.02, 0.2, 0.02, -0.03, 0.9, 0.24)], [steelD, B(0.02, 0.2, 0.02, 0.03, 0.9, 0.24)], [steelD, B(0.25, 0.08, 0.01, -0.22, 1.5, 0.235)], [steelD, B(0.25, 0.08, 0.01, 0.22, 1.5, 0.235)]]);
 
 // 座る人の向き（face）→ 机の rot（座る人は机の +z 側。N：北を向く＝机の北に座る人ではなく、机の南に座って北を向く）
@@ -327,14 +330,16 @@ const VD = 0.85, VZ = 5.4; // 奥行きと、まん中の z
   place(papersKit, [{ x: 17.3, z: VZ + 0.2, y: DH, rot: 0.3 }]);
 }
 // 北の壁ぎわの戸棚（引き違い）と、1年・2年の北の列のうしろの戸棚
-const cabs = [], lows = [], talls = [];
+const cabs = [], lows = [], talls = [], mids = [];
 for (const x of [5.98, 6.9]) cabs.push({ x, z: 0.38, rot: 0 }); // X8の柱の東：白い引き違いの戸棚2台（写真）
 for (const [a, b] of [[3.4, 7.5], [8.2, 11.9], [12.8, 16.9]]) for (let x = a + 0.45; x <= b - 0.4; x += 0.92) cabs.push({ x, z: 1.95, rot: Math.PI });
 // 南の窓の下の低い棚（柱のところはあける）
-for (const [a, b] of [[2.5, 4.3], [5.3, 9.1], [10.1, 13.9], [14.9, 18.7], [19.7, 23.5]]) for (let x = a + 0.45; x <= b - 0.4; x += 0.92) lows.push({ x, z: 7.05, rot: Math.PI });
+// 教頭・副校長の机のうしろ（x 16〜20.5）だけは、少し背高めのロッカー
+for (const [a, b] of [[2.5, 4.3], [5.3, 9.1], [10.1, 13.9], [14.9, 18.7], [19.7, 23.5]]) for (let x = a + 0.45; x <= b - 0.4; x += 0.92) (x > 16 && x < 20.5 ? mids : lows).push({ x, z: 7.05, rot: Math.PI });
 // 東の壁ぎわの戸棚（窓の下）
 for (let z = 5.8; z <= 6.3; z += 0.92) talls.push({ x: 23.7, z, rot: -Math.PI / 2 });
-place(cabKit, cabs.concat(talls)); place(lowKit, lows); // 東の壁ぎわも、窓の下にかくれる高さの戸棚
+talls.push({ x: 23.7, z: 4.9, rot: -Math.PI / 2 }); // ロッカーのとなり：ホワイトボードがついた引き違い戸の棚
+place(cabKit, cabs.concat(talls)); place(lowKit, lows); place(midKit, mids); // 東の壁ぎわも、窓の下にかくれる高さの戸棚
 // 写真：3年側の東の壁ぞいの、白い郵便受けつきロッカー（4列×4段。扉の上に細い投入口、名札、ダイヤル錠。左はしに高い白い側板、右は引き違い戸の棚とホワイトボード）
 {
   const lw = M(0xf1f1ee, { roughness: 0.35 }), slot = M(0x16181a), dial = M(0xe4e4e0, { roughness: 0.4 });
@@ -352,6 +357,13 @@ place(cabKit, cabs.concat(talls)); place(lowKit, lows); // 東の壁ぎわも、
   // 東の壁（x = 24）に背を向け、正面は西（-x 向き）
   const g = kit(parts);
   for (const [m, geo] of g) { const im = new THREE.Mesh(geo, m); im.position.set(23.72, 0, zc0); im.castShadow = im.receiveShadow = true; scene.add(im); }
+}
+// 東の壁：棚の上のホワイトボード（アルミの枠、ペン置き、うすい文字）
+{
+  const zc = 4.9, w = 1.3, h = 0.85, y = 1.3, x = 23.93;
+  const wb = tex(512, 336, (g, W, H) => { g.fillStyle = "#fbfbf9"; g.fillRect(0, 0, W, H); g.fillStyle = "#2a5db0"; g.font = "bold 30px sans-serif"; g.fillText("連絡", 24, 46); g.strokeStyle = "#999"; g.lineWidth = 2; for (let i = 0; i < 5; i++) { g.beginPath(); g.moveTo(24, 92 + i * 52); g.lineTo(W - 24, 92 + i * 52); g.stroke(); } g.fillStyle = "#c0392b"; g.font = "22px sans-serif"; g.fillText("職員会議  16:00", 40, 82); });
+  const pl = new THREE.Mesh(new THREE.PlaneGeometry(w, h).rotateY(-Math.PI / 2), M(0xffffff, { map: wb, roughness: 0.3 })); pl.position.set(x, y + h / 2, zc); scene.add(pl);
+  add([B(0.03, 0.03, w + 0.05, x, y - 0.03, zc), B(0.03, 0.03, w + 0.05, x, y + h, zc), B(0.03, h + 0.06, 0.03, x, y - 0.03, zc - w / 2 - 0.015), B(0.03, h + 0.06, 0.03, x, y - 0.03, zc + w / 2 + 0.015), B(0.06, 0.02, w * 0.8, x - 0.02, y - 0.05, zc)], alu);
 }
 // 写真：机の上の銀色の電源タップ
 {
@@ -608,7 +620,7 @@ const tags = [tag("1年", "#c2549a", 6.5, 1.6, 4.0), tag("2年", "#2b8fb4", 12.8
 const solids = [];
 const box2 = (x, z, w, d) => solids.push([x - w / 2, x + w / 2, z - d / 2, z + d / 2]);
 for (const d of desks) { const along = Math.abs(Math.sin(d.rot)) < 0.5; box2(d.x, d.z, along ? DW : DD, along ? DD : DW); }
-for (const c of [...cabs, ...lows, ...talls]) { const along = Math.abs(Math.sin(c.rot)) < 0.5; box2(c.x, c.z, along ? 0.9 : 0.45, along ? 0.45 : 0.9); }
+for (const c of [...cabs, ...lows, ...mids, ...talls]) { const along = Math.abs(Math.sin(c.rot)) < 0.5; box2(c.x, c.z, along ? 0.9 : 0.45, along ? 0.45 : 0.9); }
 for (const x of [0, 4.8, 9.6, 14.4, 19.2, 24]) box2(x, 7.25, 0.76, 0.66);
 for (const x of [0, 4.8, 9.6, 14.4, 24]) box2(x, 0.15, 0.76, 0.66);
 box2(19.2, 0.1, 0.76, 0.76); for (const x of [14.4, 19.2, 24]) box2(x, -2.35, 0.76, 0.5);

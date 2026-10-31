@@ -358,7 +358,16 @@ const SHAPES = {
   grayShelf: [[M(0x9ea4aa, { roughness: 0.5, metalness: 0.2 }), merge([b(0.9, 1.7, 0.5), ...[0.4, 0.8, 1.2].map((y) => b(0.96, 0.03, 0.54, 0, y))])],
     [M(0x4b5056, { roughness: 0.8 }), merge([0.08, 0.5, 0.9, 1.3].flatMap((y) => [b(0.8, 0.28, 0.02, 0, y, 0.25), b(0.8, 0.28, 0.02, 0, y, -0.25)]))]],
   // 木のベンチ・丸いテーブル
-  // 応接室の長い机（真ん中があいている）。南北（z）に長い。天板の高さ 0.7m
+  // 応接室（写真）：明るい木の長机を「ロ」の字にならべる（真ん中があいている。角は四角）。外の大きさ 3.0m×4.6m、机の幅 0.6m
+  squareTable: (() => {
+    const W = 3.0, D = 4.6, t = 0.6, y = 0.68;
+    const top = [b(W, 0.04, t, 0, y, -D / 2 + t / 2), b(W, 0.04, t, 0, y, D / 2 - t / 2), b(t, 0.04, D - 2 * t, -W / 2 + t / 2, y), b(t, 0.04, D - 2 * t, W / 2 - t / 2, y)];
+    const lg = [];
+    for (const x of [-W / 2 + 0.1, W / 2 - 0.1]) for (const z of [-D / 2 + 0.1, -0.8, 0.8, D / 2 - 0.1]) lg.push(b(0.05, y, 0.05, x, 0, z));
+    return [[M(0xd8b98a, { roughness: 0.45 }), merge(top)], [MAT.metal, merge(lg)]];
+  })(),
+  blueChair: [[M(0x2d5fc4, { roughness: 0.6 }), merge([b(0.45, 0.08, 0.45, 0, 0.44), b(0.08, 0.5, 0.42, 0.22, 0.5)])], [MAT.black, merge([b(0.05, 0.44, 0.05), b(0.5, 0.04, 0.06), b(0.06, 0.04, 0.5)])]],
+  // 応接室の長い机（真ん中があいている）。南北（z）に長い。天板の高さ 0.7m（いまは使っていない）
   ovalTable: (() => {
     // 長い辺はまっすぐ、両はしは半円（陸上トラックの形）。真ん中はあいている
     const track = (P, r, h) => { P.moveTo(r, -h); P.lineTo(r, h); P.absarc(0, h, r, 0, Math.PI, false); P.lineTo(-r, -h); P.absarc(0, -h, r, Math.PI, Math.PI * 2, false); };
@@ -536,14 +545,17 @@ const SHAPES = {
   laptop: [[MAT.black, merge([b(0.25, 0.02, 0.34, 0, 0.76), b(0.02, 0.22, 0.34, -0.12, 0.77)])]],
   urinal: [[MAT.white, merge([b(0.32, 0.65, 0.38, 0, 0.4)])]],
   mirror: [[MAT.mirror, merge([b(0.02, 0.8, 1.6, 0, 1.15)])]],
-  stageCurtain: [[MAT.red, merge([b(0.25, 3.8, 1.0)])]],
+  stageCurtain: [[MAT.curtainDark, merge([b(0.3, 4.2, 1.0)])]],
   // 体育館の壁ぞいにたらした緑のネット、壁につけたバスケットのゴール
   gymNet: [[MAT.greenNet, merge([b(0.05, 6.0, 1.0, 0, 0.3)])]],
   lectern: [[MAT.darkWood, merge([b(0.5, 1.1, 0.7)])]],
   // ステージまわり（len で横の長さをのばす。rot: π/2 で東西向き）
-  stageHeader: [[MAT.stageWood, merge([b(0.5, 0.35, 1.0, 0, 5.2)])], [MAT.red, merge([b(0.12, 0.6, 1.0, 0.2, 4.6)])]], // 舞台の上の木の額ぶちと、赤い横幕（写真）
-  stageBackdrop: [[MAT.white, merge([b(0.12, 3.6, 1.0)])]],   // 奥の白い壁（幕は開けてある）
-  stageValance: [[MAT.red, merge([b(0.15, 0.6, 1.0, 0, 3.7)])]],     // 上の横幕
+  stageHeader: [[MAT.stageWood, merge([b(0.5, 0.35, 1.0, 0, 5.2)])], [MAT.curtainDark, merge([b(0.12, 0.6, 1.0, 0.2, 4.6)])]], // 舞台の上の木の額ぶちと、えんじ色の横幕（写真）
+  stageBackdrop: [[M(0x8e9294, { roughness: 1 }), merge([b(0.12, 3.6, 1.0)])]],   // 奥の灰色の幕（写真）
+  stageValance: [[MAT.curtainDark, merge([b(0.15, 1.3, 1.0, 0, 3.0)])]],     // 上の横幕（えんじ色で背が高い。写真）
+  stageEmblem: [[M(0xc9a23a, { roughness: 0.4, metalness: 0.6 }), merge([b(0.05, 0.45, 0.45, -0.1, 3.4)])]], // 横幕の校章（金色）
+  stageScreen: [[M(0xf6f6f2, { emissive: 0x333333 }), merge([b(0.03, 1.9, 2.6, 0, 0.9)])], [MAT.black, merge([b(0.05, 0.06, 2.7, 0, 2.8)])]], // つるしたスクリーン
+  stagePodium: [[M(0xf0f0ec), merge([b(0.45, 0.95, 0.6)])]], // 白い小さな演台
   stageSteps: [[MAT.darkWood, merge([b(0.9, 0.33, 1.2, 0, 0), b(0.6, 0.33, 1.2, -0.15, 0.33), b(0.3, 0.33, 1.2, -0.3, 0.66)])]],
   stagePillar: [[MAT.stageWood, merge([b(0.4, 5.55, 0.35)])]], // 木の額ぶちの柱
   flowerStand: [[MAT.darkWood, merge([b(0.4, 0.8, 0.4)])], [MAT.green, merge([b(0.7, 0.5, 0.7, 0, 0.8)])], [MAT.pink, merge([b(0.5, 0.25, 0.5, 0, 1.3)])]],
@@ -996,9 +1008,10 @@ function stage(out, R) {
   // 舞台の口の額ぶち（両はしの柱と上の梁）。体育館の床から立つ
   out.push({ t: "stagePillar", x: x0 - 0.3, z: z1 + 0.1, rot: 0, y: -0.15 }, { t: "stagePillar", x: x1 + 0.3, z: z1 + 0.1, rot: 0, y: -0.15 });
   out.push({ t: "stageHeader", x: cx, z: z1 + 0.1, rot: P, y: -0.15, len: W + 1.6 });
-  // 演台と、両わきの花
-  out.push({ t: "lectern", x: cx, z: z1 - 1.3, rot: -P, y: top });
-  out.push({ t: "flowerStand", x: cx - 2.2, z: z1 - 0.9, rot: 0, y: top }, { t: "flowerStand", x: cx + 2.2, z: z1 - 0.9, rot: 0, y: top });
+  // 横幕の校章、まんなかにつるしたスクリーン、右はしに白い小さな演台（写真）
+  out.push({ t: "stageEmblem", x: cx, z: z1 - 0.3, rot: P, y: top });
+  out.push({ t: "stageScreen", x: cx, z: z1 - 1.8, rot: P, y: top + 0.4 });
+  out.push({ t: "stagePodium", x: x1 - 3.0, z: z1 - 1.0, rot: 0, y: top });
   // 体育館の床からステージへ上がる階段（左右のはし）
   out.push({ t: "stageSteps", x: x0 + 1.2, z: z1 + 0.65, rot: P, y: -0.15 }, { t: "stageSteps", x: x1 - 1.2, z: z1 + 0.65, rot: P, y: -0.15 });
 }
@@ -1205,16 +1218,13 @@ const LAYOUTS = [
   [/職員室|事務室/, (o, R) => office(o, R)],
   [/会議室/, meeting],
   [/校長室/, principal],
-  // 応接室：南北に長い机（長い辺はまっすぐ、両はしは半円、真ん中があいている）と、まわりの椅子
+  // 応接室（写真）：明るい木の長机を「ロ」の字にならべ、まわりに青いいす（みんな机のほうを向く）。壁に額がならぶ
   [/応接室/, (o, R) => {
     const cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2;
-    o.push({ t: "ovalTable", x: cx, z: cz, rot: 0 });
-    // 長い辺（東と西）に5脚ずつ、両はしの半円に3脚ずつ。みんな机のほうを向く
-    for (const sx of [-1, 1]) for (let k = 0; k < 5; k++) { const z = cz - 1.4 + k * 0.7; o.push({ t: "officeChair", x: cx + sx * 1.6, z, rot: sx > 0 ? 0 : Math.PI }); }
-    for (const sz of [-1, 1]) for (const a0 of [-0.75, 0, 0.75]) {
-      const a = sz * (Math.PI / 2) + a0;
-      o.push({ t: "officeChair", x: cx + Math.cos(a) * 1.6, z: cz + sz * 1.4 + Math.sin(a) * 1.6, rot: -a });
-    }
+    o.push({ t: "squareTable", x: cx, z: cz, rot: 0 });
+    for (const sx of [-1, 1]) for (const dz of [-1.5, -0.75, 0, 0.75, 1.5]) o.push({ t: "blueChair", x: cx + sx * 1.85, z: cz + dz, rot: sx > 0 ? 0 : Math.PI });
+    for (const sz of [-1, 1]) for (const dx of [-0.8, 0, 0.8]) o.push({ t: "blueChair", x: cx + dx, z: cz + sz * 2.65, rot: sz < 0 ? Math.PI / 2 : -Math.PI / 2 });
+    o.push({ t: "frameRow", x: cx, z: R.z0 + 0.05, rot: 0 });
   }],
   [/保健室/, infirmary],
   // 売店：西の廊下側に窓口。窓口の内側にカウンター、奥（東）の壁ぞいに商品の棚

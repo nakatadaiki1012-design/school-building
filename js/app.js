@@ -63,7 +63,7 @@ const splitRooms = ROOMS_RAW.filter((r) => r.name !== "窯").flatMap((r) => { //
   const sp = ROOM_SPLITS.find((x) => x.name === r.name && x.floor === r.floor && x.r0 === r.r0);
   if (!sp) return [r];
   const w = (r.c1 - r.c0 + 1) / sp.n;
-  return Array.from({ length: sp.n }, (_, i) => ({ ...r, id: `${r.id}-${i + 1}`, name: `${r.name}${i + 1}`, c0: r.c0 + w * i, c1: r.c0 + w * (i + 1) - 1 }));
+  return Array.from({ length: sp.n }, (_, i) => ({ ...r, id: `${r.id}-${i + 1}`, name: sp.names?.[i] ?? `${r.name}${i + 1}`, c0: r.c0 + w * i, c1: r.c0 + w * (i + 1) - 1 }));
 });
 const ROOMS = [...splitRooms, ...EXTRA_ROOMS].map((r) => {
   const ed = ROOM_EDITS.find((e) => e.name === r.name && e.floor === r.floor && (e.at === undefined || e.at === r.c0) && (e.atR === undefined || e.atR === r.r0)); // atR：図面の上の行で区別

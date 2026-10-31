@@ -2371,15 +2371,15 @@ function selectRoom(r, { fly = true, close = false } = {}) {
   `;
   openPanel();
   history.replaceState(null, "", `#room=${r.id}`);
-  // シークレット：職員室の名前を5回つづけて押すと、職員室のくわしいモデルのページへ
-  if (r.name === "職員室") {
+  // シークレット：職員室・印刷室の名前を5回つづけて押すと、職員室のくわしいモデルのページへ（印刷室は、となりの印刷室を見た状態で開く）
+  if (r.name === "職員室" || (r.name === "印刷室" && r.floor === 2)) {
     const h = panelBody.querySelector("h2");
     let n = 0, t = 0;
     h.addEventListener("click", () => {
       const now = performance.now();
       n = now - t < 1500 ? n + 1 : 1; t = now;
       h.style.transform = `scale(${1 + n * 0.03})`;
-      if (n >= 5) location.href = "staffroom.html";
+      if (n >= 5) location.href = r.name === "印刷室" ? "staffroom.html#print" : "staffroom.html";
     });
   }
 }

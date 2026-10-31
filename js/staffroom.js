@@ -925,6 +925,12 @@ function go(name, ms = 900) {
 document.querySelectorAll(".views .btn[data-v]").forEach((b) => b.addEventListener("click", () => { setWalk(false); go(b.dataset.v); }));
 camera.position.set(...VIEWS.walk[0]); controls.target.set(...VIEWS.walk[1]);
 document.querySelector('.views .btn[data-v="walk"]').classList.add("active");
+// 印刷室から来たとき（#print）：はじめから印刷室を見て、「マップにもどる」は印刷室の紹介へ
+if (location.hash === "#print") {
+  camera.position.set(...VIEWS.print[0]); controls.target.set(...VIEWS.print[1]);
+  document.querySelectorAll(".views .btn[data-v]").forEach((b) => b.classList.toggle("active", b.dataset.v === "print"));
+  document.querySelector("a.back").href = "./#room=F2-AV126";
+}
 
 // ---------- 操作（長い部屋でも動かしやすく） ----------
 // ・ドラッグで回す中心は、部屋の真ん中ではなく「いま画面のまん中に見えている所」（部屋の中では目の前 2m ほど）

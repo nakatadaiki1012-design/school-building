@@ -499,6 +499,7 @@ export const ROOM_EDITS = [
   { name: "コンピューター教室", floor: 3, set: { photos: ["images/computer-1.jpg", "images/computer-2.jpg"] } },
   { name: "オーラル教室", floor: 3, set: { photos: ["images/oral-1.jpg", "images/oral-2.jpg"] } },
   { name: "ウエイトルーム", floor: 2, set: { photos: ["images/weight-1.jpg", "images/weight-2.jpg", "images/weight-3.jpg", "images/weight-4.jpg", "images/weight-5.jpg"] } }, // 体育館のステージ裏のトレーニングルーム（写真）
+  { name: "武道場", floor: 1, set: { photos: ["images/budojo-1.jpg", "images/budojo-2.jpg"] } },
   { name: "作法室", floor: 3, set: { photos: ["images/sahou-1.jpg", "images/sahou-2.jpg", "images/sahou-3.jpg", "images/sahou-4.jpg"] } },
   // 視聴覚準備室は細い（南の1行は、階段を上がった先の高い通路になる）
   { name: "準備室", floor: 3, set: { r1: 24 } },

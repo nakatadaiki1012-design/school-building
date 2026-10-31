@@ -430,6 +430,10 @@ const SHAPES = {
   meetTable: [[M(0x9a5a34, { roughness: 0.5 }), merge([b(0.9, 0.04, 1.8, 0, 0.7)])], [MAT.metal, merge(legs(0.85, 1.75, 0.7, 0.04))]],
   grayChair: [[M(0x9ea3ad, { roughness: 0.9 }), merge([b(0.48, 0.1, 0.48, 0, 0.42), b(0.08, 0.55, 0.42, 0.22, 0.5)])], [MAT.black, merge([b(0.05, 0.4, 0.05), b(0.55, 0.04, 0.06), b(0.06, 0.04, 0.55), b(0.4, 0.04, 0.05, 0, 0.62, 0.24), b(0.4, 0.04, 0.05, 0, 0.62, -0.24)])]],
   whiteShelf: [[M(0xece4ee, { roughness: 0.6 }), merge([b(0.35, 0.03, 0.9), b(0.35, 0.03, 0.9, 0, 0.45), b(0.35, 0.03, 0.9, 0, 0.9), b(0.35, 0.03, 0.9, 0, 1.35), b(0.35, 0.03, 0.9, 0, 1.75), b(0.35, 1.78, 0.03, 0, 0, -0.45), b(0.35, 1.78, 0.03, 0, 0, 0.45), b(0.02, 1.78, 0.9, 0.17)])]],
+  // 武道場（写真）：床の白いライン（細い帯。len で長さ）、紺色の大きな旗、壁の額
+  floorLine: [[M(0xf4f4f0, { roughness: 0.6 }), merge([b(1, 0.02, 0.07, 0, 0.03)])]],
+  dojoBanner: [[M(0x1f2a52, { roughness: 0.9 }), merge([b(1.6, 1.9, 0.03, 0, 0.9)])], [M(0xf2f2ee), merge([b(0.5, 0.5, 0.035, 0.25, 1.9), b(0.5, 0.5, 0.035, 0.25, 1.25)])]],
+  frameRow: [[M(0x5a4a3a, { roughness: 0.6 }), merge(Array.from({ length: 8 }, (_, i) => b(0.3, 0.38, 0.03, (i - 3.5) * 0.45, 1.75)))], [M(0xeeeeea), merge(Array.from({ length: 8 }, (_, i) => b(0.24, 0.3, 0.035, (i - 3.5) * 0.45, 1.79)))]],
   airPurifier: [[M(0xf6f6f4, { roughness: 0.4 }), merge([b(0.3, 0.65, 0.4)])], [M(0xdcdcd8), merge([b(0.31, 0.04, 0.3, 0, 0.62)])]],
   fan: [[M(0xf4f2ec), merge([new THREE.CylinderGeometry(0.2, 0.2, 0.03, 12).translate(0, 0.015, 0), b(0.03, 1.1, 0.03), new THREE.CylinderGeometry(0.2, 0.2, 0.05, 16).rotateZ(Math.PI / 2).translate(-0.05, 1.2, 0)])], [M(0xe58a3c), merge([new THREE.CylinderGeometry(0.17, 0.17, 0.01, 8).rotateZ(Math.PI / 2).translate(-0.12, 1.2, 0)])]],
   sickBook: [[M(0xcfd6d8), merge([b(0.03, 0.5, 1.4, 0, 1.2)])]],
@@ -1352,6 +1356,17 @@ const LAYOUTS = [
   }],
   // らくらくスペース（写真）：窓（北）の下に青いソファと空気清浄機、北西のすみに事務机。まんなかに木目の机と、灰色のいすが6つ。
   // 東の壁ぞいに白い棚。入口（南）のそばに、目かくしのついたて
+  // 武道場（写真）：木の床に、試合場の白いライン（正方形が2つ）。壁に紺色の旗と、額がならぶ
+  [/^武道場$/, (o, R) => {
+    const W = R.x1 - R.x0, cz = (R.z0 + R.z1) / 2, S = Math.min(10, R.z1 - R.z0 - 2, W / 2 - 1.5);
+    for (const cx of [R.x0 + W * 0.27, R.x0 + W * 0.73]) {
+      o.push({ t: "floorLine", x: cx, z: cz - S / 2, rot: 0, sx: S }, { t: "floorLine", x: cx, z: cz + S / 2, rot: 0, sx: S });
+      o.push({ t: "floorLine", x: cx - S / 2, z: cz, rot: Math.PI / 2, sx: S }, { t: "floorLine", x: cx + S / 2, z: cz, rot: Math.PI / 2, sx: S });
+      o.push({ t: "floorLine", x: cx, z: cz, rot: 0, sx: 0.5 }); // まんなかの短い線
+    }
+    o.push({ t: "dojoBanner", x: R.x0 + 3, z: R.z0 + 0.05, rot: 0 });
+    o.push({ t: "frameRow", x: R.x0 + 7.5, z: R.z0 + 0.05, rot: 0 });
+  }],
   [/らくらくスペース/, (o, R) => {
     const cx = (R.x0 + R.x1) / 2 - 0.4, cz = (R.z0 + R.z1) / 2 + 0.4;
     o.push({ t: "meetTable", x: cx, z: cz, rot: 0 });

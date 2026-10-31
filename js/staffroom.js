@@ -146,6 +146,8 @@ const ceiling = new THREE.Group();
 }
 // 壁：下の 1.0m は茶色っぽいベージュ、上はクリーム色（写真）。開口部（窓・ドア）はあけて作る
 // o：{ H：腰壁の高さ, lo：下の色, hi：上の色 }
+// 外から見るとき、手前の壁を消すために、壁ごとに覚えておく（下の「壁の透過」）
+const WALLS = [], WALL_EXTRAS = [];
 function wall(ax, az, bx, bz, holes = [], t = 0.15, o = {}) {
   const L = Math.hypot(bx - ax, bz - az), ang = Math.atan2(bz - az, bx - ax), H = o.H ?? 1.0;
   const lo = [], hi = [];
@@ -155,12 +157,14 @@ function wall(ax, az, bx, bz, holes = [], t = 0.15, o = {}) {
   for (const [h0, h1, hy0, hy1] of cuts) { seg(u, h0, 0, H); seg(u, h0, H, CEIL); if (hy0 > 0) { seg(h0, h1, 0, Math.min(H, hy0)); if (hy0 > H) seg(h0, h1, H, hy0); } seg(h0, h1, Math.max(H, hy1), CEIL); if (hy1 < H) seg(h0, h1, hy1, H); u = h1; }
   seg(u, L, 0, H); seg(u, L, H, CEIL);
   const tr = (g) => g.rotateY(-ang).translate(ax, 0, az);
-  if (lo.length) add(lo.map(tr), o.lo || wallLow);
-  if (hi.length) add(hi.map(tr), o.hi || wallUp);
+  const ms = [];
+  if (lo.length) ms.push(add(lo.map(tr), o.lo || wallLow));
+  if (hi.length) ms.push(add(hi.map(tr), o.hi || wallUp));
+  WALLS.push({ ax, az, bx, bz, ms });
   return { L, ang };
 }
 // 柱（配置図の黒い四角。0.76m 角）。下は茶色、上はクリーム
-const pillar = (x, z, w = 0.76, d = 0.76) => { add([B(w, 1.0, d, x, 0, z)], wallLow); add([B(w, CEIL - 1.0, d, x, 1.0, z)], wallUp); };
+const pillar = (x, z, w = 0.76, d = 0.76) => { WALL_EXTRAS.push(add([B(w, 1.0, d, x, 0, z)], wallLow), add([B(w, CEIL - 1.0, d, x, 1.0, z)], wallUp)); };
 for (const x of [0, 4.8, 9.6, 14.4, 19.2, 24]) pillar(x, 7.4 - 0.15, 0.76, 0.66); // 南の窓の柱
 for (const x of [0, 4.8, 9.6, 14.4, 24]) pillar(x, 0.15, 0.76, 0.66);                  // 北の柱
 pillar(19.2, 0.1);                                                               // 共用スペースの独立柱（空調）
@@ -197,9 +201,9 @@ wall(0, 7.4, 24, 7.4, [[0.4, 4.4, 0.85, 2.55], [5.2, 9.2, 0.85, 2.55], [10.0, 14
     }
   };
   for (const [a, b] of [[0.4, 4.4], [5.2, 9.2], [10.0, 14.0], [14.8, 18.8], [19.6, 23.6]]) win(a, b, 7.4, 0.85, 2.55);
-  add(fr, alu); const gm = add(gl, glass, false); gm.receiveShadow = false; add(cu, curtain, false);
+  const fm = add(fr, alu), gm = add(gl, glass, false), cm2 = add(cu, curtain, false); gm.receiveShadow = false; WALL_EXTRAS.push(fm, gm, cm2);
   // 窓台（白い板）
-  add([0.4, 5.2, 10.0, 14.8, 19.6].map((a) => B(4.0, 0.03, 0.22, a + 2.0, 0.84, 7.28)), M(0xf1efe9, { roughness: 0.5 }));
+  WALL_EXTRAS.push(add([0.4, 5.2, 10.0, 14.8, 19.6].map((a) => B(4.0, 0.03, 0.22, a + 2.0, 0.84, 7.28)), M(0xf1efe9, { roughness: 0.5 })));
 }
 // 南の窓の外（明るい空と、遠くの木）。上から見るときは消す
 const outside = new THREE.Group();
@@ -451,7 +455,7 @@ place(cabKit, cabs.concat(talls)); place(lowKit, lows); place(midKit, mids); // 
   // 天井の空調（天井つりの白い箱）と、南の窓の上の黒いロールカーテン
   ceiling.add(new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.24, 0.65).translate(14.2, CEIL - 0.12, 5.9), M(0xeeeae0, { roughness: 0.5 })));
   ceiling.add(new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.02, 0.4).translate(14.2, CEIL - 0.245, 5.9), M(0x9ea29f)));
-  add([0.4, 5.2, 10.0, 14.8, 19.6].map((a) => B(4.0, 0.16, 0.1, a + 2.0, 2.4, 7.22)), M(0x2a2c2e, { roughness: 0.8 }), false);
+  WALL_EXTRAS.push(add([0.4, 5.2, 10.0, 14.8, 19.6].map((a) => B(4.0, 0.16, 0.1, a + 2.0, 2.4, 7.22)), M(0x2a2c2e, { roughness: 0.8 }), false));
 }
 // 写真（3年側）：北のはしの窓の前の机（大きな黒いモニター、東を向いて座る）、その南の白いプリンター（増設トレイつき、台の上）
 {
@@ -1083,6 +1087,30 @@ function adapt(now, interval) {
   else if (quick > 240 && dpr < maxDpr) next = Math.min(maxDpr, dpr + 0.15);
   if (next !== dpr) { dpr = next; lastAdapt = now; slow = quick = 0; resize(); }
 }
+// ---------- 壁の透過：部屋の外から見ているときは、カメラの側の壁（と、その壁の柱・窓）を消して中が見えるようにする ----------
+const insideAny = (x, z) => (x > 0 && x < 24 && z > 0 && z < 7.4) || (x > 14.4 && x < 24 && z > -2.5 && z <= 0) || (x > -4.8 && x <= 0 && z > 0 && z < 7.4);
+const EXT = [];
+{
+  for (const w of WALLS) {
+    const L = Math.hypot(w.bx - w.ax, w.bz - w.az); if (L < 0.01) continue;
+    const nx = -(w.bz - w.az) / L, nz = (w.bx - w.ax) / L, mx = (w.ax + w.bx) / 2, mz = (w.az + w.bz) / 2;
+    const a = insideAny(mx + nx * 0.4, mz + nz * 0.4), b = insideAny(mx - nx * 0.4, mz - nz * 0.4);
+    if (a === b) continue; // 部屋と部屋のあいだの壁は消さない
+    EXT.push({ ...w, mx, mz, ox: a ? -nx : nx, oz: a ? -nz : nz, ms: [...w.ms] });
+  }
+  // 柱・窓・カーテンは、いちばん近い外側の壁といっしょに消す
+  const c = new THREE.Vector3();
+  for (const m of WALL_EXTRAS) {
+    m.geometry.computeBoundingBox(); m.geometry.boundingBox.getCenter(c);
+    let best = null, bd = 0.8;
+    for (const w of EXT) { const dx = w.bx - w.ax, dz = w.bz - w.az, t = Math.max(0, Math.min(1, ((c.x - w.ax) * dx + (c.z - w.az) * dz) / (dx * dx + dz * dz))); const d = Math.hypot(c.x - (w.ax + dx * t), c.z - (w.az + dz * t)); if (d < bd) { bd = d; best = w; } }
+    if (best) best.ms.push(m);
+  }
+}
+function updateWalls() {
+  const p = camera.position, inside = insideAny(p.x, p.z) && p.y < CEIL;
+  for (const w of EXT) { const show = inside || (p.x - w.mx) * w.ox + (p.z - w.mz) * w.oz < 0.05; for (const m of w.ms) m.visible = show; }
+}
 function tick(now) {
   const interval = lastT ? now - lastT : 16;
   if (walk.on) updateWalk(Math.min(0.1, interval / 1000));
@@ -1096,6 +1124,7 @@ function tick(now) {
   // 天井より上から見るときは、天井を消して中が見えるように。札も、上から見るときだけ出す
   const above = camera.position.y > CEIL - 0.05;
   ceiling.visible = outside.visible = !above;
+  updateWalls();
   for (const t of tags) t.visible = above || camera.position.distanceTo(t.position) < 9;
   camera.updateMatrixWorld();
   let moved = false; const e = camera.matrixWorld.elements; for (let i = 0; i < 16; i++) if (camKey[i] !== e[i]) { camKey[i] = e[i]; moved = true; }

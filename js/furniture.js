@@ -322,6 +322,31 @@ const SHAPES = {
   stall: [[MAT.blue, merge([b(1.4, 1.9, 0.03, 0, 0, 0.45), b(0.03, 1.9, 0.9, -0.7)])]],
   sink: [[MAT.white, merge([b(0.5, 0.85, 1.8)])]],
   weightBench: [[MAT.black, merge([b(1.2, 0.45, 0.35), b(0.06, 1.5, 1.4, 0.4)])]],
+  // ---- ウエイトルーム（写真） ----
+  // ラックつきのベンチ（黒い座面、緑の脚。頭のほうに2本の受け）。長さは x
+  rackBench: [[MAT.black, merge([b(1.2, 0.08, 0.32, 0.05, 0.42)])],
+    [M(0x7f9c6c, { roughness: 0.6 }), merge([...[-0.45, 0.5].flatMap((x) => [-0.13, 0.13].map((z) => b(0.04, 0.42, 0.04, x, 0, z))), b(1.0, 0.03, 0.03, 0.02, 0.1, 0), ...[-0.25, 0.25].map((z) => b(0.05, 1.05, 0.05, -0.6, 0, z)), ...[-0.25, 0.25].map((z) => b(0.1, 0.05, 0.1, -0.6, 1.05, z))])]],
+  // スミスマシン（白いわく、銀色のバー、中に黒いベンチ）
+  smithMachine: [[M(0xeeeeea, { roughness: 0.5 }), merge([...[-0.6, 0.6].flatMap((x) => [-0.5, 0.5].map((z) => b(0.07, 2.2, 0.07, x, 0, z))), ...[-0.5, 0.5].map((z) => b(1.27, 0.07, 0.07, 0, 2.2, z)), ...[-0.6, 0.6].map((x) => b(0.07, 0.07, 1.07, x, 2.2, 0)), b(1.3, 0.05, 1.1)])],
+    [MAT.metal, merge([b(1.9, 0.035, 0.035, 0, 1.25, 0)])], [MAT.black, merge([b(1.0, 0.08, 0.3, 0, 0.42, 0), b(0.05, 0.42, 0.25, -0.4, 0, 0), b(0.05, 0.42, 0.25, 0.4, 0, 0)])]],
+  // プレートを立てる白いスタンドと、黒いプレート
+  plateTree: [[M(0xeeeeea, { roughness: 0.5 }), merge([b(0.7, 0.05, 0.6), b(0.06, 1.0, 0.06)])],
+    [M(0x2d2e31, { roughness: 0.6 }), merge([[-0.13, 0.35], [0.13, 0.35], [-0.13, 0.75], [0.13, 0.75]].map(([x, y]) => new THREE.CylinderGeometry(0.22, 0.22, 0.12, 20).rotateX(Math.PI / 2).translate(x, y, 0)))]],
+  // ダンベルの棚（緑のわく、3段に黒いダンベル）
+  dumbbellRack: [[M(0x6f9a5c, { roughness: 0.6 }), merge([...[0.25, 0.6, 0.95].map((y) => b(1.4, 0.03, 0.4, 0, y)), ...[-0.68, 0.68].flatMap((x) => [-0.18, 0.18].map((z) => b(0.04, 1.0, 0.04, x, 0, z)))])],
+    [MAT.black, merge([0.28, 0.63, 0.98].flatMap((y) => [-0.5, -0.25, 0, 0.25, 0.5].map((x) => b(0.12, 0.1, 0.25, x, y, 0))))]],
+  // エアロバイク（灰色のわく、黒いサドル、銀色のはずみ車）
+  exBike: [[M(0x8a8f96, { roughness: 0.4, metalness: 0.4 }), merge([b(1.0, 0.06, 0.4), b(0.08, 0.9, 0.08, -0.25, 0.05), b(0.08, 1.0, 0.08, 0.3, 0.05), b(0.5, 0.06, 0.06, 0.05, 0.6)])],
+    [MAT.black, merge([b(0.28, 0.08, 0.18, -0.25, 0.95), b(0.06, 0.06, 0.45, 0.32, 1.05)])], [MAT.metal, merge([new THREE.CylinderGeometry(0.25, 0.25, 0.06, 24).rotateX(Math.PI / 2).translate(0.05, 0.35, 0)])]],
+  // 青い施術台
+  treatTable: [[M(0x2b4f9a, { roughness: 0.5 }), merge([b(1.8, 0.1, 0.6, 0, 0.6)])], [MAT.metal, merge([...[-0.8, 0.8].flatMap((x) => [-0.25, 0.25].map((z) => b(0.04, 0.6, 0.04, x, 0, z)))])]],
+  // 窓のあいだの赤い柱と、腰の高さまでの黒い壁（北の窓の下）
+  redPillar: [[M(0xc0261f, { roughness: 0.6 }), merge([b(0.6, 2.45, 0.4)])]],
+  blackLow: [[M(0x1e1f22, { roughness: 0.7 }), merge([b(0.04, 0.95, 1)])]],
+  // 南の壁：黒い壁（len で長さ）。ところどころ赤と、白い斜めの線
+  blackWall: [[M(0x1e1f22, { roughness: 0.7 }), merge([b(0.04, 2.4, 1)])]],
+  redPanel: [[M(0xc0261f, { roughness: 0.6 }), merge([b(0.05, 1.5, 1)])]],
+  whiteLine: [[M(0xf2f2ee), merge([b(0.06, 0.06, 1).rotateX(-0.22)])]],
   mat: [[MAT.mat, merge([b(2.0, 0.05, 1.0)])]],
   sewing: [[MAT.white, merge([b(0.2, 0.3, 0.4, 0, 0.72)])]],
   cabinet: [[MAT.locker, merge([b(0.45, 1.8, 0.9)])]],
@@ -1038,9 +1063,27 @@ function pingpong(out, R) {
   grid(out, "pingpong", x0 + 2, x1 - 2, z0 + 2.3, z1 - 2.3, nx, nz, 0);
 }
 
+// ウエイトルーム（写真）：東西に細長い部屋。北に窓が並び、窓のあいだは赤い柱、窓の下は黒い壁。南の壁は黒（ところどころ赤と白い斜めの線）。
+// 床は黒いゴムマット。窓ぎわにラックつきのベンチ・スミスマシン・プレート立て、南の壁ぞいにダンベルの棚とパイプいす。東のはしに施術台・エアロバイク・机
 function weights(out, R) {
-  const { x0, x1, z0, z1 } = R;
-  for (let x = x0 + 1.2; x < x1 - 1; x += 2.2) out.push({ t: "weightBench", x, z: (z0 + z1) / 2, rot: Math.PI / 2 });
+  const { x0, x1, z0, z1 } = R, L = x1 - x0, cz = (z0 + z1) / 2;
+  // 壁：北の赤い柱と窓の下の黒い壁、南の黒い壁
+  for (let x = x0 + 3; x < x1 - 1; x += 4.5) out.push({ t: "redPillar", x, z: z0 + 0.2, rot: 0 });
+  out.push({ t: "blackLow", x: (x0 + x1) / 2, z: z0 + 0.03, rot: Math.PI / 2, len: L - 0.2 });
+  out.push({ t: "blackWall", x: (x0 + x1) / 2, z: z1 - 0.03, rot: Math.PI / 2, len: L - 0.2 });
+  out.push({ t: "redPanel", x: x0 + L * 0.62, z: z1 - 0.06, rot: Math.PI / 2, len: 2.2 });
+  out.push({ t: "whiteLine", x: x0 + L * 0.5, z: z1 - 0.07, rot: Math.PI / 2, len: 6, y: 1.4 });
+  // 窓ぎわ：ラックつきのベンチ（窓に向かって）、スミスマシン、プレート立て
+  for (const k of [0.08, 0.16, 0.24, 0.34, 0.44]) out.push({ t: "rackBench", x: x0 + L * k, z: cz - 0.2, rot: -Math.PI / 2 });
+  out.push({ t: "smithMachine", x: x0 + L * 0.56, z: z0 + 0.8, rot: 0 });
+  out.push({ t: "plateTree", x: x0 + L * 0.66, z: z0 + 0.7, rot: 0 });
+  // 南の壁ぞい：ダンベルの棚とパイプいす
+  for (const k of [0.3, 0.5]) out.push({ t: "dumbbellRack", x: x0 + L * k, z: z1 - 0.35, rot: 0 });
+  out.push({ t: "chair", x: x0 + L * 0.4, z: z1 - 0.4, rot: Math.PI });
+  // 東のはし：エアロバイク、青い施術台、窓ぎわの机
+  out.push({ t: "exBike", x: x1 - 5.2, z: cz, rot: 0 });
+  out.push({ t: "treatTable", x: x1 - 2.6, z: z1 - 0.6, rot: 0 });
+  for (const x of [x1 - 4.2, x1 - 3.5, x1 - 2.8]) out.push({ t: "desk", x, z: z0 + 0.45, rot: Math.PI });
 }
 
 function shop(out, R, reception = false) {

@@ -1917,6 +1917,7 @@ for (const f of [1, 2, 3]) {
       else if (/生徒指導室/.test(r.name)) { map = null; tint = new THREE.Color(0xb9b3a6); } // 生徒指導室の床は灰色がかったベージュ（写真）
       else if (/調理室/.test(r.name)) { map = null; tint = new THREE.Color(0x8a9a88); } // 調理室の床は灰色がかった緑（写真）
       else if (/社会科教室/.test(r.name)) { map = null; tint = new THREE.Color(0x8a9c8c); } // 社会科教室の床は灰色がかった緑（写真）
+      else if (/^ウエイトルーム$/.test(r.name)) { map = null; tint = new THREE.Color(0x26272a); } // ウエイトルームの床は黒いゴムマット（写真）
       else if (/^視聴覚教室$/.test(r.name)) { map = null; tint = new THREE.Color(0x84443b); } // 視聴覚教室の床は赤茶色のつやのある床（写真）
       else if (/^音楽室$/.test(r.name)) { map = null; tint = new THREE.Color(0x7b2733); } // 音楽室の床はえんじ色
       else if (/STUDY HALL/.test(r.name)) { map = null; tint = new THREE.Color(0x8a7c6c); } // STUDY HALL の床は灰色がかった茶色（写真）

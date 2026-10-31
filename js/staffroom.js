@@ -1089,7 +1089,7 @@ function repivot() {
 }
 const lookingDown = () => { camera.getWorldDirection(fwd); return fwd.y < -0.93; };
 view.addEventListener("pointerdown", (e) => {
-  if (walk.on || e.target.closest("button, a, .nav-arrow")) return;
+  if (walk.on || e.target.closest("button, a")) return;
   anim = null;
   repivot();
   const pan = lookingDown();
@@ -1140,42 +1140,76 @@ view.addEventListener("dblclick", (e) => { if (!walk.on) flyToPoint(e.clientX, e
 }
 // 中心が部屋から遠くはなれないように（ずらしすぎて見失わない）
 const clampV = new THREE.Vector3();
-// ---------- 平行移動の矢印（スマホ向け）：少し動かすと、見ている所のまわりに東西南北の半透明の矢印が出る。押しているあいだ、その方向へ動く ----------
-const NAV = { until: 0, hold: null, shown: false, objs: [] };
+// ---------- 平行移動の十字キー（スマホ向け）：少し動かすと、見ている所の床に、東西南北の半透明の十字キーが水平に浮かぶ。
+// 腕を押しているあいだ、その方向へ動く ----------
+const NAV = { until: 0, hold: null, shown: false, sel: -1 };
+const navPad = new THREE.Group(); navPad.visible = false; navPad.renderOrder = 999; scene.add(navPad);
 {
-  const dirs = [["北", 0, -1], ["東", 1, 0], ["南", 0, 1], ["西", -1, 0]];
-  for (const [name, dx, dz] of dirs) {
-    const el = document.createElement("div"); el.className = "nav-arrow";
-    el.innerHTML = '<span class="ar">▲</span><span class="nm"></span>'; el.querySelector(".nm").textContent = name;
-    const o = new CSS2DObject(el); o.visible = false; scene.add(o);
-    const start = (e) => { e.preventDefault(); e.stopPropagation(); NAV.hold = [dx, dz]; NAV.until = performance.now() + 4000; el.classList.add("on"); };
-    const stop = () => { NAV.hold = null; el.classList.remove("on"); NAV.until = performance.now() + 3000; };
-    el.addEventListener("pointerdown", start); el.addEventListener("pointerup", stop); el.addEventListener("pointercancel", stop); el.addEventListener("pointerleave", stop);
-    el.addEventListener("contextmenu", (e) => e.preventDefault());
-    NAV.objs.push({ o, el, dx, dz });
-  }
+  const cv = document.createElement("canvas"); cv.width = cv.height = 256;
+  const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
+  // 0：北（上）、1：東（右）、2：南（下）、3：西（左）
+  NAV.draw = (sel) => {
+    const g = cv.getContext("2d"), c = 128, a = 44, L = 124;
+    g.clearRect(0, 0, 256, 256);
+    const arms = [[0, -1], [1, 0], [0, 1], [-1, 0]], names = ["北", "東", "南", "西"];
+    g.lineJoin = "round";
+    for (let k = 0; k < 4; k++) {
+      const [dx, dy] = arms[k], on = k === sel;
+      g.fillStyle = on ? "rgba(26,115,232,0.85)" : "rgba(255,255,255,0.55)"; g.strokeStyle = "rgba(26,115,232,0.9)"; g.lineWidth = 3;
+      const x0 = dx ? (dx > 0 ? c + a / 2 - 2 : c - L) : c - a / 2, y0 = dy ? (dy > 0 ? c + a / 2 - 2 : c - L) : c - a / 2;
+      const w = dx ? L - a / 2 + 2 : a, h = dy ? L - a / 2 + 2 : a;
+      g.beginPath(); g.roundRect(x0, y0, w, h, 10); g.fill(); g.stroke();
+      // 三角の矢印と方角の字
+      const tx0 = c + dx * (L - 22), ty0 = c + dy * (L - 22);
+      g.fillStyle = on ? "#fff" : "rgba(26,115,232,0.95)";
+      g.beginPath(); g.moveTo(tx0 + dx * 14, ty0 + dy * 14); g.lineTo(tx0 - dy * 13 - dx * 6, ty0 + dx * 13 - dy * 6); g.lineTo(tx0 + dy * 13 - dx * 6, ty0 - dx * 13 - dy * 6); g.closePath(); g.fill();
+      g.font = "bold 20px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+      g.fillText(names[k], c + dx * 62, c + dy * 62);
+    }
+    g.fillStyle = "rgba(255,255,255,0.6)"; g.beginPath(); g.arc(c, c, a / 2 - 2, 0, 7); g.fill(); g.stroke();
+    tx.needsUpdate = true;
+  };
+  NAV.draw(-1);
+  const plate = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthTest: false, depthWrite: false, toneMapped: false }));
+  plate.renderOrder = 999; navPad.add(plate); NAV.plate = plate;
+  const ray = new THREE.Raycaster(), p2 = new THREE.Vector2();
+  // 押した所が十字キーのどの腕か（-1：ちがう）
+  const armAt = (e) => {
+    if (!navPad.visible) return -1;
+    const r = view.getBoundingClientRect(); p2.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(p2, camera); const h = ray.intersectObject(plate)[0]; if (!h) return -1;
+    const u = h.uv.x - 0.5, v = 0.5 - h.uv.y; // u：右(東)+、v：下(南)+
+    if (Math.abs(u) < 0.09 && Math.abs(v) < 0.09) return -1;
+    if (Math.abs(u) < 0.09) return v < 0 ? 0 : 2;
+    if (Math.abs(v) < 0.09) return u > 0 ? 1 : 3;
+    return -1;
+  };
+  const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+  addEventListener("pointerdown", (e) => {
+    if (walk.on || e.target.closest("button, a, input, #sq")) return;
+    const k = armAt(e); if (k < 0) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    NAV.hold = DIRS[k]; NAV.sel = k; NAV.draw(k); NAV.until = performance.now() + 4000;
+  }, true);
+  const stop = () => { if (!NAV.hold) return; NAV.hold = null; NAV.sel = -1; NAV.draw(-1); NAV.until = performance.now() + 3000; dirty = 2; };
+  addEventListener("pointerup", stop, true); addEventListener("pointercancel", stop, true);
   controls.addEventListener("start", () => { NAV.until = performance.now() + 4000; });
   view.addEventListener("wheel", () => { NAV.until = performance.now() + 4000; }, { passive: true });
-  view.addEventListener("pointermove", (e) => { if (e.buttons && !e.target.closest(".nav-arrow")) NAV.until = performance.now() + 4000; });
+  view.addEventListener("pointermove", (e) => { if (e.buttons && !NAV.hold) NAV.until = performance.now() + 4000; });
 }
-const navV = new THREE.Vector3(), navA = new THREE.Vector3(), navB = new THREE.Vector3();
+const navV = new THREE.Vector3();
 function updateNav(now, dt) {
   const show = !walk.on && (now < NAV.until || !!NAV.hold);
   if (NAV.hold && !walk.on) {
     // 見ている所までの距離に合わせた速さで、カメラと中心をいっしょに動かす
-    const d = camera.position.distanceTo(controls.target), sp = Math.min(6, Math.max(0.8, d * 0.6)) * dt;
+    const d = camera.position.distanceTo(controls.target), sp = Math.min(14, Math.max(2.5, d * 1.3)) * dt; // 速め
     navV.set(NAV.hold[0] * sp, 0, NAV.hold[1] * sp); camera.position.add(navV); controls.target.add(navV); anim = null;
   }
-  if (show !== NAV.shown) { NAV.shown = show; for (const n of NAV.objs) n.o.visible = show; dirty = 2; if (!show) labels.render(scene, camera); }
+  if (show !== NAV.shown) { NAV.shown = show; navPad.visible = show; dirty = 2; }
   if (!show) return;
-  const t = controls.target, R = Math.min(4, Math.max(0.7, camera.position.distanceTo(t) * 0.22));
-  navA.copy(t).project(camera);
-  for (const n of NAV.objs) {
-    n.o.position.set(t.x + n.dx * R, t.y, t.z + n.dz * R);
-    navB.copy(n.o.position).project(camera);
-    const ang = Math.atan2(-(navB.y - navA.y), navB.x - navA.x) * 180 / Math.PI - 90; // 画面の上で、その方角を指す向き
-    n.el.firstChild.style.transform = `rotate(${ang}deg)`;
-  }
+  // 見ている所の床に置く。大きさは見ている距離に合わせる
+  const t = controls.target, S = Math.min(7, Math.max(1.2, camera.position.distanceTo(t) * 0.42));
+  navPad.position.set(t.x, 0.06, t.z); navPad.scale.setScalar(S);
 }
 function keepNear() {
   const t = controls.target;

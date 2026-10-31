@@ -1140,72 +1140,39 @@ view.addEventListener("dblclick", (e) => { if (!walk.on) flyToPoint(e.clientX, e
 }
 // 中心が部屋から遠くはなれないように（ずらしすぎて見失わない）
 const clampV = new THREE.Vector3();
-// ---------- 平行移動レバー（スマホ向け）：少し動かすと、見ている所の上に、水平な丸い台とつまみ（レバー）が宙に浮かぶ。
-// つまみをつかんで倒した向き（ななめも）に、倒した大きさに合わせた速さで動く ----------
-const NAV = { until: 0, hold: null, shown: false, grab: false };
-const navPad = new THREE.Group(); navPad.visible = false; scene.add(navPad);
+// ---------- 平行移動のスティック（スマホ向け。ゲームの移動スティックのような ◎）：少し動かすと、画面の左下に ◎ の円盤が出る。
+// まん中の丸に指を置いて、上下左右・ななめにずらすと、画面で見ている向きのまま、その方向へ平行に動く ----------
+const NAV = { until: 0, hold: null, shown: false, grab: null };
 {
-  const cv = document.createElement("canvas"); cv.width = cv.height = 256;
-  const g = cv.getContext("2d"), c = 128;
-  g.strokeStyle = "rgba(26,115,232,0.7)"; g.lineWidth = 4; g.fillStyle = "rgba(255,255,255,0.22)";
-  g.beginPath(); g.arc(c, c, 120, 0, 7); g.fill(); g.stroke();
-  g.lineWidth = 1.5; g.strokeStyle = "rgba(26,115,232,0.35)"; g.beginPath(); g.arc(c, c, 70, 0, 7); g.stroke();
-  g.beginPath(); g.moveTo(c, 18); g.lineTo(c, 238); g.moveTo(18, c); g.lineTo(238, c); g.stroke();
-  g.fillStyle = "rgba(26,115,232,0.85)"; g.font = "bold 22px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
-  for (const [t, x, y] of [["北", c, 30], ["東", 226, c], ["南", c, 226], ["西", 30, c]]) g.fillText(t, x, y);
-  const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
-  const mat = (o) => new THREE.MeshBasicMaterial({ transparent: true, depthTest: false, depthWrite: false, toneMapped: false, ...o });
-  const base = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), mat({ map: tx, opacity: 0.6 }));
-  // つまみ：棒と、上の丸い頭（倒すと、その向きにかたむく）
-  const knob = new THREE.Group();
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.09, 20, 12), mat({ color: 0x1a73e8, opacity: 0.55 }));
-  const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1, 8).translate(0, 0.5, 0), mat({ color: 0x1a73e8, opacity: 0.4 }));
-  knob.add(stick, head);
-  for (const m of [base, head, stick]) m.renderOrder = 999;
-  navPad.add(base, knob);
-  NAV.base = base; NAV.knob = knob; NAV.head = head; NAV.stick = stick;
-  const ray = new THREE.Raycaster(), p2 = new THREE.Vector2(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit = new THREE.Vector3();
-  // 画面の点を、レバーの台の面（水平）に当てて、台の中心からのずれ（台の半径 = 0.5 で割った -1〜1）を返す
-  const offsetAt = (e) => {
-    const r = view.getBoundingClientRect(); p2.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-    ray.setFromCamera(p2, camera); plane.constant = -navPad.position.y;
-    if (!ray.ray.intersectPlane(plane, hit)) return null;
-    return [(hit.x - navPad.position.x) / (navPad.scale.x * 0.42), (hit.z - navPad.position.z) / (navPad.scale.x * 0.42)];
+  const pad = document.getElementById("stick"), knob = pad.querySelector(".knob");
+  const R = () => pad.clientWidth / 2;
+  const setFrom = (e) => {
+    const r = pad.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    let x = (e.clientX - cx) / R(), y = (e.clientY - cy) / R(); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; }
+    NAV.hold = Math.hypot(x, y) < 0.12 ? [0, 0] : [x, y];
+    knob.style.transform = `translate(${x * R() * 0.6}px, ${y * R() * 0.6}px)`;
   };
-  const setHold = (o) => { let [x, z] = o; const l = Math.hypot(x, z); if (l > 1) { x /= l; z /= l; } NAV.hold = l < 0.12 ? [0, 0] : [x, z]; };
-  addEventListener("pointerdown", (e) => {
-    if (walk.on || !navPad.visible || e.target.closest("button, a, input, #sq")) return;
-    const o = offsetAt(e); if (!o || Math.hypot(o[0], o[1]) > 1.2) return;
-    e.preventDefault(); e.stopImmediatePropagation();
-    NAV.grab = true; setHold(o); NAV.until = performance.now() + 4000;
-  }, true);
-  addEventListener("pointermove", (e) => { if (!NAV.grab) return; e.stopImmediatePropagation(); const o = offsetAt(e); if (o) setHold(o); }, true);
-  const stop = () => { if (!NAV.grab) return; NAV.grab = false; NAV.hold = null; NAV.until = performance.now() + 3000; dirty = 2; };
-  addEventListener("pointerup", stop, true); addEventListener("pointercancel", stop, true);
+  pad.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); NAV.grab = e.pointerId; pad.setPointerCapture(e.pointerId); pad.classList.add("on"); setFrom(e); });
+  pad.addEventListener("pointermove", (e) => { if (NAV.grab === e.pointerId) setFrom(e); });
+  const stop = (e) => { if (NAV.grab !== e.pointerId) return; NAV.grab = null; NAV.hold = null; knob.style.transform = ""; pad.classList.remove("on"); NAV.until = performance.now() + 3000; };
+  pad.addEventListener("pointerup", stop); pad.addEventListener("pointercancel", stop);
+  pad.addEventListener("contextmenu", (e) => e.preventDefault());
   controls.addEventListener("start", () => { NAV.until = performance.now() + 4000; });
   view.addEventListener("wheel", () => { NAV.until = performance.now() + 4000; }, { passive: true });
-  view.addEventListener("pointermove", (e) => { if (e.buttons && !NAV.grab) NAV.until = performance.now() + 4000; });
+  view.addEventListener("pointermove", (e) => { if (e.buttons) NAV.until = performance.now() + 4000; });
+  NAV.pad = pad;
 }
-const navV = new THREE.Vector3();
+const navV = new THREE.Vector3(), navF = new THREE.Vector3(), navR = new THREE.Vector3();
 function updateNav(now, dt) {
-  const show = !walk.on && (now < NAV.until || NAV.grab);
-  if (NAV.hold && !walk.on && (NAV.hold[0] || NAV.hold[1])) {
-    // 倒した大きさに合わせた速さで、カメラと中心をいっしょに動かす（ななめも）
-    const d = camera.position.distanceTo(controls.target), sp = Math.min(14, Math.max(2.5, d * 1.3)) * dt;
-    navV.set(NAV.hold[0] * sp, 0, NAV.hold[1] * sp); camera.position.add(navV); controls.target.add(navV); anim = null;
-  }
-  if (show !== NAV.shown) { NAV.shown = show; navPad.visible = show; dirty = 2; }
-  if (!show) return;
-  // 見ている所の上に浮かせる（目の高さで見ているときは、目より少し下）。大きさは見ている距離に合わせる
-  const t = controls.target, S = Math.min(7, Math.max(1.2, camera.position.distanceTo(t) * 0.42));
-  navPad.position.set(t.x, Math.max(0.3, Math.min(1.6, camera.position.y - 0.7)), t.z); navPad.scale.setScalar(S);
-  // つまみ：倒した向きにかたむけ、頭を動かす
-  const [hx, hz] = NAV.hold || [0, 0], L = 0.26;
-  NAV.head.position.set(hx * 0.42, L, hz * 0.42);
-  NAV.stick.scale.y = Math.hypot(hx * 0.42, L);
-  const dir = new THREE.Vector3(hx * 0.42, L, hz * 0.42).normalize();
-  NAV.stick.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-  NAV.head.material.opacity = NAV.grab ? 0.85 : 0.55;
+  const show = !walk.on && (now < NAV.until || NAV.grab !== null);
+  if (show !== NAV.shown) { NAV.shown = show; NAV.pad.classList.toggle("show", show); }
+  if (!NAV.hold || walk.on || (!NAV.hold[0] && !NAV.hold[1])) return;
+  // 画面の上 = カメラの前（床に水平）、右 = カメラの右。ずらした大きさに合わせた速さで、カメラと中心をいっしょに動かす
+  const az = controls.getAzimuthalAngle(); navF.set(-Math.sin(az), 0, -Math.cos(az)); // 真上から見ていても向きがわかるように、カメラの回りぐあいから前を決める
+  navF.normalize(); navR.set(-navF.z, 0, navF.x);
+  const d = camera.position.distanceTo(controls.target), sp = Math.min(14, Math.max(2.5, d * 1.3)) * dt;
+  navV.copy(navR).multiplyScalar(NAV.hold[0] * sp).addScaledVector(navF, -NAV.hold[1] * sp);
+  camera.position.add(navV); controls.target.add(navV); anim = null;
 }
 function keepNear() {
   const t = controls.target;

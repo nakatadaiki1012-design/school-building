@@ -63,7 +63,14 @@ for (const [x, z, w, d] of [[6, 4, 11, 4], [18.5, 4, 10, 4], [19.2, -1.25, 9, 1.
 }
 
 // ---------- 道具 ----------
-const M = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...o });
+// 同じ色・同じ設定の材質は使い回す（材質が多いと描く回数が増えて重くなる）。模様（map）などをもつものは別に作る
+const MCACHE = new Map();
+const M = (color, o = {}) => {
+  if (Object.values(o).some((v) => v && typeof v === "object")) return new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...o });
+  const k = color + JSON.stringify(o);
+  if (!MCACHE.has(k)) MCACHE.set(k, new THREE.MeshStandardMaterial({ color, roughness: 0.6, ...o }));
+  return MCACHE.get(k);
+};
 const B = (w, h, d, x = 0, y = 0, z = 0) => new THREE.BoxGeometry(w, h, d).translate(x, y + h / 2, z); // y は下の面
 // 角の丸い箱（家具のふちをやわらかく見せる）
 const R = (w, h, d, x = 0, y = 0, z = 0, r = 0.012) => new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2.2, h / 2.2, d / 2.2)).translate(x, y + h / 2, z);
@@ -1233,6 +1240,81 @@ function tick(now) {
   else if (!fine && now - lastMove > (walk.on ? 450 : 250)) { fine = true; if (mirror) mirror.visible = !above; floorMat.opacity = above ? 1 : 0.8; composer.render(); labels.render(scene, camera); }
   else if (dirty) { dirty--; fine = false; lastMove = now; }
   requestAnimationFrame(tick);
+}
+// ---------- 軽くする：動かない部品を、材質ごとに1つにまとめる（描く回数を減らす） ----------
+// 外から見るとき消える壁・うっすらになるドアは別のまま。InstancedMesh や子をもつ部品もそのまま
+{
+  const keep = new Set([mirror]);
+  for (const w of EXT) { for (const m of w.ms) keep.add(m); for (const d of w.fades || []) keep.add(d.m); }
+  const bake = (parent) => {
+    const groups = new Map();
+    for (const o of [...parent.children]) {
+      if (!o.isMesh || (o.isInstancedMesh && o.count > 12) || keep.has(o) || o.children.length || !o.visible || Array.isArray(o.material)) continue;
+      const k = o.material.uuid + "|" + o.castShadow + "|" + o.receiveShadow;
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(o);
+    }
+    for (const list of groups.values()) {
+      if (list.length < 2) continue;
+      const gs = [];
+      const im = new THREE.Matrix4(), mm2 = new THREE.Matrix4();
+      const each = [];
+      for (const o of list) {
+        o.updateMatrix();
+        if (o.isInstancedMesh) for (let i = 0; i < o.count; i++) { o.getMatrixAt(i, im); each.push([o, mm2.copy(o.matrix).multiply(im).clone()]); }
+        else each.push([o, o.matrix]);
+      }
+      for (const [o, mat] of each) {
+        let g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
+        g.applyMatrix4(mat);
+        for (const n of Object.keys(g.attributes)) if (!["position", "normal", "uv"].includes(n)) g.deleteAttribute(n);
+        if (!g.attributes.normal) g.computeVertexNormals();
+        if (!g.attributes.uv) g.setAttribute("uv", new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 2), 2));
+        g.morphAttributes = {};
+        gs.push(g);
+      }
+      const merged = mergeGeometries(gs);
+      if (!merged) continue;
+      const m = new THREE.Mesh(merged, list[0].material);
+      m.castShadow = list[0].castShadow; m.receiveShadow = list[0].receiveShadow; m.renderOrder = list[0].renderOrder;
+      for (const o of list) { parent.remove(o); if (!o.isInstancedMesh) o.geometry.dispose(); }
+      parent.add(m);
+    }
+  };
+  // さらに、模様のない色だけの材質は、色を頂点にうつして、つやなどが同じものどうしを1つにまとめる
+  const bakeColors = (parent) => {
+    const groups = new Map();
+    for (const o of [...parent.children]) {
+      const m = o.material;
+      if (!o.isMesh || o.isInstancedMesh || keep.has(o) || o.children.length || !o.visible || Array.isArray(m) || m.type !== "MeshStandardMaterial") continue;
+      if (m.map || m.emissiveMap || m.transparent || m.vertexColors || m.emissive.getHex() !== 0) continue;
+      const k = [m.roughness.toFixed(2), m.metalness.toFixed(2), m.side, o.castShadow, o.receiveShadow].join("|");
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k).push(o);
+    }
+    for (const list of groups.values()) {
+      if (list.length < 2) continue;
+      const gs = list.map((o) => {
+        o.updateMatrix();
+        const g = (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone()).applyMatrix4(o.matrix);
+        for (const n of Object.keys(g.attributes)) if (!["position", "normal"].includes(n)) g.deleteAttribute(n);
+        if (!g.attributes.normal) g.computeVertexNormals();
+        const n = g.attributes.position.count, c = new Float32Array(n * 3), col = o.material.color;
+        for (let i = 0; i < n; i++) { c[i * 3] = col.r; c[i * 3 + 1] = col.g; c[i * 3 + 2] = col.b; }
+        g.setAttribute("color", new THREE.BufferAttribute(c, 3));
+        return g;
+      });
+      const merged = mergeGeometries(gs);
+      if (!merged) continue;
+      const m0 = list[0].material;
+      const m = new THREE.Mesh(merged, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: m0.roughness, metalness: m0.metalness, side: m0.side }));
+      m.castShadow = list[0].castShadow; m.receiveShadow = list[0].receiveShadow;
+      for (const o of list) { parent.remove(o); o.geometry.dispose(); }
+      parent.add(m);
+    }
+  };
+  bake(scene); bake(ceiling); bake(outside);
+  bakeColors(scene); bakeColors(ceiling); bakeColors(outside);
 }
 requestAnimationFrame(tick);
 document.getElementById("loading").remove();

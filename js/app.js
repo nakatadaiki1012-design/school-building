@@ -1322,12 +1322,13 @@ function rustTex() {
   // 2階の高さで体育館を囲む外廊下（渡り廊下）。東側で中央棟からの渡り廊下につながり、南の2階の玄関まで行ける
   const ty = FH + GYM_LIFT, dw = 3; // 床の高さ（体育館の2階は校舎より高い）、幅
   const zTop = gz0 + 2, zBot = gz1 + 1.2; // 南の外廊下はせまく（図書室の棟とあくように）
-  // 外廊下の床（写真）：緑の人工芝。両はしは少しコンクリートが見える
+  // 外廊下の床（写真）：体育準備室の前から東は緑の人工芝（両はしは少しコンクリートが見える）
   const turf = [];
   const deck = (x0, x1, z0, z1) => {
     box(geos2, x1 - x0, 0.3, z1 - z0, (x0 + x1) / 2, ty - 0.15, (z0 + z1) / 2);
     const m = 0.25, w = x1 - x0 - 2 * m, d = z1 - z0 - 2 * m;
-    if (w > 0.3 && d > 0.3) turf.push(new THREE.BoxGeometry(w, 0.03, d).translate((x0 + x1) / 2, ty + 0.015, (z0 + z1) / 2));
+    // 人工芝は、体育準備室の前から東だけ。プール側（西）の外廊下と踊り場はふつうのコンクリート
+    if (x1 > gx + 0.01 && w > 0.3 && d > 0.3) turf.push(new THREE.BoxGeometry(w, 0.03, d).translate((x0 + x1) / 2, ty + 0.015, (z0 + z1) / 2));
   };
   // 外廊下の腰壁（写真では高め、約1.6m）
   const rail = (x0, x1, z0, z1) => box(geos2, Math.max(0.18, x1 - x0), 1.6, Math.max(0.18, z1 - z0), (x0 + x1) / 2, ty + 0.65, (z0 + z1) / 2);

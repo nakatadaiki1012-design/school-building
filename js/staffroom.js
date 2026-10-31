@@ -444,6 +444,9 @@ place(cabKit, cabs.concat(talls)); place(lowKit, lows); place(midKit, mids); // 
   parts.push([alu2, B(0.4, 0.95, W + 0.04, X - 0.2, 0.95, mid)], [M(0xfbfbf9, { roughness: 0.2 }), B(0.012, 0.8, 0.52, X - 0.41, 1.03, z0 + 0.3)], [M(0xfbfbf9, { roughness: 0.2 }), B(0.012, 0.8, 0.52, X - 0.425, 1.03, z0 + 0.8)]);
   parts.push([M(0xd0453a), B(0.25, 0.25, 0.04, X - 0.2, 1.08, z0 + 1.2)], [M(0xd0453a), B(0.25, 0.25, 0.04, X - 0.2, 1.08, z0 + 1.25)], [M(0x9aa0a6), B(0.3, 0.02, 0.3, X - 0.2, 1.4, z0 + 1.2)]);
   for (const [m, g] of kit(parts)) add([g], m);
+  // 写真：下の小さな郵便受け（進路関係）の見出し。北の列から 一時保管（〒）・担任提出・専門（1〜90）・大学（1〜60）、下の段に 進路⑤その他・GL管轄、入力前 など
+  { const lb = (t) => M(0xffffff, { map: tex(128, 40, (g, w, h) => { g.fillStyle = "#fff"; g.fillRect(0, 0, w, h); g.fillStyle = "#111"; g.font = "bold 18px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(t, w / 2, h / 2); }), roughness: 0.6 });
+    for (const [c, r, t] of [[0, 2, "一時保管"], [1, 2, "担任提出"], [2, 2, "専門 1〜90"], [3, 2, "大学 1〜60"], [0, 1, "その他・GL"], [1, 1, "入力前"], [3, 1, "大学"]]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 0.0625), lb(t)); m.position.set(X - 0.452, 0.16 + r * 0.31, z0 + (c + 0.5) * W / 4); m.rotation.y = -Math.PI / 2; scene.add(m); } }
   const posted = (w, h) => new THREE.Mesh(new THREE.PlaneGeometry(w, h), paper);
   for (const [z, y, w, h] of [[3.75, 1.45, 0.14, 0.2], [4.1, 1.5, 0.18, 0.13], [5.2, 1.5, 0.35, 0.3], [5.15, 1.15, 0.2, 0.28], [5.5, 1.3, 0.2, 0.26], [5.6, 1.7, 0.4, 0.3]]) { const m = posted(w, h); m.position.set(X - (z > 5 ? 0.005 : 0.43), y, z); m.rotation.y = -Math.PI / 2; scene.add(m); }
   // 時間割表3枚（40分・45分・50分）と時計

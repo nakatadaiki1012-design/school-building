@@ -1155,7 +1155,7 @@ const navPad = new THREE.Group(); navPad.visible = false; navPad.renderOrder = 9
     g.lineJoin = "round";
     for (let k = 0; k < 4; k++) {
       const [dx, dy] = arms[k], on = k === sel;
-      g.fillStyle = on ? "rgba(26,115,232,0.85)" : "rgba(255,255,255,0.55)"; g.strokeStyle = "rgba(26,115,232,0.9)"; g.lineWidth = 3;
+      g.fillStyle = on ? "rgba(26,115,232,0.8)" : "rgba(255,255,255,0.3)"; g.strokeStyle = "rgba(26,115,232,0.75)"; g.lineWidth = 3;
       const x0 = dx ? (dx > 0 ? c + a / 2 - 2 : c - L) : c - a / 2, y0 = dy ? (dy > 0 ? c + a / 2 - 2 : c - L) : c - a / 2;
       const w = dx ? L - a / 2 + 2 : a, h = dy ? L - a / 2 + 2 : a;
       g.beginPath(); g.roundRect(x0, y0, w, h, 10); g.fill(); g.stroke();
@@ -1166,11 +1166,11 @@ const navPad = new THREE.Group(); navPad.visible = false; navPad.renderOrder = 9
       g.font = "bold 20px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
       g.fillText(names[k], c + dx * 62, c + dy * 62);
     }
-    g.fillStyle = "rgba(255,255,255,0.6)"; g.beginPath(); g.arc(c, c, a / 2 - 2, 0, 7); g.fill(); g.stroke();
+    g.fillStyle = "rgba(255,255,255,0.3)"; g.beginPath(); g.arc(c, c, a / 2 - 2, 0, 7); g.fill(); g.stroke();
     tx.needsUpdate = true;
   };
   NAV.draw(-1);
-  const plate = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: tx, transparent: true, depthTest: false, depthWrite: false, toneMapped: false }));
+  const plate = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: tx, transparent: true, opacity: 0.55, depthTest: false, depthWrite: false, toneMapped: false }));
   plate.renderOrder = 999; navPad.add(plate); NAV.plate = plate;
   const ray = new THREE.Raycaster(), p2 = new THREE.Vector2();
   // 押した所が十字キーのどの腕か（-1：ちがう）
@@ -1209,7 +1209,8 @@ function updateNav(now, dt) {
   if (!show) return;
   // 見ている所の床に置く。大きさは見ている距離に合わせる
   const t = controls.target, S = Math.min(7, Math.max(1.2, camera.position.distanceTo(t) * 0.42));
-  navPad.position.set(t.x, 0.06, t.z); navPad.scale.setScalar(S);
+  // 床より高く宙に浮かせる（目の高さで見ているときは、目より少し下）
+  navPad.position.set(t.x, Math.max(0.3, Math.min(1.6, camera.position.y - 0.7)), t.z); navPad.scale.setScalar(S);
 }
 function keepNear() {
   const t = controls.target;

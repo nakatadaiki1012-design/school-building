@@ -1035,7 +1035,12 @@ function go(name, ms = 900) {
   anim = { t0: performance.now(), ms, p0: camera.position.clone(), t0v: controls.target.clone(), p1: new THREE.Vector3(...p), t1: new THREE.Vector3(...t) };
   document.querySelectorAll(".views .btn[data-v]").forEach((b) => b.classList.toggle("active", b.dataset.v === name));
 }
-document.querySelectorAll(".views .btn[data-v]").forEach((b) => b.addEventListener("click", () => { setWalk(false); go(b.dataset.v); }));
+{
+  // 見る場所のボタンは「📍 見る場所」を押したときだけ出す（選ぶと閉じる）
+  const vm = document.getElementById("vmenu"), vb = document.getElementById("vmenu-btn");
+  vb.addEventListener("click", () => { const o = vm.classList.toggle("open"); vb.textContent = o ? "📍 見る場所 ▴" : "📍 見る場所 ▾"; });
+  document.querySelectorAll(".views .btn[data-v]").forEach((b) => b.addEventListener("click", () => { setWalk(false); go(b.dataset.v); vm.classList.remove("open"); vb.textContent = "📍 見る場所 ▾"; }));
+}
 camera.position.set(...VIEWS.walk[0]); controls.target.set(...VIEWS.walk[1]);
 document.querySelector('.views .btn[data-v="walk"]').classList.add("active");
 // 印刷室から来たとき（#print）：はじめから印刷室を見て、「マップにもどる」は印刷室の紹介へ

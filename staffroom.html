@@ -42,7 +42,9 @@
     .pad { display: none; position: fixed; right: 12px; bottom: 16px; z-index: 6; grid-template-columns: repeat(3, 56px); grid-template-rows: repeat(3, 56px); gap: 6px; }
     body.walking .pad { display: grid; }
     body.walking .hint { display: none; }
-    body.walking .views .btn[data-v] { display: none; }
+    .vmenu { display: none; flex-direction: column; gap: 6px; background: rgba(255,255,255,0.6); padding: 6px; border-radius: 16px; }
+    .vmenu.open { display: flex; }
+    body.walking .views .btn[data-v], body.walking #vmenu-btn { display: none; }
     body.walking .views { bottom: 210px; }
     .pad button { border: 0; border-radius: 14px; background: rgba(255,255,255,0.9); box-shadow: 0 2px 8px rgba(0,0,0,0.25); font-size: 24px; touch-action: none; user-select: none; -webkit-user-select: none; }
     .pad button:active { background: var(--accent); color: #fff; }
@@ -62,14 +64,17 @@
   <div id="sq"><input id="sq-in" type="search" placeholder="書類・備品の名前（ひらがなでもOK）" autocomplete="off"><ul id="sq-list"></ul></div>
   <div id="sq-note"></div>
   <div class="views">
+    <div id="vmenu" class="vmenu">
+      <button class="btn" data-v="walk">目の高さ（西から）</button>
+      <button class="btn" data-v="east">目の高さ（東から）</button>
+      <button class="btn" data-v="sink">流し・テーブルのほう</button>
+      <button class="btn" data-v="print">となりの印刷室</button>
+      <button class="btn" data-v="men">男子更衣室</button>
+      <button class="btn" data-v="top">真上</button>
+      <button class="btn" data-v="bird">ななめ上</button>
+    </div>
+    <button class="btn" id="vmenu-btn">📍 見る場所 ▾</button>
     <button class="btn" id="walk-btn">🚶 中を歩く</button>
-    <button class="btn" data-v="walk">目の高さ（西から）</button>
-    <button class="btn" data-v="east">目の高さ（東から）</button>
-    <button class="btn" data-v="sink">流し・テーブルのほう</button>
-    <button class="btn" data-v="print">となりの印刷室</button>
-    <button class="btn" data-v="men">男子更衣室</button>
-    <button class="btn" data-v="top">真上</button>
-    <button class="btn" data-v="bird">ななめ上</button>
   </div>
   <div id="pad" class="pad"><button data-f="1" aria-label="前へ">▲</button><button data-t="1" aria-label="左を向く">⟲</button><button data-t="-1" aria-label="右を向く">⟳</button><button data-f="-1" aria-label="後ろへ">▼</button><button data-end="1" class="end">おわる</button></div>
   <p class="hint">ドラッグ：画面のまん中に見えている所を中心に回す（真上から見ているときは、ずらす）。右ドラッグ・2本指：ずらす。ホイール：指した方へ進む／もどる（スマホはピンチ）。ダブルクリック・ダブルタップ：そこへ近づく。<br>「中を歩く」：ドラッグで見まわし、W・S（↑・↓）で前後、A・D で横、←・→ で向きを変える。スマホは画面のボタン。Esc でおわり。</p>

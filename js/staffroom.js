@@ -1089,7 +1089,7 @@ function repivot() {
 }
 const lookingDown = () => { camera.getWorldDirection(fwd); return fwd.y < -0.93; };
 view.addEventListener("pointerdown", (e) => {
-  if (walk.on || e.target.closest("button, a")) return;
+  if (walk.on || e.target.closest("button, a, .nav-arrow")) return;
   anim = null;
   repivot();
   const pan = lookingDown();
@@ -1140,6 +1140,43 @@ view.addEventListener("dblclick", (e) => { if (!walk.on) flyToPoint(e.clientX, e
 }
 // 中心が部屋から遠くはなれないように（ずらしすぎて見失わない）
 const clampV = new THREE.Vector3();
+// ---------- 平行移動の矢印（スマホ向け）：少し動かすと、見ている所のまわりに東西南北の半透明の矢印が出る。押しているあいだ、その方向へ動く ----------
+const NAV = { until: 0, hold: null, shown: false, objs: [] };
+{
+  const dirs = [["北", 0, -1], ["東", 1, 0], ["南", 0, 1], ["西", -1, 0]];
+  for (const [name, dx, dz] of dirs) {
+    const el = document.createElement("div"); el.className = "nav-arrow";
+    el.innerHTML = '<span class="ar">▲</span><span class="nm"></span>'; el.querySelector(".nm").textContent = name;
+    const o = new CSS2DObject(el); o.visible = false; scene.add(o);
+    const start = (e) => { e.preventDefault(); e.stopPropagation(); NAV.hold = [dx, dz]; NAV.until = performance.now() + 4000; el.classList.add("on"); };
+    const stop = () => { NAV.hold = null; el.classList.remove("on"); NAV.until = performance.now() + 3000; };
+    el.addEventListener("pointerdown", start); el.addEventListener("pointerup", stop); el.addEventListener("pointercancel", stop); el.addEventListener("pointerleave", stop);
+    el.addEventListener("contextmenu", (e) => e.preventDefault());
+    NAV.objs.push({ o, el, dx, dz });
+  }
+  controls.addEventListener("start", () => { NAV.until = performance.now() + 4000; });
+  view.addEventListener("wheel", () => { NAV.until = performance.now() + 4000; }, { passive: true });
+  view.addEventListener("pointermove", (e) => { if (e.buttons && !e.target.closest(".nav-arrow")) NAV.until = performance.now() + 4000; });
+}
+const navV = new THREE.Vector3(), navA = new THREE.Vector3(), navB = new THREE.Vector3();
+function updateNav(now, dt) {
+  const show = !walk.on && (now < NAV.until || !!NAV.hold);
+  if (NAV.hold && !walk.on) {
+    // 見ている所までの距離に合わせた速さで、カメラと中心をいっしょに動かす
+    const d = camera.position.distanceTo(controls.target), sp = Math.min(6, Math.max(0.8, d * 0.6)) * dt;
+    navV.set(NAV.hold[0] * sp, 0, NAV.hold[1] * sp); camera.position.add(navV); controls.target.add(navV); anim = null;
+  }
+  if (show !== NAV.shown) { NAV.shown = show; for (const n of NAV.objs) n.o.visible = show; dirty = 2; if (!show) labels.render(scene, camera); }
+  if (!show) return;
+  const t = controls.target, R = Math.min(4, Math.max(0.7, camera.position.distanceTo(t) * 0.22));
+  navA.copy(t).project(camera);
+  for (const n of NAV.objs) {
+    n.o.position.set(t.x + n.dx * R, t.y, t.z + n.dz * R);
+    navB.copy(n.o.position).project(camera);
+    const ang = Math.atan2(-(navB.y - navA.y), navB.x - navA.x) * 180 / Math.PI - 90; // 画面の上で、その方角を指す向き
+    n.el.firstChild.style.transform = `rotate(${ang}deg)`;
+  }
+}
 function keepNear() {
   const t = controls.target;
   clampV.set(Math.min(Math.max(t.x, BOX.x0 - 1), BOX.x1 + 1), Math.min(Math.max(t.y, 0), CEIL), Math.min(Math.max(t.z, BOX.z0 - 1), BOX.z1 + 1)).sub(t);
@@ -1230,6 +1267,7 @@ function tick(now) {
   const above = camera.position.y > CEIL - 0.05;
   ceiling.visible = outside.visible = !above;
   updateWalls();
+  updateNav(now, Math.min(0.1, interval / 1000));
   for (const t of tags) t.visible = above || camera.position.distanceTo(t.position) < 9;
   camera.updateMatrixWorld();
   let moved = false; const e = camera.matrixWorld.elements; for (let i = 0; i < 16; i++) if (camKey[i] !== e[i]) { camKey[i] = e[i]; moved = true; }

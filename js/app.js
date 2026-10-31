@@ -44,6 +44,8 @@ function toDrawing(x, z) {
 // parent の中に、その棟の変換をかけたグループを作る（同じ棟なら使い回す）
 // 体育館は、2階・3階の床が校舎の床より高い（1階の武道場の天井が高い）。その差（m）
 const GYM_LIFT = 1.05;
+// 体育館の外廊下と渡り廊下の床の、緑の人工芝
+const matTurf = new THREE.MeshStandardMaterial({ color: 0x2f9a3a, roughness: 1 });
 function inBlock(parent, b) {
   const map = (parent.userData.blocks ||= {});
   if (!map[b.id]) {
@@ -821,6 +823,8 @@ for (const f of [1, 2, 3]) {
       const fl = new THREE.Mesh(shear(fg), matRelief);
       fl.castShadow = fl.receiveShadow = true;
       holder.add(fl);
+      // 2階の渡り廊下（体育館へ）の床は、緑の人工芝（写真）
+      if (f === 2) { const tg = new THREE.BoxGeometry(rc.x1 - rc.x0, 0.03, rc.z1 - rc.z0 - 0.5); tg.translate((rc.x0 + rc.x1) / 2, base(f) + GYM_LIFT + 0.015, (rc.z0 + rc.z1) / 2); const tm = new THREE.Mesh(tg, matTurf); tm.receiveShadow = true; holder.add(tm); }
       for (const sg of list) {
         const len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az), alongX = sg.n[1] !== 0;
         const wg = new THREE.BoxGeometry(alongX ? len : 0.2, 1.7, alongX ? 0.2 : len, alongX ? 4 : 1, 1, 1); // 腰壁は少し高め（1.7m）
@@ -1318,7 +1322,13 @@ function rustTex() {
   // 2階の高さで体育館を囲む外廊下（渡り廊下）。東側で中央棟からの渡り廊下につながり、南の2階の玄関まで行ける
   const ty = FH + GYM_LIFT, dw = 3; // 床の高さ（体育館の2階は校舎より高い）、幅
   const zTop = gz0 + 2, zBot = gz1 + 1.2; // 南の外廊下はせまく（図書室の棟とあくように）
-  const deck = (x0, x1, z0, z1) => box(geos2, x1 - x0, 0.3, z1 - z0, (x0 + x1) / 2, ty - 0.15, (z0 + z1) / 2);
+  // 外廊下の床（写真）：緑の人工芝。両はしは少しコンクリートが見える
+  const turf = [];
+  const deck = (x0, x1, z0, z1) => {
+    box(geos2, x1 - x0, 0.3, z1 - z0, (x0 + x1) / 2, ty - 0.15, (z0 + z1) / 2);
+    const m = 0.25, w = x1 - x0 - 2 * m, d = z1 - z0 - 2 * m;
+    if (w > 0.3 && d > 0.3) turf.push(new THREE.BoxGeometry(w, 0.03, d).translate((x0 + x1) / 2, ty + 0.015, (z0 + z1) / 2));
+  };
   // 外廊下の腰壁（写真では高め、約1.6m）
   const rail = (x0, x1, z0, z1) => box(geos2, Math.max(0.18, x1 - x0), 1.6, Math.max(0.18, z1 - z0), (x0 + x1) / 2, ty + 0.65, (z0 + z1) / 2);
   // 西側は、北の端の踊り場だけ2階の高さ。そこから南に向かって1階へ下りる外階段がある（写真）
@@ -1424,6 +1434,7 @@ function rustTex() {
     gymHolder.add(m);
   }
   gymHolder.add(gymExtras);
+  if (turf.length) { const tm = new THREE.Mesh(mergeGeometries(turf), matTurf); tm.receiveShadow = true; gymHolder.add(tm); }
 }
 
 // ---------- 地面・植栽 ----------

@@ -426,6 +426,10 @@ const SHAPES = {
   tallLocker: [[M(0xcfc6aa, { roughness: 0.5 }), merge([b(0.45, 1.75, 0.45)])], [M(0x9a9690), merge([b(0.01, 0.12, 0.08, 0.23, 1.0, 0.1)])]],
   grayLocker: [[M(0x9b9d96, { roughness: 0.5 }), merge([b(0.5, 1.8, 0.5)])], [M(0x6f716c), merge([b(0.01, 0.1, 0.06, 0.255, 1.0, 0.15)])]],
   screenPanel: [[M(0xe9ecee, { roughness: 0.4 }), merge([b(0.03, 1.5, 0.5), b(0.03, 1.5, 0.5, 0.15, 0, 0.45).rotateY(0.6), b(0.04, 0.04, 1.5, 0, 1.5)])], [MAT.metal, merge([b(0.05, 1.55, 0.05, 0, 0, -0.25), b(0.05, 1.55, 0.05, 0, 0, 0.25)])]],
+  // らくらくスペース（写真）：木目の長方形の机（1.8m×0.9m、銀色の脚）、灰色のひじかけ付きいす、白い棚
+  meetTable: [[M(0x9a5a34, { roughness: 0.5 }), merge([b(0.9, 0.04, 1.8, 0, 0.7)])], [MAT.metal, merge(legs(0.85, 1.75, 0.7, 0.04))]],
+  grayChair: [[M(0x9ea3ad, { roughness: 0.9 }), merge([b(0.48, 0.1, 0.48, 0, 0.42), b(0.08, 0.55, 0.42, 0.22, 0.5)])], [MAT.black, merge([b(0.05, 0.4, 0.05), b(0.55, 0.04, 0.06), b(0.06, 0.04, 0.55), b(0.4, 0.04, 0.05, 0, 0.62, 0.24), b(0.4, 0.04, 0.05, 0, 0.62, -0.24)])]],
+  whiteShelf: [[M(0xece4ee, { roughness: 0.6 }), merge([b(0.35, 0.03, 0.9), b(0.35, 0.03, 0.9, 0, 0.45), b(0.35, 0.03, 0.9, 0, 0.9), b(0.35, 0.03, 0.9, 0, 1.35), b(0.35, 0.03, 0.9, 0, 1.75), b(0.35, 1.78, 0.03, 0, 0, -0.45), b(0.35, 1.78, 0.03, 0, 0, 0.45), b(0.02, 1.78, 0.9, 0.17)])]],
   airPurifier: [[M(0xf6f6f4, { roughness: 0.4 }), merge([b(0.3, 0.65, 0.4)])], [M(0xdcdcd8), merge([b(0.31, 0.04, 0.3, 0, 0.62)])]],
   fan: [[M(0xf4f2ec), merge([new THREE.CylinderGeometry(0.2, 0.2, 0.03, 12).translate(0, 0.015, 0), b(0.03, 1.1, 0.03), new THREE.CylinderGeometry(0.2, 0.2, 0.05, 16).rotateZ(Math.PI / 2).translate(-0.05, 1.2, 0)])], [M(0xe58a3c), merge([new THREE.CylinderGeometry(0.17, 0.17, 0.01, 8).rotateZ(Math.PI / 2).translate(-0.12, 1.2, 0)])]],
   sickBook: [[M(0xcfd6d8), merge([b(0.03, 0.5, 1.4, 0, 1.2)])]],
@@ -1346,12 +1350,17 @@ const LAYOUTS = [
     o.push({ t: "stairRail", x: xs - (n * tread) / 2, z: z0 + sw + 0.1, rot: 0 });
     o.push({ t: "bookCart", x: xm + 0.6, z: z0 + 0.6, rot: 0 }); // 出張図書館（壁画の東のはしの前）
   }],
+  // らくらくスペース（写真）：窓（北）の下に青いソファと空気清浄機、北西のすみに事務机。まんなかに木目の机と、灰色のいすが6つ。
+  // 東の壁ぞいに白い棚。入口（南）のそばに、目かくしのついたて
   [/らくらくスペース/, (o, R) => {
-    const cx = (R.x0 + R.x1) / 2, cz = (R.z0 + R.z1) / 2;
-    for (const dz of (R.z1 - R.z0 > 4.5 ? [-1.2, 1.2] : [0])) {
-      o.push({ t: "roundTable", x: cx, z: cz + dz, rot: 0 });
-      for (const a of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) o.push({ t: "chair", x: cx + Math.cos(a) * 0.75, z: cz + dz + Math.sin(a) * 0.75, rot: a });
-    }
+    const cx = (R.x0 + R.x1) / 2 - 0.4, cz = (R.z0 + R.z1) / 2 + 0.4;
+    o.push({ t: "meetTable", x: cx, z: cz, rot: 0 });
+    for (const dz of [-0.6, 0, 0.6]) o.push({ t: "grayChair", x: cx - 0.75, z: cz + dz, rot: Math.PI }, { t: "grayChair", x: cx + 0.75, z: cz + dz, rot: 0 });
+    o.push({ t: "blueSofa", x: R.x1 - 2.0, z: R.z0 + 0.5, rot: Math.PI / 2 });
+    o.push({ t: "airPurifier", x: R.x0 + 2.4, z: R.z0 + 0.3, rot: 0 });
+    o.push({ t: "officeDesk", x: R.x0 + 0.8, z: R.z0 + 0.5, rot: 0 });
+    o.push({ t: "whiteShelf", x: R.x1 - 0.25, z: (R.z0 + R.z1) / 2, rot: 0 });
+    o.push({ t: "screenPanel", x: R.x1 - 1.0, z: R.z1 - 1.2, rot: 0 });
   }],
   // 作法室：机や椅子はない。入口（北の廊下側）に小さな板の間があり、ふすまで仕切られた奥が畳の小上がり。奥に床の間
   [/作法室/, (o, R) => {

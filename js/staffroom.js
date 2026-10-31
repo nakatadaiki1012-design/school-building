@@ -1140,77 +1140,72 @@ view.addEventListener("dblclick", (e) => { if (!walk.on) flyToPoint(e.clientX, e
 }
 // 中心が部屋から遠くはなれないように（ずらしすぎて見失わない）
 const clampV = new THREE.Vector3();
-// ---------- 平行移動の十字キー（スマホ向け）：少し動かすと、見ている所の床に、東西南北の半透明の十字キーが水平に浮かぶ。
-// 腕を押しているあいだ、その方向へ動く ----------
-const NAV = { until: 0, hold: null, shown: false, sel: -1 };
-const navPad = new THREE.Group(); navPad.visible = false; navPad.renderOrder = 999; scene.add(navPad);
+// ---------- 平行移動レバー（スマホ向け）：少し動かすと、見ている所の上に、水平な丸い台とつまみ（レバー）が宙に浮かぶ。
+// つまみをつかんで倒した向き（ななめも）に、倒した大きさに合わせた速さで動く ----------
+const NAV = { until: 0, hold: null, shown: false, grab: false };
+const navPad = new THREE.Group(); navPad.visible = false; scene.add(navPad);
 {
   const cv = document.createElement("canvas"); cv.width = cv.height = 256;
+  const g = cv.getContext("2d"), c = 128;
+  g.strokeStyle = "rgba(26,115,232,0.7)"; g.lineWidth = 4; g.fillStyle = "rgba(255,255,255,0.22)";
+  g.beginPath(); g.arc(c, c, 120, 0, 7); g.fill(); g.stroke();
+  g.lineWidth = 1.5; g.strokeStyle = "rgba(26,115,232,0.35)"; g.beginPath(); g.arc(c, c, 70, 0, 7); g.stroke();
+  g.beginPath(); g.moveTo(c, 18); g.lineTo(c, 238); g.moveTo(18, c); g.lineTo(238, c); g.stroke();
+  g.fillStyle = "rgba(26,115,232,0.85)"; g.font = "bold 22px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+  for (const [t, x, y] of [["北", c, 30], ["東", 226, c], ["南", c, 226], ["西", 30, c]]) g.fillText(t, x, y);
   const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
-  // 0：北（上）、1：東（右）、2：南（下）、3：西（左）
-  NAV.draw = (sel) => {
-    const g = cv.getContext("2d"), c = 128, a = 44, L = 124;
-    g.clearRect(0, 0, 256, 256);
-    const arms = [[0, -1], [1, 0], [0, 1], [-1, 0]], names = ["北", "東", "南", "西"];
-    g.lineJoin = "round";
-    for (let k = 0; k < 4; k++) {
-      const [dx, dy] = arms[k], on = k === sel;
-      g.fillStyle = on ? "rgba(26,115,232,0.8)" : "rgba(255,255,255,0.3)"; g.strokeStyle = "rgba(26,115,232,0.75)"; g.lineWidth = 3;
-      const x0 = dx ? (dx > 0 ? c + a / 2 - 2 : c - L) : c - a / 2, y0 = dy ? (dy > 0 ? c + a / 2 - 2 : c - L) : c - a / 2;
-      const w = dx ? L - a / 2 + 2 : a, h = dy ? L - a / 2 + 2 : a;
-      g.beginPath(); g.roundRect(x0, y0, w, h, 10); g.fill(); g.stroke();
-      // 三角の矢印と方角の字
-      const tx0 = c + dx * (L - 22), ty0 = c + dy * (L - 22);
-      g.fillStyle = on ? "#fff" : "rgba(26,115,232,0.95)";
-      g.beginPath(); g.moveTo(tx0 + dx * 14, ty0 + dy * 14); g.lineTo(tx0 - dy * 13 - dx * 6, ty0 + dx * 13 - dy * 6); g.lineTo(tx0 + dy * 13 - dx * 6, ty0 - dx * 13 - dy * 6); g.closePath(); g.fill();
-      g.font = "bold 20px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
-      g.fillText(names[k], c + dx * 62, c + dy * 62);
-    }
-    g.fillStyle = "rgba(255,255,255,0.3)"; g.beginPath(); g.arc(c, c, a / 2 - 2, 0, 7); g.fill(); g.stroke();
-    tx.needsUpdate = true;
-  };
-  NAV.draw(-1);
-  const plate = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: tx, transparent: true, opacity: 0.55, depthTest: false, depthWrite: false, toneMapped: false }));
-  plate.renderOrder = 999; navPad.add(plate); NAV.plate = plate;
-  const ray = new THREE.Raycaster(), p2 = new THREE.Vector2();
-  // 押した所が十字キーのどの腕か（-1：ちがう）
-  const armAt = (e) => {
-    if (!navPad.visible) return -1;
+  const mat = (o) => new THREE.MeshBasicMaterial({ transparent: true, depthTest: false, depthWrite: false, toneMapped: false, ...o });
+  const base = new THREE.Mesh(new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2), mat({ map: tx, opacity: 0.6 }));
+  // つまみ：棒と、上の丸い頭（倒すと、その向きにかたむく）
+  const knob = new THREE.Group();
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.09, 20, 12), mat({ color: 0x1a73e8, opacity: 0.55 }));
+  const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1, 8).translate(0, 0.5, 0), mat({ color: 0x1a73e8, opacity: 0.4 }));
+  knob.add(stick, head);
+  for (const m of [base, head, stick]) m.renderOrder = 999;
+  navPad.add(base, knob);
+  NAV.base = base; NAV.knob = knob; NAV.head = head; NAV.stick = stick;
+  const ray = new THREE.Raycaster(), p2 = new THREE.Vector2(), plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit = new THREE.Vector3();
+  // 画面の点を、レバーの台の面（水平）に当てて、台の中心からのずれ（台の半径 = 0.5 で割った -1〜1）を返す
+  const offsetAt = (e) => {
     const r = view.getBoundingClientRect(); p2.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
-    ray.setFromCamera(p2, camera); const h = ray.intersectObject(plate)[0]; if (!h) return -1;
-    const u = h.uv.x - 0.5, v = 0.5 - h.uv.y; // u：右(東)+、v：下(南)+
-    if (Math.abs(u) < 0.09 && Math.abs(v) < 0.09) return -1;
-    if (Math.abs(u) < 0.09) return v < 0 ? 0 : 2;
-    if (Math.abs(v) < 0.09) return u > 0 ? 1 : 3;
-    return -1;
+    ray.setFromCamera(p2, camera); plane.constant = -navPad.position.y;
+    if (!ray.ray.intersectPlane(plane, hit)) return null;
+    return [(hit.x - navPad.position.x) / (navPad.scale.x * 0.42), (hit.z - navPad.position.z) / (navPad.scale.x * 0.42)];
   };
-  const DIRS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+  const setHold = (o) => { let [x, z] = o; const l = Math.hypot(x, z); if (l > 1) { x /= l; z /= l; } NAV.hold = l < 0.12 ? [0, 0] : [x, z]; };
   addEventListener("pointerdown", (e) => {
-    if (walk.on || e.target.closest("button, a, input, #sq")) return;
-    const k = armAt(e); if (k < 0) return;
+    if (walk.on || !navPad.visible || e.target.closest("button, a, input, #sq")) return;
+    const o = offsetAt(e); if (!o || Math.hypot(o[0], o[1]) > 1.2) return;
     e.preventDefault(); e.stopImmediatePropagation();
-    NAV.hold = DIRS[k]; NAV.sel = k; NAV.draw(k); NAV.until = performance.now() + 4000;
+    NAV.grab = true; setHold(o); NAV.until = performance.now() + 4000;
   }, true);
-  const stop = () => { if (!NAV.hold) return; NAV.hold = null; NAV.sel = -1; NAV.draw(-1); NAV.until = performance.now() + 3000; dirty = 2; };
+  addEventListener("pointermove", (e) => { if (!NAV.grab) return; e.stopImmediatePropagation(); const o = offsetAt(e); if (o) setHold(o); }, true);
+  const stop = () => { if (!NAV.grab) return; NAV.grab = false; NAV.hold = null; NAV.until = performance.now() + 3000; dirty = 2; };
   addEventListener("pointerup", stop, true); addEventListener("pointercancel", stop, true);
   controls.addEventListener("start", () => { NAV.until = performance.now() + 4000; });
   view.addEventListener("wheel", () => { NAV.until = performance.now() + 4000; }, { passive: true });
-  view.addEventListener("pointermove", (e) => { if (e.buttons && !NAV.hold) NAV.until = performance.now() + 4000; });
+  view.addEventListener("pointermove", (e) => { if (e.buttons && !NAV.grab) NAV.until = performance.now() + 4000; });
 }
 const navV = new THREE.Vector3();
 function updateNav(now, dt) {
-  const show = !walk.on && (now < NAV.until || !!NAV.hold);
-  if (NAV.hold && !walk.on) {
-    // 見ている所までの距離に合わせた速さで、カメラと中心をいっしょに動かす
-    const d = camera.position.distanceTo(controls.target), sp = Math.min(14, Math.max(2.5, d * 1.3)) * dt; // 速め
+  const show = !walk.on && (now < NAV.until || NAV.grab);
+  if (NAV.hold && !walk.on && (NAV.hold[0] || NAV.hold[1])) {
+    // 倒した大きさに合わせた速さで、カメラと中心をいっしょに動かす（ななめも）
+    const d = camera.position.distanceTo(controls.target), sp = Math.min(14, Math.max(2.5, d * 1.3)) * dt;
     navV.set(NAV.hold[0] * sp, 0, NAV.hold[1] * sp); camera.position.add(navV); controls.target.add(navV); anim = null;
   }
   if (show !== NAV.shown) { NAV.shown = show; navPad.visible = show; dirty = 2; }
   if (!show) return;
-  // 見ている所の床に置く。大きさは見ている距離に合わせる
+  // 見ている所の上に浮かせる（目の高さで見ているときは、目より少し下）。大きさは見ている距離に合わせる
   const t = controls.target, S = Math.min(7, Math.max(1.2, camera.position.distanceTo(t) * 0.42));
-  // 床より高く宙に浮かせる（目の高さで見ているときは、目より少し下）
   navPad.position.set(t.x, Math.max(0.3, Math.min(1.6, camera.position.y - 0.7)), t.z); navPad.scale.setScalar(S);
+  // つまみ：倒した向きにかたむけ、頭を動かす
+  const [hx, hz] = NAV.hold || [0, 0], L = 0.26;
+  NAV.head.position.set(hx * 0.42, L, hz * 0.42);
+  NAV.stick.scale.y = Math.hypot(hx * 0.42, L);
+  const dir = new THREE.Vector3(hx * 0.42, L, hz * 0.42).normalize();
+  NAV.stick.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+  NAV.head.material.opacity = NAV.grab ? 0.85 : 0.55;
 }
 function keepNear() {
   const t = controls.target;

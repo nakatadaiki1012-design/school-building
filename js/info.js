@@ -370,7 +370,7 @@ export const SITE_INFO = [
   { key: "pool", name: "プール", x: -58, z: -36, desc: "25mプールです。体育の水泳の選択授業のほか、水泳部の活動場所として使われています。", photos: ["images/pool-a.jpg", "images/pool-b.jpg"] },
   { key: "bikes", name: "駐輪場", x: -28, z: -45.5, desc: "部室の前（体育館の北側）にある、赤い屋根の細長い駐輪場です。グラウンドのネットぞいにあり、自転車通学の生徒が使います。", photos: ["images/bikes1-1.jpg", "images/bikes1-2.jpg"] },
   { key: "bikes2", name: "駐輪場（2階建て）", x: -53, z: -6, desc: "2階建ての駐輪場です。自転車通学の生徒は学校に申請し、この駐輪場に停めます。", photos: ["images/bikes2-a.jpg", "images/bikes2-b.jpg"] },
-  { name: "中庭", x: -10, z: 22, desc: "中庭にはベンチやテーブルなどが設置されています。真ん中にある銅像を『さわやかさん』と呼んでいます。", photos: ["images/nakaniwa-a.jpg", "images/nakaniwa-b.jpg", "images/nakaniwa-c.jpg"] },
+  { name: "中庭", x: -10, z: 22, desc: "中庭にはベンチやテーブルなどが設置されています。真ん中にある銅像を『さわやかさん』と呼んでいます。", photos: ["images/nakaniwa-a.jpg", "images/nakaniwa-b.jpg", "images/nakaniwa-c.jpg", "images/nakaniwa-d.jpg"] },
   { name: "南の庭園（駐車場のうしろ）", x: -7, z: 65, desc: "南の駐車場のうしろにある庭園です。レンガ敷きの小道の先に、藤棚（ふじだな）があり、石のテーブルとベンチがあります。まわりには、陶芸でつくられたキノコとチェスの作品や、つぼなどが置かれています。", photos: ["images/garden-1.jpg", "images/garden-2.jpg", "images/garden-3.jpg"] },
 ];
 export const SITE_NOTE = "※ 位置は航空写真から読み取ったおおよそのものです。";

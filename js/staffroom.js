@@ -550,18 +550,8 @@ place(cabKit, cabs.concat(talls)); place(lowKit, lows); place(midKit, mids); // 
   for (let i = 0; i < 6; i++) rack.push([M(pcol[i], { roughness: 0.8 }), B(0.02, 0.28, 0.21, 0, 0, 0).rotateZ(-0.35).translate(0.38, 0.25 + i * 0.2, 1.5 + (i % 2 ? 0.11 : -0.11))]);
   for (const [m, g] of kit(rack)) add([g], m);
   const wbT = tex(256, 320, (g, w, h) => { g.fillStyle = "#fbfbf9"; g.fillRect(0, 0, w, h); g.fillStyle = "#24497a"; g.fillRect(150, 20, 90, 12); g.fillStyle = "#fff"; g.fillRect(135, 60, 110, 150); g.strokeStyle = "#aab"; g.strokeRect(135, 60, 110, 150); g.fillStyle = "rgba(40,40,60,0.6)"; for (let k = 0; k < 10; k++) g.fillRect(142, 72 + k * 12, 60 + rnd() * 35, 3); });
-  const wbg = new THREE.Group(); wbg.position.set(0.85, 0, 0.62); wbg.rotation.y = 1.05; scene.add(wbg);
+  const wbg = new THREE.Group(); wbg.position.set(1.3, 0, 0.62); wbg.rotation.y = 1.05; scene.add(wbg);
   { const b = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 1.2), M(0xffffff, { map: wbT, roughness: 0.3 })); b.position.set(0, 1.45, 0.02); wbg.add(b); const back = new THREE.Mesh(B(0.92, 1.22, 0.025, 0, 0.84, 0), alu); back.castShadow = true; wbg.add(back); const legs = new THREE.Mesh(mergeGeometries([B(0.03, 1.5, 0.03, -0.45, 0.05, 0), B(0.03, 1.5, 0.03, 0.45, 0.05, 0), B(0.03, 0.03, 0.5, -0.45, 0.04, 0), B(0.03, 0.03, 0.5, 0.45, 0.04, 0)]), alu); legs.castShadow = true; wbg.add(legs); }
-
-  // 入口の奥の印刷室（金属の棚と箱がちらっと見える）。上から見るときは消す
-  const back = new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.6, 2.4), M(0xd6d2c8, { roughness: 0.9, side: THREE.BackSide }));
-  back.position.set(-0.98, 1.3, 0.9); outside.add(back);
-  const shelfP = [];
-  for (const y of [0.05, 0.45, 0.85, 1.25, 1.65, 2.0]) shelfP.push([steelG, B(0.45, 0.02, 1.0, -1.6, y, 0.9)]);
-  for (const z of [0.4, 1.4]) shelfP.push([steelD, B(0.03, 2.05, 0.03, -1.4, 0, z)], [steelD, B(0.03, 2.05, 0.03, -1.82, 0, z)]);
-  for (let i = 0; i < 9; i++) shelfP.push([M([0xb68a58, 0xf2f2ee, 0x6a8fb5][i % 3], { roughness: 0.8 }), B(0.36, 0.18 + rnd() * 0.12, 0.25, -1.6, 0.07 + (i % 5) * 0.4, 0.55 + ((i * 0.37) % 0.7))]);
-  shelfP.push([M(0x8f9499, { roughness: 0.4, metalness: 0.5 }), B(0.5, 1.9, 0.6, -1.5, 0, -0.05)]);
-  for (const [m, g] of kit(shelfP)) outside.add(new THREE.Mesh(g, m));
 
   // 北の壁：引き戸の東の、枠つきの緑の掲示板と欄間、その前のクラス別の配布棚（白・6段×2列を2台）
   const gb = tex(512, 340, (g, w, h) => {
@@ -719,9 +709,118 @@ place(cabKit, cabs.concat(talls)); place(lowKit, lows); place(midKit, mids); // 
   add([B(14.4, 0.08, 0.015, 7.2, 0, 0.085), B(9.6, 0.08, 0.015, 19.2, 0, -2.415), B(0.015, 0.08, 7.4, 0.085, 0, 3.7), B(0.015, 0.08, 9.9, 23.915, 0, 2.45), B(24, 0.08, 0.015, 12, 0, 7.315)], bb, false);
 }
 
+// ---------- 印刷室（職員室の西どなり。写真） ----------
+// x -4.8〜0（東の壁は職員室との境。北のはしに入口）、z 0（北の壁・廊下側）〜7.4（南の窓）
+// 北の壁：廊下への木の開き戸（上に欄間）・灰色のロッカー・金属の棚・緑の鉄の棚。西の壁：灰色の書庫2台・白い棚・緑の作業台・充電保管庫2台・机
+// 東の壁：ファイルキャビネット・赤いトナーの箱・白い長机（スキャナー）・木の板・黒いガラス戸の棚。まんなか：大きなコピー機・印刷機（リソグラフ）3台・丁合機
+{
+  const PX0 = -4.8, PX1 = 0, PZ0 = 0, PZ1 = 7.4;
+  const cache = new Map(), mm = (c, o = {}) => { const k = c + JSON.stringify(o); if (!cache.has(k)) cache.set(k, M(c, o)); return cache.get(k); };
+  const beige = mm(0xcfc4ab, { roughness: 0.85 }), whiteW = M(0xe8e7e2, { roughness: 0.95, map: tex(128, 128, (g, w, h) => { g.fillStyle = "#e9e8e3"; g.fillRect(0, 0, w, h); for (let i = 0; i < 1400; i++) { g.fillStyle = `rgba(120,118,110,${rnd() * 0.12})`; g.fillRect(rnd() * w, rnd() * h, 1.5, 1.5); } }, 4, 2) });
+  // 壁（下 1.25m はベージュ、上は白いザラザラの壁）
+  const pw = { H: 1.25, lo: beige, hi: whiteW };
+  wall(PX0, PZ0, PX1 - 0.075, PZ0, [[PX1 - 0.075 - PX0 - 0.95, PX1 - 0.075 - PX0 - 0.08, 0, 2.05], [PX0 + 1.85 - PX0, PX1 - 0.075 - PX0 - 0.02, 2.12, 2.72]], 0.15, pw); // 北：廊下への戸と欄間
+  wall(PX0, PZ0, PX0, PZ1, [], 0.15, pw);                                   // 西
+  wall(PX0, PZ1, PX1 - 0.075, PZ1, [[0.5, 4.3, 0.85, 2.55]], 0.15, pw);   // 南：窓
+  wall(PX1 - 0.085, PZ0, PX1 - 0.085, PZ1, [[0.45, 1.35, 0, 2.05]], 0.02, pw); // 職員室との境の壁の、印刷室がわの面
+  // 床：灰色がかったコンクリート（しみ・汚れ）
+  const fl = tex(256, 256, (g, w, h) => { g.fillStyle = "#b8b1a2"; g.fillRect(0, 0, w, h); for (let i = 0; i < 40; i++) { const x = rnd() * w, y = rnd() * h, r = 8 + rnd() * 40; const gr = g.createRadialGradient(x, y, 1, x, y, r); gr.addColorStop(0, "rgba(70,60,48,0.35)"); gr.addColorStop(1, "rgba(70,60,48,0)"); g.fillStyle = gr; g.fillRect(x - r, y - r, 2 * r, 2 * r); } for (let i = 0; i < 2500; i++) { g.fillStyle = `rgba(${rnd() < 0.5 ? "255,255,255" : "60,50,40"},${rnd() * 0.08})`; g.fillRect(rnd() * w, rnd() * h, 2, 2); } }, 2, 3);
+  { const f = new THREE.Mesh(new THREE.PlaneGeometry(PX1 - PX0, PZ1 - PZ0).rotateX(-Math.PI / 2).translate((PX0 + PX1) / 2, 0.001, (PZ0 + PZ1) / 2), M(0xffffff, { map: fl, roughness: 0.7 })); f.receiveShadow = true; scene.add(f); }
+  // 天井と蛍光灯、天井ぞいの白い配管（上から見るときは消す）
+  ceiling.add(new THREE.Mesh(new THREE.PlaneGeometry(PX1 - PX0, PZ1 - PZ0).rotateX(Math.PI / 2).translate((PX0 + PX1) / 2, CEIL, (PZ0 + PZ1) / 2), M(0xecebe6, { roughness: 0.95, emissive: 0xffffff, emissiveIntensity: 0.3 })));
+  const pipes = [C(0.06, PX1 - PX0, 0, 0, 0, 10).rotateZ(Math.PI / 2).translate((PX0 + PX1) / 2, 2.7, 0.2), C(0.045, PX1 - PX0, 0, 0, 0, 10).rotateZ(Math.PI / 2).translate((PX0 + PX1) / 2, 2.58, 0.25), C(0.05, PZ1, 0, 0, 0, 10).rotateX(Math.PI / 2).translate(-0.25, 2.72, PZ1 / 2), C(0.055, CEIL, -0.2, 0, 0.18, 10)];
+  ceiling.add(new THREE.Mesh(mergeGeometries(pipes.map((q) => q.toNonIndexed())), M(0xf2f2ee, { roughness: 0.4 })));
+  for (const z of [2.2, 5.0]) { ceiling.add(new THREE.Mesh(B(0.2, 0.06, 1.25, -2.4, CEIL - 0.06, z), M(0xf4f4f2))); ceiling.add(new THREE.Mesh(B(0.12, 0.03, 1.2, -2.4, CEIL - 0.09, z), M(0xffffff, { emissive: 0xffffff, emissiveIntensity: 1 }))); }
+  { const l = new THREE.RectAreaLight(0xfff4e6, 0.9, 3.4, 5.6); l.position.set(-2.4, 2.84, 3.7); l.lookAt(-2.4, 0, 3.7); scene.add(l); }
+
+  const P = [];
+  const at = (parts, x, z, r = 0) => { for (const [m, g] of parts) P.push([m, g.clone().rotateY(r).translate(x, 0, z)]); };
+  const wM = mm(0xf3f3f0, { roughness: 0.4 }), dark = mm(0x2a2c30, { roughness: 0.5 }), blueP = mm(0x2a8fd8, { roughness: 0.4 }), panel = mm(0x1b2a38, { roughness: 0.2, emissive: 0x0e2233, emissiveIntensity: 0.6 });
+  const cardb = mm(0xb68a58, { roughness: 0.9 }), okiY = mm(0xd9a52a, { roughness: 0.7 }), grayCab = mm(0xbdb8a6, { roughness: 0.6 }), greenSt = mm(0x6f9a86, { roughness: 0.5, metalness: 0.2 });
+  // 印刷機（リソグラフ）：正面は北（-z）。白い台（中に箱）、本体、上のふた、操作パネル、東に黒い排紙台（青い留め具）、西に給紙台
+  const riso = [[wM, B(0.78, 0.36, 0.66, 0, 0, 0)], [cardb, B(0.3, 0.28, 0.5, -0.18, 0.04, 0.02)], [cardb, B(0.3, 0.28, 0.5, 0.18, 0.04, 0.02)], [wM, R(0.78, 0.66, 0.68, 0, 0.36, 0, 0.02)], [mm(0xe9e9e5), R(0.8, 0.08, 0.7, 0, 1.02, 0, 0.02)],
+    [panel, B(0.22, 0.12, 0.02, -0.12, 0.88, -0.345)], [mm(0xd8d8d2), B(0.18, 0.1, 0.02, 0.15, 0.88, -0.345)], [blueP, C(0.025, 0.012, 0.28, 0.92, -0.35, 10).rotateX(Math.PI / 2)], [mm(0xe05a8a), C(0.025, 0.012, 0.33, 0.92, -0.35, 10).rotateX(Math.PI / 2)],
+    [dark, B(0.45, 0.02, 0.42, 0.62, 0.62, 0)], [dark, B(0.02, 0.32, 0.42, 0.84, 0.62, 0)], [dark, B(0.3, 0.3, 0.02, 0.62, 0.64, -0.2)], [dark, B(0.3, 0.3, 0.02, 0.62, 0.64, 0.2)], [blueP, B(0.04, 0.12, 0.05, 0.55, 0.78, -0.12)], [blueP, B(0.04, 0.12, 0.05, 0.7, 0.78, 0.12)],
+    [mm(0x5c6066), B(0.38, 0.02, 0.42, -0.58, 0.72, 0)], [blueP, B(0.3, 0.05, 0.3, -0.25, 0.5, -0.34)]];
+  at(riso, -2.7, 2.45); at(riso, -2.7, 3.55); at(riso, -3.15, 5.55);
+  // 大きなコピー機（FUJIFILM）とフィニッシャー：正面は南
+  const copier = [[wM, R(0.75, 1.0, 0.72, 0, 0, 0, 0.02)], [mm(0xdcdcd8), B(0.72, 0.004, 0.01, 0, 0.3, 0.362)], [mm(0xdcdcd8), B(0.72, 0.004, 0.01, 0, 0.55, 0.362)], [dark, B(0.7, 0.14, 0.62, 0, 1.0, -0.02)], [wM, R(0.66, 0.1, 0.55, 0, 1.12, -0.04, 0.02)], [panel, B(0.3, 0.02, 0.2, 0.15, 1.16, 0.3).rotateX(-0.5)],
+    [wM, R(0.5, 1.15, 0.62, 0.65, 0, 0, 0.02)], [mm(0x9ca2a6), B(0.3, 0.02, 0.3, 0.95, 0.8, 0)], [mm(0x9ca2a6), B(0.3, 0.02, 0.3, 0.95, 0.55, 0)], [mm(0x6a8fd8), B(0.18, 0.06, 0.004, -0.15, 0.85, 0.362)]];
+  at(copier, -2.85, 1.05);
+  // 丁合機（白い塔に青い棚がたくさん）と、紙折り機の机（下に「マスター A3機用」の箱）
+  const coll = [[wM, B(0.6, 0.45, 0.62, 0, 0, 0)], [mm(0xe9e9e4), B(0.34, 1.35, 0.45, -0.1, 0.45, 0)], [panel, B(0.02, 0.2, 0.15, -0.28, 1.5, 0)]];
+  for (let i = 0; i < 10; i++) coll.push([mm(0x5aa2b8, { roughness: 0.4 }), B(0.42, 0.012, 0.3, 0.2, 0.55 + i * 0.12, 0).rotateZ(0.12)]);
+  coll.push([paper, B(0.3, 0.15, 0.004, 0, 0.15, 0.312)]);
+  at(coll, -2.2, 6.75);
+  at([[mm(0xe2e2dc), B(0.8, 0.03, 0.5, 0, 0.72, 0)], [dark, B(0.03, 0.72, 0.03, -0.37, 0, -0.22)], [dark, B(0.03, 0.72, 0.03, 0.37, 0, -0.22)], [dark, B(0.03, 0.72, 0.03, -0.37, 0, 0.22)], [dark, B(0.03, 0.72, 0.03, 0.37, 0, 0.22)],
+    [wM, B(0.55, 0.22, 0.38, 0, 0.75, 0)], [dark, B(0.5, 0.03, 0.3, 0, 0.97, 0)], [cardb, B(0.32, 0.4, 0.36, -0.18, 0, 0)], [cardb, B(0.32, 0.4, 0.36, 0.18, 0, 0)], [paper, B(0.35, 0.15, 0.004, 0, 0.5, -0.25)]], -1.25, 6.85);
+  // 東の壁ぞい：赤いトナーの箱（入口のとなり）、ファイルキャビネット（4段。教科・学年・管理職限定）、白い長机2台（スキャナー3台・ノートパソコン）、木の板、黒いガラス戸の棚
+  const red = mm(0xc8282a, { roughness: 0.7 });
+  for (let i = 0; i < 4; i++) P.push([red, B(0.34, 0.3, 0.32, -0.26, i * 0.3, 1.53)]);
+  for (let i = 0; i < 3; i++) P.push([red, B(0.34, 0.3, 0.32, -0.62, i * 0.3, 1.53)]);
+  const fc = [[wM, B(0.62, 1.33, 0.47, 0, 0, 0)], [mm(0xb8bcbe, { metalness: 0.6 }), C(0.02, 0.01, -0.2, 1.3, -0.236, 8).rotateX(Math.PI / 2)]];
+  for (let i = 0; i < 4; i++) { const y = 0.08 + i * 0.31; fc.push([mm(0xeeeeea), B(0.006, 0.29, 0.43, -0.312, y, 0)], [mm(0xe4e2d8), B(0.03, 0.06, 0.2, -0.325, y + 0.17, 0)], [paper, B(0.004, 0.03, 0.1, -0.342, y + 0.2, 0)]); }
+  at(fc, -0.39, 1.98);
+  const tbl = [[mm(0xe3e3dd, { roughness: 0.5 }), B(0.75, 0.03, 1.6, 0, 0.7, 0)], [dark, B(0.77, 0.04, 1.62, 0, 0.66, 0)], [dark, B(0.04, 0.66, 0.06, 0.1, 0, -0.7)], [dark, B(0.04, 0.66, 0.06, 0.1, 0, 0.7)], [dark, B(0.5, 0.04, 0.06, 0.1, 0, -0.7)], [dark, B(0.5, 0.04, 0.06, 0.1, 0, 0.7)]];
+  at(tbl, -0.45, 3.1); at(tbl, -0.45, 4.72);
+  const scan = [[mm(0xefeee8, { roughness: 0.4 }), R(0.3, 0.17, 0.24, 0, 0.73, 0, 0.02)], [dark, B(0.26, 0.04, 0.12, 0, 0.9, 0.04).rotateX(0.3)]];
+  for (const z of [3.2, 3.75, 4.3]) at(scan, -0.4, z, Math.PI / 2);
+  for (const z of [2.6, 4.95]) at([[dark, B(0.33, 0.02, 0.23, 0, 0.73, 0)]], -0.55, z, 0.2);
+  const blkChair = kit(chairParts.map(([m, g]) => [m === chairFab ? mm(0x1d1f22, { roughness: 0.9 }) : m, g.clone()]));
+  place(blkChair, [{ x: -1.05, z: 3.4, rot: Math.PI / 2 + 0.2 }, { x: -1.05, z: 4.6, rot: Math.PI / 2 - 0.1 }]);
+  at([[mm(0x9a6a40, { roughness: 0.6 }), B(0.72, 1.3, 0.035, 0, 0, 0)], [mm(0xf1e98a), B(0.45, 0.25, 0.3, 0.05, 1.3, 0.05)]], -0.46, 5.66);
+  at([[mm(0xe2e2dc), B(0.6, 1.25, 0.62, 0, 0, 0)], [mm(0x1a1c20, { roughness: 0.1 }), B(0.5, 0.95, 0.01, 0, 0.18, -0.31)]], -0.42, 6.85, Math.PI / 2);
+  // 西の壁ぞい：灰色の書庫2台（91・92。上に定期試験の問題のファイル）、白い棚、緑の作業台、充電保管庫2台（上にプリンター）、窓ぎわの机（モノクロプリンター）
+  for (const [z, lbl] of [[0.6, "91"], [1.52, "92"]]) {
+    at([[grayCab, B(0.45, 1.8, 0.9, 0, 0, 0)], [mm(0xa9a492), B(0.004, 1.7, 0.004, 0.226, 0.05, 0)], [mm(0xc9c4b2), B(0.03, 0.12, 0.05, 0.24, 0.9, -0.08)], [mm(0xc9c4b2), B(0.03, 0.12, 0.05, 0.24, 0.9, 0.08)], [mm(0x3f7fd0), B(0.004, 0.05, 0.8, 0.226, 1.72, 0)], [paper, B(0.004, 0.3, 0.22, 0.228, 1.1, -0.22)], [paper, B(0.004, 0.25, 0.2, 0.228, 1.2, 0.22)]], PX0 + 0.3, z);
+  }
+  for (let i = 0; i < 14; i++) P.push([i % 3 ? wM : mm(0x2f62b8), B(0.3, 0.32, 0.07, PX0 + 0.35, 1.8, 0.25 + i * 0.1)]);
+  P.push([cardb, B(0.4, 0.12, 0.7, PX0 + 0.3, 1.8, 0.45).rotateZ(0.05)]);
+  at([[wM, B(0.4, 1.5, 0.02, 0, 0, -0.29)], [wM, B(0.4, 1.5, 0.02, 0, 0, 0.29)], [wM, B(0.02, 1.5, 0.6, -0.19, 0, 0)], ...[0.02, 0.4, 0.75, 1.1, 1.48].map((y) => [wM, B(0.4, 0.02, 0.6, 0, y, 0)]), [mm(0xd8d1b8), B(0.3, 0.2, 0.45, 0, 0.42, 0)], [mm(0xe0a050), B(0.35, 0.12, 0.5, 0, 1.5, 0)]], PX0 + 0.3, 2.35);
+  const bench = [[greenSt, B(0.7, 0.04, 1.8, 0, 0.72, 0)], [greenSt, B(0.05, 0.72, 0.05, -0.3, 0, -0.85)], [greenSt, B(0.05, 0.72, 0.05, 0.3, 0, -0.85)], [greenSt, B(0.05, 0.72, 0.05, -0.3, 0, 0.85)], [greenSt, B(0.05, 0.72, 0.05, 0.3, 0, 0.85)], [greenSt, B(0.6, 0.03, 1.7, 0, 0.12, 0)],
+    [wM, B(0.4, 0.12, 0.45, 0.05, 0.76, -0.55)], [mm(0x9aa0a4, { metalness: 0.6 }), B(0.03, 0.03, 0.5, 0.2, 0.9, -0.55).rotateX(0.5)], [dark, B(0.2, 0.25, 0.15, -0.1, 0.76, -0.05)], [mm(0x2f62b8), B(0.25, 0.04, 0.2, 0.15, 0.76, 0.15)], [wM, B(0.25, 0.2, 0.25, 0.05, 0.76, 0.5)],
+    [cardb, B(0.35, 0.35, 0.45, 0.05, 0.15, -0.5)], [cardb, B(0.35, 0.35, 0.45, 0.05, 0.15, 0.0)], [mm(0x5b8fd0, { transparent: true, opacity: 0.8 }), B(0.35, 0.45, 0.35, 0.05, 0.15, 0.55)], [mm(0xd9ebb0), B(0.004, 0.2, 0.4, 0.351, 0.55, 0.5)]];
+  at(bench, PX0 + 0.42, 3.65);
+  const cart = [[wM, B(0.55, 0.88, 0.55, 0, 0.08, 0)], [wM, B(0.62, 0.03, 0.6, 0, 0.96, 0)], [dark, B(0.02, 0.12, 0.03, 0.24, 0.6, 0.1)], [paper, B(0.004, 0.22, 0.25, 0.277, 0.65, -0.1)], ...[0.2, 0.35, 0.5, 0.65].map((y) => [dark, B(0.004, 0.06, 0.05, 0.277, y, 0.2)]), ...[-0.2, 0.2].flatMap((x) => [-0.2, 0.2].map((z) => [dark, C(0.04, 0.03, x, 0.02, z, 8).rotateZ(Math.PI / 2)]))];
+  at(cart, PX0 + 0.33, 4.95); at(cart, PX0 + 0.33, 5.6);
+  at([[wM, R(0.42, 0.15, 0.4, 0, 0.99, 0, 0.02)], [mm(0xdcdcd8), B(0.3, 0.05, 0.3, 0, 1.14, 0)]], PX0 + 0.33, 4.95);
+  at([[wM, R(0.48, 0.18, 0.4, 0, 0.99, 0, 0.02)], [wM, B(0.3, 0.25, 0.02, 0, 1.17, -0.15).rotateX(0.3)]], PX0 + 0.33, 5.6);
+  at([[mm(0xe3e3dd), B(0.6, 0.03, 1.2, 0, 0.7, 0)], [dark, B(0.04, 0.7, 0.04, -0.25, 0, -0.55)], [dark, B(0.04, 0.7, 0.04, 0.25, 0, -0.55)], [dark, B(0.04, 0.7, 0.04, -0.25, 0, 0.55)], [dark, B(0.04, 0.7, 0.04, 0.25, 0, 0.55)],
+    [wM, R(0.42, 0.42, 0.4, 0, 0.73, -0.3, 0.02)], [dark, B(0.3, 0.02, 0.25, 0, 1.15, -0.3)], [dark, B(0.32, 0.02, 0.24, 0, 0.73, 0.3)], [cardb, B(0.4, 0.3, 0.4, 0, 0, 0.2)]], PX0 + 0.36, 6.6);
+  // 北の壁ぞい：緑の鉄の棚（コピー用紙の包み、上にトナーの箱）、金属の棚（ホッチキス・紙）、灰色のロッカー、廊下への戸
+  const shelf = [...[-0.58, 0.58].flatMap((x) => [-0.2, 0.2].map((z) => [greenSt, B(0.04, 1.8, 0.04, x, 0, z)])), ...[0.1, 0.65, 1.2, 1.78].map((y) => [greenSt, B(1.2, 0.025, 0.45, 0, y, 0)])];
+  for (let i = 0; i < 6; i++) shelf.push([cardb, B(0.3, 0.06, 0.22, -0.3 + (i % 2) * 0.32, 0.67 + Math.floor(i / 2) * 0.06, 0)]);
+  for (let i = 0; i < 5; i++) shelf.push([cardb, B(0.3, 0.06, 0.22, 0.25, 1.22 + i * 0.06, -0.02)]);
+  for (let i = 0; i < 3; i++) shelf.push([cardb, B(0.3, 0.06, 0.22, -0.3, 0.12 + i * 0.06, 0)]);
+  for (let i = 0; i < 8; i++) shelf.push([i % 3 ? cardb : okiY, B(0.28, 0.24, 0.3, -0.45 + (i % 4) * 0.3, 1.81 + Math.floor(i / 4) * 0.24, 0)]);
+  at(shelf, -3.65, 0.3);
+  const ms = [...[-0.43, 0.43].flatMap((x) => [-0.18, 0.18].map((z) => [mm(0x8a8c88, { metalness: 0.5 }), B(0.04, 1.85, 0.04, x, 0, z)])), ...[0.1, 0.5, 0.9, 1.3, 1.82].map((y) => [mm(0x9a9c98, { metalness: 0.4 }), B(0.86, 0.02, 0.38, 0, y, 0)])];
+  ms.push([wM, B(0.4, 0.15, 0.3, -0.2, 0.92, 0)], [cardb, B(0.35, 0.18, 0.3, 0.22, 0.92, 0)], [dark, B(0.6, 0.12, 0.25, 0, 1.32, 0)], [mm(0xf4e04a), B(0.25, 0.12, 0.004, -0.2, 1.05, 0.195)], [mm(0xf4e04a), B(0.25, 0.12, 0.004, 0.2, 0.65, 0.195)], [mm(0xf0a0b0), B(0.3, 0.25, 0.3, -0.2, 0.12, 0)], [wM, B(0.3, 0.2, 0.3, 0.2, 0.52, 0)]);
+  at(ms, -2.5, 0.28);
+  at([[mm(0x6c726c, { roughness: 0.5 }), B(0.9, 1.85, 0.45, 0, 0, 0)], [mm(0x585e58), B(0.004, 1.75, 0.004, 0, 0.05, 0.226)], [mm(0xa8aca8), B(0.03, 0.15, 0.03, -0.06, 0.95, 0.24)], [mm(0xa8aca8), B(0.03, 0.15, 0.03, 0.06, 0.95, 0.24)], [mm(0x9fb7d0), B(0.6, 0.25, 0.25, 0.1, 1.85, 0)], [red, B(0.25, 0.15, 0.2, -0.3, 1.85, 0)]], -1.5, 0.3);
+  // 廊下への木の開き戸（すりガラスの窓）と枠、欄間のむこうの段ボール（Canon）
+  const woodD = mm(0xb59672, { roughness: 0.6 });
+  P.push([woodD, B(0.84, 1.98, 0.04, -0.52, 0.02, 0.1)], [woodD, B(0.06, 2.75, 0.17, -0.98, 0, 0)], [woodD, B(0.06, 2.1, 0.17, -0.06, 0, 0)], [woodD, B(2.95, 0.07, 0.17, -1.5, 2.06, 0)], [woodD, B(2.95, 0.06, 0.17, -1.5, 2.7, 0)], [woodD, B(0.05, 0.6, 0.17, -1.5, 2.12, 0)], [mm(0xb8b8b0), B(0.3, 0.012, 0.012, -0.85, 1.0, 0.13)]);
+  P.push([mm(0xcfd4d2, { roughness: 0.3 }), B(0.4, 0.5, 0.005, -0.52, 1.3, 0.125)], [cardb, B(1.2, 0.4, 0.4, -2.2, 2.15, -0.35)], [mm(0x8aa0a8), B(0.5, 0.35, 0.3, -1.2, 2.15, -0.3)]);
+  for (let i = 0; i < 6; i++) P.push([mm(0x7e8a90), C(0.05, 0.3, -1.4 + i * 0.12, 2.12, -0.2, 8)]);
+  // 南の窓：アルミ枠、黄色いカーテン（両はし）、右上の壁かけの換気扇（クーラー）
+  const fr = [B(3.8, 0.05, 0.1, -2.45, 0.83, PZ1 - 0.05), B(3.8, 0.05, 0.1, -2.45, 2.52, PZ1 - 0.05), B(3.8, 0.04, 0.08, -2.45, 2.0, PZ1 - 0.05)];
+  for (const x of [-4.3, -3.35, -2.4, -1.45, -0.5]) fr.push(B(0.05, 1.7, 0.08, x, 0.85, PZ1 - 0.05));
+  P.push(...fr.map((g) => [alu, g]));
+  P.push([mm(0xd8c8a0, { roughness: 0.7 }), B(0.55, 0.38, 0.32, -0.9, 2.1, PZ1 - 0.25)], [mm(0x8a8070), B(0.45, 0.25, 0.004, -0.9, 2.15, PZ1 - 0.41)]);
+  P.push([mm(0xe6dccd), B(0.04, 0.32, 0.32, PX0 + 0.1, 2.3, 4.2)]); // 西の壁の換気口
+  for (const [m, g] of kit(P)) add([g], m, !m.transparent);
+  add([B(3.75, 1.65, 0.01, -2.4, 0.86, PZ1 - 0.06)], glass, false);
+  const yc = mm(0xf0dc8a, { roughness: 0.95, side: THREE.DoubleSide });
+  for (const [x, w] of [[-4.25, 0.7], [-1.05, 0.7]]) { const g = new THREE.PlaneGeometry(w, 1.95, 30, 1), p = g.attributes.position; for (let i = 0; i < p.count; i++) p.setZ(i, Math.sin(p.getX(i) * 30) * 0.035); g.computeVertexNormals(); g.translate(x + w / 2 - 0.1, 0.55 + 0.97, PZ1 - 0.18); add([g], yc, false); }
+  // 壁のはり紙（「燃えないゴミ」「インク在庫に注意」など）と時計
+  for (const [x, y, z, w, h, ry] of [[-0.09, 1.55, 3.2, 0.42, 0.3, -Math.PI / 2], [-0.09, 1.55, 3.7, 0.3, 0.42, -Math.PI / 2], [-0.09, 1.3, 4.6, 0.25, 0.35, -Math.PI / 2], [-0.09, 1.6, 5.2, 0.3, 0.42, -Math.PI / 2], [PX0 + 0.08, 1.5, 4.9, 0.25, 0.32, Math.PI / 2], [PX0 + 0.08, 1.5, 5.6, 0.25, 0.32, Math.PI / 2], [PX0 + 0.08, 1.45, 3.5, 0.3, 0.25, Math.PI / 2], [-0.5, 1.25, 0.13, 0.22, 0.3, 0]]) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), paper); m.position.set(x, y, z); m.rotation.y = ry; scene.add(m); }
+  { const c = new THREE.Mesh(new THREE.CircleGeometry(0.14, 24), M(0xffffff)); c.position.set(-0.1, 2.2, 1.9); c.rotation.y = -Math.PI / 2; scene.add(c); add([new THREE.TorusGeometry(0.14, 0.012, 6, 24).rotateY(Math.PI / 2).translate(-0.1, 2.2, 1.9)], dark); }
+}
+
 // ---------- 名前の札 ----------
 const tag = (text, color, x, y, z) => { const d = document.createElement("div"); d.className = "tag"; d.textContent = text; d.style.background = color; const o = new CSS2DObject(d); o.position.set(x, y, z); scene.add(o); return o; };
-const tags = [tag("1年", "#c2549a", 6.5, 1.6, 4.0), tag("2年", "#2b8fb4", 12.8, 1.6, 4.0), tag("3年", "#3c9a4a", 21.6, 1.6, 2.4), tag("業務アシスタント", "#6b6f78", 18.3, 1.6, 3.5), tag("教頭・副校長", "#6b6f78", 18.9, 1.6, 5.4), tag("共用スペース", "#8a7a5a", 19.2, 2.0, -1.2), tag("流し・給湯", "#8a7a5a", 0.5, 1.9, 5.9), tag("打ち合わせテーブル", "#8a7a5a", 1.75, 1.2, 2.75), tag("クラス別の配布棚", "#8a7a5a", 3.42, 1.5, 0.4), tag("予定表", "#8a7a5a", 10.9, 2.15, 0.4), tag("丸テーブル", "#8a7a5a", 16.0, 1.4, -1.1)];
+const tags = [tag("印刷室", "#8a7a5a", -2.4, 2.3, 3.9), tag("1年", "#c2549a", 6.5, 1.6, 4.0), tag("2年", "#2b8fb4", 12.8, 1.6, 4.0), tag("3年", "#3c9a4a", 21.6, 1.6, 2.4), tag("業務アシスタント", "#6b6f78", 18.3, 1.6, 3.5), tag("教頭・副校長", "#6b6f78", 18.9, 1.6, 5.4), tag("共用スペース", "#8a7a5a", 19.2, 2.0, -1.2), tag("流し・給湯", "#8a7a5a", 0.5, 1.9, 5.9), tag("打ち合わせテーブル", "#8a7a5a", 1.75, 1.2, 2.75), tag("クラス別の配布棚", "#8a7a5a", 3.42, 1.5, 0.4), tag("予定表", "#8a7a5a", 10.9, 2.15, 0.4), tag("丸テーブル", "#8a7a5a", 16.0, 1.4, -1.1)];
 
 // ---------- 歩く（一人称視点） ----------
 // ぶつかる物（机・戸棚・柱・テーブル・流し台）の四角を集めておく。いすはよけずに通れる
@@ -732,13 +831,15 @@ for (const c of [...cabs, ...lows, ...mids, ...talls]) { const along = Math.abs(
 for (const x of [0, 4.8, 9.6, 14.4, 19.2, 24]) box2(x, 7.25, 0.76, 0.66);
 for (const x of [0, 4.8, 9.6, 14.4, 24]) box2(x, 0.15, 0.76, 0.66);
 box2(19.2, 0.1, 0.76, 0.76); for (const x of [14.4, 19.2, 24]) box2(x, -2.35, 0.76, 0.5);
-box2(18.55, VZ, 3.9, VD); box2(16.85, 7.1, 3.9, 0.47); box2(23.72, 2.95, 0.45, 3.9); box2(23.75, -0.5, 0.4, 0.5); box2(22.75, -0.4, 0.5, 0.5); box2(18.55, 0.55, 0.36, 0.8); box2(23.78, -0.1, 0.3, 0.3);
+box2(18.55, VZ, 3.9, VD);
+// 印刷室：印刷機・コピー機・丁合機・机・棚など
+for (const [x, z, w, d] of [[-2.7, 2.45, 1.75, 0.7], [-2.7, 3.55, 1.75, 0.7], [-3.15, 5.55, 1.75, 0.7], [-2.6, 1.05, 1.3, 0.75], [-2.2, 6.75, 0.65, 0.65], [-1.25, 6.85, 0.8, 0.5], [-0.42, 1.75, 0.7, 0.85], [-0.45, 3.9, 0.77, 3.25], [-0.46, 5.66, 0.75, 0.1], [-0.42, 6.85, 0.62, 0.6], [-4.5, 1.05, 0.45, 1.8], [-4.5, 2.35, 0.4, 0.6], [-4.38, 3.65, 0.7, 1.8], [-4.47, 5.27, 0.6, 1.25], [-4.44, 6.6, 0.6, 1.2], [-3.65, 0.3, 1.2, 0.45], [-2.5, 0.28, 0.9, 0.4], [-1.5, 0.3, 0.9, 0.45]]) box2(x, z, w, d); box2(16.85, 7.1, 3.9, 0.47); box2(23.72, 2.95, 0.45, 3.9); box2(23.75, -0.5, 0.4, 0.5); box2(22.75, -0.4, 0.5, 0.5); box2(18.55, 0.55, 0.36, 0.8); box2(23.78, -0.1, 0.3, 0.3);
 // 北の壁ぞいの分別カート・白い棚とごみ箱、共用スペースのロッカー・丸テーブル・すみの棚
 box2(7.6, 0.3, 0.5, 0.42); box2(11.0, 0.3, 1.9, 0.42); box2(14.73, -0.65, 0.5, 0.9); box2(17.5, -2.17, 1.8, 0.5); box2(20.95, -2.17, 2.7, 0.5); box2(16.0, -1.15, 1.3, 1.3); box2(15.1, -2.25, 1.0, 0.34);
 // 西のはし：流し台・製氷機・冷蔵庫・食器棚・レンジ台、窓の下の棚、打ち合わせテーブル、配布棚、ホワイトボード、ごみの分別箱
-box2(0.37, 4.6, 0.6, 2.85); box2(0.3, 2.75, 0.45, 1.6); box2(1.55, 7.12, 1.6, 0.42); box2(1.75, 2.75, 0.9, 1.8); box2(3.42, 0.3, 1.32, 0.44); box2(0.85, 0.62, 0.5, 0.5);
+box2(0.37, 4.6, 0.6, 2.85); box2(0.3, 2.75, 0.45, 1.6); box2(1.55, 7.12, 1.6, 0.42); box2(1.75, 2.75, 0.9, 1.8); box2(3.42, 0.3, 1.32, 0.44); box2(1.3, 0.62, 0.5, 0.5);
 const RAD = 0.22;
-const inRoom = (x, z) => (x > 0.12 + RAD && x < 23.88 - RAD && z > 0.08 + RAD && z < 7.25 - RAD) || (x > 14.5 + RAD && x < 23.88 - RAD && z > -2.42 + RAD && z < 0.5);
+const inRoom = (x, z) => (x > -4.65 + RAD && x < -0.1 - RAD && z > 0.08 + RAD && z < 7.25 - RAD) || (x > -0.45 && x < 0.45 && z > 0.45 + RAD && z < 1.35 - RAD) || (x > 0.12 + RAD && x < 23.88 - RAD && z > 0.08 + RAD && z < 7.25 - RAD) || (x > 14.5 + RAD && x < 23.88 - RAD && z > -2.42 + RAD && z < 0.5);
 const free = (x, z) => inRoom(x, z) && !solids.some(([a, b, c, d]) => x > a - RAD && x < b + RAD && z > c - RAD && z < d + RAD);
 const walk = { on: false, x: 0.9, z: 3.9, yaw: -Math.PI / 2, pitch: -0.05, keys: new Set(), pad: { f: 0, t: 0 }, saved: null };
 const EYE = 1.55;
@@ -753,7 +854,7 @@ function setWalk(on) {
     walk.saved = [camera.position.clone(), controls.target.clone()];
     // いま見ている場所の近くの、歩けるところから
     let best = [0.9, 3.9], bd = Infinity;
-    for (let x = 0.5; x < 23.6; x += 0.25) for (let z = -2.2; z < 7.1; z += 0.25) if (free(x, z)) { const d = (x - camera.position.x) ** 2 + (z - camera.position.z) ** 2; if (d < bd) { bd = d; best = [x, z]; } }
+    for (let x = -4.4; x < 23.6; x += 0.25) for (let z = -2.2; z < 7.1; z += 0.25) if (free(x, z)) { const d = (x - camera.position.x) ** 2 + (z - camera.position.z) ** 2; if (d < bd) { bd = d; best = [x, z]; } }
     [walk.x, walk.z] = best;
     const d = controls.target.clone().sub(camera.position); walk.yaw = Math.atan2(-d.x, -d.z); walk.pitch = -0.05;
   } else {
@@ -811,6 +912,7 @@ const VIEWS = {
   walk: [[0.9, 1.55, 3.9], [20, 1.1, 3.2]],
   east: [[23.2, 1.55, 6.6], [6, 1.0, 3.0]],
   sink: [[5.6, 1.55, 5.2], [0.4, 1.1, 2.6]],
+  print: [[-0.5, 1.6, 1.0], [-3.0, 0.9, 6.0]],
   top: [[12, 30, 2.5], [12, 0, 2.45]],
   bird: [[4, 12, 15], [13, 0, 2.5]],
 };
@@ -831,7 +933,7 @@ document.querySelector('.views .btn[data-v="walk"]').classList.add("active");
 // ・ダブルクリック／ダブルタップで、そこへ近づく
 controls.zoomToCursor = true;
 controls.minDistance = 0.05;
-const BOX = { x0: 0, x1: 24, z0: -2.5, z1: 7.4 };
+const BOX = { x0: -4.8, x1: 24, z0: -2.5, z1: 7.4 };
 const fwd = new THREE.Vector3(), ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 // 部屋の中から：壁・床・天井までの距離。外（上）から：机の高さの面までの距離
 function hitDist(o, d) {

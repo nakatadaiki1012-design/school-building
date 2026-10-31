@@ -147,7 +147,7 @@ const ceiling = new THREE.Group();
 // 壁：下の 1.0m は茶色っぽいベージュ、上はクリーム色（写真）。開口部（窓・ドア）はあけて作る
 // o：{ H：腰壁の高さ, lo：下の色, hi：上の色 }
 // 外から見るとき、手前の壁を消すために、壁ごとに覚えておく（下の「壁の透過」）
-const WALLS = [], WALL_EXTRAS = [];
+const WALLS = [], WALL_EXTRAS = [], DOOR_PARTS = []; // DOOR_PARTS：[材質, 形]。外から見るときは、うっすら残す
 function wall(ax, az, bx, bz, holes = [], t = 0.15, o = {}) {
   const L = Math.hypot(bx - ax, bz - az), ang = Math.atan2(bz - az, bx - ax), H = o.H ?? 1.0;
   const lo = [], hi = [];
@@ -233,7 +233,7 @@ const outside = new THREE.Group();
   // 共用スペースの西の引き戸（窓と「ストーブの消火確認を」のはり紙）
   g.push(B(0.04, 1.98, 0.9, 14.4, 0.02, -1.6)); w.push(B(0.05, 0.5, 0.5, 14.4, 1.3, -1.72));
   f.push(B(0.05, 0.08, 0.56, 14.43, 1.27, -1.72), B(0.05, 0.08, 0.56, 14.43, 1.8, -1.72));
-  add(g, door); add(f, frame); add(w, glass, false);
+  DOOR_PARTS.push(...g.map((q) => [door, q]), ...f.map((q) => [frame, q]), ...w.map((q) => [glass, q])); // 壁ごとに分けて、あとで置く
 }
 
 // ---------- 家具 ----------
@@ -800,7 +800,7 @@ place(cabKit, cabs.concat(talls)); place(lowKit, lows); place(midKit, mids); // 
   place(blkChair, [{ x: -1.05, z: 3.4, rot: Math.PI / 2 + 0.2 }, { x: -1.05, z: 4.6, rot: Math.PI / 2 - 0.1 }]);
   at([[mm(0x9a6a40, { roughness: 0.6 }), B(0.72, 1.3, 0.035, 0, 0, 0)], [mm(0xf1e98a), B(0.45, 0.25, 0.3, 0.05, 1.3, 0.05)]], -0.46, 5.66);
   at([[mm(0xe2e2dc), B(0.6, 1.25, 0.62, 0, 0, 0)], [mm(0x1a1c20, { roughness: 0.1 }), B(0.5, 0.95, 0.01, 0, 0.18, -0.31)]], -0.42, 6.85, Math.PI / 2);
-  // 西の壁ぞい：灰色の書庫2台（91・92。上に定期試験の問題のファイル）、白い棚、緑の作業台、充電保管庫2台（上にプリンター）、窓ぎわの机（モノクロプリンター）
+  // 西の壁ぞい：テストロッカー2台（テスト保管用。91・92。上にテスト保存ファイル）、白い棚、緑の作業台、充電保管庫2台（上にプリンター）、窓ぎわの机（モノクロプリンター）
   for (const [z, lbl] of [[0.6, "91"], [1.52, "92"]]) {
     at([[grayCab, B(0.45, 1.8, 0.9, 0, 0, 0)], [mm(0xa9a492), B(0.004, 1.7, 0.004, 0.226, 0.05, 0)], [mm(0xc9c4b2), B(0.03, 0.12, 0.05, 0.24, 0.9, -0.08)], [mm(0xc9c4b2), B(0.03, 0.12, 0.05, 0.24, 0.9, 0.08)], [mm(0x3f7fd0), B(0.004, 0.05, 0.8, 0.226, 1.72, 0)], [paper, B(0.004, 0.3, 0.22, 0.228, 1.1, -0.22)], [paper, B(0.004, 0.25, 0.2, 0.228, 1.2, 0.22)]], PX0 + 0.3, z);
   }
@@ -1106,10 +1106,26 @@ const EXT = [];
     for (const w of EXT) { const dx = w.bx - w.ax, dz = w.bz - w.az, t = Math.max(0, Math.min(1, ((c.x - w.ax) * dx + (c.z - w.az) * dz) / (dx * dx + dz * dz))); const d = Math.hypot(c.x - (w.ax + dx * t), c.z - (w.az + dz * t)); if (d < bd) { bd = d; best = w; } }
     if (best) best.ms.push(m);
   }
+  // ドア・枠・窓ガラス：いちばん近い外側の壁ごとにまとめて置き、その壁が消えるときは、うっすら残す
+  const groups = new Map();
+  for (const [mat, g] of DOOR_PARTS) {
+    g.computeBoundingBox(); g.boundingBox.getCenter(c);
+    let best = null, bd = 0.8;
+    for (const w of EXT) { const dx = w.bx - w.ax, dz = w.bz - w.az, t = Math.max(0, Math.min(1, ((c.x - w.ax) * dx + (c.z - w.az) * dz) / (dx * dx + dz * dz))); const d = Math.hypot(c.x - (w.ax + dx * t), c.z - (w.az + dz * t)); if (d < bd) { bd = d; best = w; } }
+    const key = best ? EXT.indexOf(best) : -1;
+    if (!groups.has(key)) groups.set(key, new Map());
+    const byMat = groups.get(key); if (!byMat.has(mat)) byMat.set(mat, []); byMat.get(mat).push(g);
+  }
+  for (const [key, byMat] of groups) for (const [mat, gs] of byMat) {
+    const m = add(gs, mat, mat !== glass);
+    if (key < 0) continue;
+    const faded = mat.clone(); faded.transparent = true; faded.opacity = mat === glass ? 0.06 : 0.14; faded.depthWrite = false;
+    (EXT[key].fades ||= []).push({ m, mat, faded });
+  }
 }
 function updateWalls() {
   const p = camera.position, inside = insideAny(p.x, p.z) && p.y < CEIL;
-  for (const w of EXT) { const show = inside || (p.x - w.mx) * w.ox + (p.z - w.mz) * w.oz < 0.05; for (const m of w.ms) m.visible = show; }
+  for (const w of EXT) { const show = inside || (p.x - w.mx) * w.ox + (p.z - w.mz) * w.oz < 0.05; for (const m of w.ms) m.visible = show; for (const d of w.fades || []) d.m.material = show ? d.mat : d.faded; }
 }
 function tick(now) {
   const interval = lastT ? now - lastT : 16;

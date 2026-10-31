@@ -2839,7 +2839,8 @@ function tick(now) {
     moving = true; lastMoveT = now;
   } else if (moving && now - lastMoveT > 250) { moving = false; frameTimes = []; lastDeclutter = 0; activeUntil = Math.max(activeUntil, now + 100); } // 止まったらすぐ札を整理
   lastFrame = now;
-  if (anim || camMoved || now < activeUntil || now - lastDraw > 1000) {
+  // 何もしていないときの描き直しは、読み込みの直後（画像などがあとから届く）だけ1秒ごと。そのあとは5秒ごと（電池と発熱をおさえる）
+  if (anim || camMoved || now < activeUntil || now - lastDraw > (now < 20000 ? 1000 : 5000)) {
     lastDraw = now;
     renderer.render(scene, cam);
     labelRenderer.render(scene, cam);

@@ -217,7 +217,7 @@ export function buildColumnTrees(spots) {
 export function hedgeMass(blobs, h = 1.6) {
   const geos = [];
   blobs.forEach(([x, z, r], i) => {
-    const g = lumpy(1, 2, i * 2.7 + x * 0.3, 0.18);
+    const g = lumpy(1, r > 2.6 ? 2 : 1, i * 2.7 + x * 0.3, 0.18); // 小さなかたまりは形を少しあらく（三角形を4分の1に）
     g.scale(r, h * 0.6, r);
     g.translate(x, h * 0.45, z);
     geos.push(g);

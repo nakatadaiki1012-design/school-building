@@ -416,7 +416,7 @@ const bikePartsGeo = (() => {
     b(0.9, 0.02, 0.06, 0, 0.36, 0.04),         // チェーンのカバー
   ]);
 })();
-const bikeWheelGeo = new THREE.TorusGeometry(0.33, 0.03, 5, 14);
+const bikeWheelGeo = new THREE.TorusGeometry(0.33, 0.03, 3, 12); // 細いタイヤなので、断面は三角で十分（数が多いので軽く）
 const bikeWheelMat = M(0x222222), bikeFrameMat = M(0xffffff, { metalness: 0.3, roughness: 0.5 }), bikePartsMat = M(0x55585c, { roughness: 0.6, metalness: 0.3 });
 function bikeInstances(spots) {
   const g = new THREE.Group();
@@ -1141,6 +1141,14 @@ const texWall = (() => {
 const matWall = new THREE.MeshStandardMaterial({ map: texWall, roughness: 0.95, side: THREE.DoubleSide });
 const matRamp = new THREE.MeshStandardMaterial({ color: 0x8d8f91, roughness: 1, side: THREE.DoubleSide });
 const railMat = M(0x4e6b5a, { metalness: 0.4, roughness: 0.5 });
+// 柵のたて格子の模様（1マスに棒が1本。棒のあいだはすけて見える）
+const picketTex = (() => {
+  const c = document.createElement("canvas"); c.width = 32; c.height = 4;
+  const g = c.getContext("2d"); g.fillStyle = "#4e6b5a"; g.fillRect(13, 0, 6, 4);
+  const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+})();
+const picketMat = new THREE.MeshStandardMaterial({ map: picketTex, alphaTest: 0.5, transparent: false, side: THREE.DoubleSide, metalness: 0.4, roughness: 0.5 });
 
 // 柵（たて格子のフェンス）。y はそれぞれの点の地面の高さ
 function railing(group, ax, az, ay, bx, bz, by, h = 1.5) {
@@ -1152,10 +1160,14 @@ function railing(group, ax, az, ay, bx, bz, by, h = 1.5) {
   mk(new THREE.BoxGeometry(L, 0.06, 0.06), h);
   mk(new THREE.BoxGeometry(L, 0.05, 0.05), 0.15);
   const n = Math.max(1, Math.round(L / 0.15));
-  // たて格子（あとで bakeStatic でまとめられるよう、ふつうの形にしておく）
-  const bg = [];
-  for (let i = 0; i < n; i++) { const t = (i + 0.5) / n; const b = new THREE.BoxGeometry(0.025, h - 0.15, 0.025); b.translate(ax + (bx - ax) * t, ay + (by - ay) * t + 0.15 + (h - 0.15) / 2, az + (bz - az) * t); bg.push(b); }
-  group.add(new THREE.Mesh(mergeGeometries(bg), railMat));
+  // たて格子：1本ずつの棒にすると三角形がとても多くなる（敷地のまわりで6万こ）ので、格子の模様をぬいた1枚の板にする
+  const y0a = ay + 0.15, y0b = by + 0.15, y1a = ay + h, y1b = by + h;
+  const pg = new THREE.BufferGeometry();
+  pg.setAttribute("position", new THREE.Float32BufferAttribute([ax, y0a, az, bx, y0b, bz, bx, y1b, bz, ax, y1a, az], 3));
+  pg.setAttribute("uv", new THREE.Float32BufferAttribute([0, 0, n, 0, n, 1, 0, 1], 2));
+  pg.setIndex([0, 1, 2, 0, 2, 3]);
+  pg.computeVertexNormals();
+  group.add(new THREE.Mesh(pg, picketMat));
   const np = Math.ceil(L / 2.5);
   for (let i = 0; i <= np; i++) { const t = i / np; const p = new THREE.Mesh(new THREE.BoxGeometry(0.08, h, 0.08), railMat); p.position.set(ax + (bx - ax) * t, ay + (by - ay) * t + h / 2, az + (bz - az) * t); group.add(p); }
 }

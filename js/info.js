@@ -372,6 +372,7 @@ export const SITE_INFO = [
   { key: "bikes2", name: "駐輪場（2階建て）", x: -53, z: -6, desc: "2階建ての駐輪場です。自転車通学の生徒は学校に申請し、この駐輪場に停めます。", photos: ["images/bikes2-a.jpg", "images/bikes2-b.jpg"] },
   { name: "中庭", x: -10, z: 22, desc: "中庭にはベンチやテーブルなどが設置されています。真ん中にある銅像を『さわやかさん』と呼んでいます。", photos: ["images/nakaniwa-a.jpg", "images/nakaniwa-b.jpg", "images/nakaniwa-c.jpg", "images/nakaniwa-d.jpg"] },
   { name: "1号館と2号館のあいだ", x: 30, z: 0, desc: "1号館と2号館のあいだの、アスファルトの広い通路です。まんなかに石畳の道があり、その先の松などの植え込みの向こうが正門です。両側の校舎ぞいには植え込みがあります。", photos: ["images/w1w2-1.jpg"] },
+  { name: "ゴミ捨て場", x: 81, z: -14, desc: "正門の北、道路ぞいにあるゴミ捨て場です。一般ごみ・プラスチックなどに分けて捨てるコンテナと、空きびん・空き缶などを入れる緑の金網のかご、物置があります。", photos: ["images/gomi-1.jpg"] },
   { name: "南の庭園（駐車場のうしろ）", x: -7, z: 65, desc: "南の駐車場のうしろにある庭園です。レンガ敷きの小道の先に、藤棚（ふじだな）があり、石のテーブルとベンチがあります。まわりには、陶芸でつくられたキノコとチェスの作品や、つぼなどが置かれています。", photos: ["images/garden-1.jpg", "images/garden-2.jpg", "images/garden-3.jpg"] },
 ];
 export const SITE_NOTE = "※ 位置は航空写真から読み取ったおおよそのものです。";

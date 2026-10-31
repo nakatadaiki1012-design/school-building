@@ -572,7 +572,7 @@ export const EXTRA_ROOMS = [
   { id: "F1-SWC2", name: "職員女子トイレ", floor: 1, c0: 55.5, r0: 47, c1: 56, r1: 51 },
   // 体育館の1階の西の部室（写真）：西の外に入口が5つならぶ。北の2つはせまい
   { id: "F1-CW1", name: "部室9", floor: 1, c0: 7, r0: 19, c1: 10, r1: 19.5 },
-  { id: "F1-CW2", name: "部室（チアリーダー部）", floor: 1, c0: 7, r0: 20.5, c1: 10, r1: 21 },
+  { id: "F1-CW2", name: "部室（チアリーディング部）", floor: 1, c0: 7, r0: 20.5, c1: 10, r1: 21 },
   { id: "F1-CW3", name: "部室（女子陸上部）", floor: 1, c0: 7, r0: 22, c1: 10, r1: 23.3 },
   { id: "F1-CW4", name: "部室（女子バスケ部）", floor: 1, c0: 7, r0: 24.3, c1: 10, r1: 25.6 },
   { id: "F1-CW5", name: "部室（女子バレー部）", floor: 1, c0: 7, r0: 26.6, c1: 10, r1: 28 },
@@ -609,7 +609,7 @@ export const ROOM_STYLE = [
   { name: "らくらくスペース", floor: 1, doors: ["s"] }, { name: "土間", floor: 1, open: ["n", "s", "w"], noLabel: true },
   // 体育館の1階の部室：外への入口は両引き戸（北の部室は北、西の部室は西）
   { name: "部室（男子バスケ部）", floor: 1, doors: ["n:clubDoor"] }, { name: "部室（陸上部）", floor: 1, doors: ["n:clubDoor"] }, { name: "部室（男子テニス部）", floor: 1, doors: ["n:clubDoor"] }, { name: "生徒会倉庫", floor: 1, doors: ["n:clubDoor"] }, { name: "部室（バドミントン部）", floor: 1, doors: ["n:clubDoor"] }, { name: "部室（女子テニス部）", floor: 1, doors: ["n:clubDoor"] }, { name: "部室（男子バレー部）", floor: 1, doors: ["n:clubDoor"] },
-  { name: "部室9", floor: 1, doors: ["w:clubDoor"] }, { name: "部室（チアリーダー部）", floor: 1, doors: ["w:clubDoor"] }, { name: "部室（女子陸上部）", floor: 1, doors: ["w:clubDoor"] }, { name: "部室（女子バスケ部）", floor: 1, doors: ["w:clubDoor"] }, { name: "部室（女子バレー部）", floor: 1, doors: ["w:clubDoor"] },
+  { name: "部室9", floor: 1, doors: ["w:clubDoor"] }, { name: "部室（チアリーディング部）", floor: 1, doors: ["w:clubDoor"] }, { name: "部室（女子陸上部）", floor: 1, doors: ["w:clubDoor"] }, { name: "部室（女子バスケ部）", floor: 1, doors: ["w:clubDoor"] }, { name: "部室（女子バレー部）", floor: 1, doors: ["w:clubDoor"] },
   // 売店：西（廊下側）に窓口
   { name: "売店", floor: 1, doors: ["w:receptionWindow"] },
   // 2号館の職員WC（1・2階）と3階のトイレ：廊下側（南）の入口は、色のついた枠の片引き戸（男子は青緑、女子はピンク）

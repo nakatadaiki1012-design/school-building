@@ -1324,11 +1324,11 @@ function rustTex() {
   const zTop = gz0 + 2, zBot = gz1 + 1.2; // 南の外廊下はせまく（図書室の棟とあくように）
   // 外廊下の床（写真）：体育準備室の前から東は緑の人工芝（両はしは少しコンクリートが見える）
   const turf = [];
-  const deck = (x0, x1, z0, z1) => {
+  const deck = (x0, x1, z0, z1, noTurf = false) => {
     box(geos2, x1 - x0, 0.3, z1 - z0, (x0 + x1) / 2, ty - 0.15, (z0 + z1) / 2);
     const m = 0.25, w = x1 - x0 - 2 * m, d = z1 - z0 - 2 * m;
     // 人工芝は、体育準備室の前から東だけ。プール側（西）の外廊下と踊り場はふつうのコンクリート
-    if (x1 > gx + 0.01 && w > 0.3 && d > 0.3) turf.push(new THREE.BoxGeometry(w, 0.03, d).translate((x0 + x1) / 2, ty + 0.015, (z0 + z1) / 2));
+    if (!noTurf && x1 > gx + 0.01 && w > 0.3 && d > 0.3) turf.push(new THREE.BoxGeometry(w, 0.03, d).translate((x0 + x1) / 2, ty + 0.015, (z0 + z1) / 2));
   };
   // 外廊下の腰壁（写真では高め、約1.6m）
   const rail = (x0, x1, z0, z1) => box(geos2, Math.max(0.18, x1 - x0), 1.6, Math.max(0.18, z1 - z0), (x0 + x1) / 2, ty + 0.65, (z0 + z1) / 2);
@@ -1347,7 +1347,6 @@ function rustTex() {
   deck(gx, gxe + dw, gz1, zBot);                // 南
   deck(gx, X(19), Z(38), gz1);                  // 引っこんだ玄関・体育準備室の前
   box(eaves, X(19) - gx, 0.35, Z(39) - Z(38), (gx + X(19)) / 2, 2 * FH - 0.2, (Z(38) + Z(39)) / 2); // その上は3階の卓球場の張り出し
-  deck(gxe, gxe + dw, zTop, gz1);               // 東
   rail(gx - sw - 0.2, gx, zTop, zTop);
   // 南：保健体育科準備室（西の端）の前が踊り場。そこから東へ下りる外階段
   const pl = 2.6, sl = 9.4, SW = 2.6; // SW：体育準備室の前の外階段の幅（図書室の棟とあくように少しせまく）
@@ -1360,7 +1359,10 @@ function rustTex() {
   const gb = blockById("gym"), brw = blockById("bridge").world;
   const bz0 = (brw[1] - gb.oz) / gb.sz, bz1 = (brw[3] - gb.oz) / gb.sz;
   // 東：北の端に踊り場。そこから南へ下りる外階段（外廊下の外側）
-  deck(gxe + dw, gxe + dw + 2.4, zTop, zTop + 2.4);
+  // 東の外廊下：中央棟からの渡り廊下がつながるところから南だけ人工芝。北（北の踊り場・外階段のほう）はコンクリート（写真）
+  deck(gxe, gxe + dw, zTop, bz0, true);
+  deck(gxe, gxe + dw, bz0, gz1);
+  deck(gxe + dw, gxe + dw + 2.4, zTop, zTop + 2.4, true);
   rail(gxe + dw + 2.4, gxe + dw + 2.4, zTop, zTop + 2.4);
   rail(gxe + dw, gxe + dw + 2.4, zTop, zTop);
   rail(gxe + dw, gxe + dw, zTop + 2.4, bz0);

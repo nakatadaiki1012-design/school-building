@@ -443,6 +443,8 @@ const SHAPES = {
   floorLine: [[M(0xf4f4f0, { roughness: 0.6 }), merge([b(1, 0.02, 0.07, 0, 0.03)])]],
   dojoBanner: [[M(0x1f2a52, { roughness: 0.9 }), merge([b(1.6, 1.9, 0.03, 0, 0.9)])], [M(0xf2f2ee), merge([b(0.5, 0.5, 0.035, 0.25, 1.9), b(0.5, 0.5, 0.035, 0.25, 1.25)])]],
   frameRow: [[M(0x5a4a3a, { roughness: 0.6 }), merge(Array.from({ length: 8 }, (_, i) => b(0.3, 0.38, 0.03, (i - 3.5) * 0.45, 1.75)))], [M(0xeeeeea), merge(Array.from({ length: 8 }, (_, i) => b(0.24, 0.3, 0.035, (i - 3.5) * 0.45, 1.79)))]],
+  // 部屋を分けるパーティション（灰色のパネルと、銀色の細い枠。sx で長さ）
+  partitionWall: [[M(0xb9bcc0, { roughness: 0.7 }), merge([b(1, 2.1, 0.05, 0, 0.05)])], [MAT.metal, merge([b(1, 0.04, 0.07, 0, 2.15), b(1, 0.05, 0.07)])]],
   airPurifier: [[M(0xf6f6f4, { roughness: 0.4 }), merge([b(0.3, 0.65, 0.4)])], [M(0xdcdcd8), merge([b(0.31, 0.04, 0.3, 0, 0.62)])]],
   fan: [[M(0xf4f2ec), merge([new THREE.CylinderGeometry(0.2, 0.2, 0.03, 12).translate(0, 0.015, 0), b(0.03, 1.1, 0.03), new THREE.CylinderGeometry(0.2, 0.2, 0.05, 16).rotateZ(Math.PI / 2).translate(-0.05, 1.2, 0)])], [M(0xe58a3c), merge([new THREE.CylinderGeometry(0.17, 0.17, 0.01, 8).rotateZ(Math.PI / 2).translate(-0.12, 1.2, 0)])]],
   sickBook: [[M(0xcfd6d8), merge([b(0.03, 0.5, 1.4, 0, 1.2)])]],
@@ -591,7 +593,7 @@ const alongX = (out, t, z, x0, x1, step, rot = Math.PI / 2) => {
 // 普通教室：前（-x側）に黒板と教卓、後ろにロッカー、机は 6列 × 7行
 // 普通教室は40人（6列×7行から、いちばん後ろの両はしの2席を除く）
 // cols：横の列の数、rows：縦の列の数、back：後ろに空けるスペース（部屋の奥行きに対する割合）
-function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back = 0, doorT = "door", gap = 0.95, empty = false, deskX0 = 2.2 } = {}) {
+function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back = 0, doorT = "door", gap = 0.95, empty = false, deskX0 = 2.2, backDoor = true } = {}) {
   const { x0, x1, z0, z1 } = R;
   out.push({ t: "blackboard", x: x0 + 0.12, z: (z0 + z1) / 2, rot: 0 });
   // 教壇は窓側の壁からドア側の壁まで、部屋の幅いっぱい
@@ -609,7 +611,7 @@ function classroom(out, R, { cols = 6, rows = 7, seats = 40, eboard = true, back
   // 廊下側（北）の前と後ろの引き戸
   // 前のドアは少し前寄り（教壇に少しかかる）
   out.push({ t: doorT, x: x0 + 1.6, z: z0 - 0.2, rot: 0 }); // 壁のまんなか。教壇に少しかかる
-  out.push({ t: doorT, x: x1 - 1.2, z: z0 - 0.2, rot: 0 });
+  if (backDoor) out.push({ t: doorT, x: x1 - 1.2, z: z0 - 0.2, rot: 0 });
   // 2つのドアのあいだの、廊下側の窓
   for (let x = x0 + 3.5; x < x1 - 2.9; x += 1.85) out.push({ t: "hallWindow", x, z: z0 - 0.2, rot: 0 });
   // 窓側（南）のカーテン（柱のところにまとめてある）
@@ -1149,7 +1151,9 @@ const LAYOUTS = [
     o.push({ t: "cabinet", x: x1 - 0.35, z: zc + 1.6, rot: Math.PI }, { t: "cabinet", x: x1 - 0.35, z: zc + 2.4, rot: Math.PI });
     o.push({ t: "rack", x: x1 - 1.6, z: z0 + 0.35, rot: Math.PI / 2 });
   }],
-  [/選択|オーラル/, (o, R) => classroom(o, R, { cols: 5, rows: 6, seats: 30, eboard: false })],
+  // オーラル教室：もとは生徒会室と1つの大きな教室で、パーティションで分けている。うしろ（生徒会室の側）には扉がない
+  [/オーラル/, (o, R) => classroom(o, R, { cols: 5, rows: 6, seats: 30, eboard: false, backDoor: false })],
+  [/選択/, (o, R) => classroom(o, R, { cols: 5, rows: 6, seats: 30, eboard: false })],
   [/STUDY HALL/, studyHall],
   // 生物実験室（写真）：黒い天板の木の実験机（黒板と平行に長い）が2列×5列。机の前後に長いベンチ、机の上に顕微鏡。
   // 窓ぎわに流しのカウンター、前（黒板の前）に段ボールや道具、後ろのすみに顕微鏡保管庫
@@ -1272,6 +1276,8 @@ const LAYOUTS = [
     for (const k of [0, 0.25, 0.5]) o.push({ t: "micStand", x: x1 - 0.9 - k * 0.6, z: z0 + 0.5 + k, rot: 0 });
     o.push({ t: "cardboard", x: x0 + 0.5, z: z1 - 1.1, rot: 0 });
   }],
+  // 生徒会室：北のオーラル教室とのあいだは壁ではなく、灰色のパーティション
+  [/^生徒会室$/, (o, R) => { prep(o, R); o.push({ t: "partitionWall", x: (R.x0 + R.x1) / 2, z: R.z0, rot: 0, sx: R.x1 - R.x0 - 0.1 }); }],
   [/準備室|生徒会室|進路資料室|整理室|資料室/, prep],
   [/男子トイレ/, (o, R) => { toilet(o, R); urinals(o, R); }],
   [/トイレ/, toilet],

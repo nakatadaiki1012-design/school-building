@@ -747,7 +747,7 @@ function staffRoomL(out, R) {
 }
 
 // STUDY HALL（写真）：仕切り板とデスクライトのついた自習机。西の窓ぎわと北のガラスぎわに壁を向いた机。
-// まんなかには背中合わせの机のかたまりが東西にのびる（机は南北を向く）。かたまりの東のはしに木の本棚。
+// まんなかには背中合わせの机のかたまりが東西にのびる（机は南北を向く）。かたまりの東のはしに、机にくっついて廊下を向いた木の本棚。
 // 赤本の白い本棚は西の窓ぎわのまんなか。南の壁ぎわは作りつけの長いベンチで、その前に長い大きな机が2つ
 function studyHall(out, R) {
   const { x0, x1, z0, z1 } = R, d = z1 - z0, zm = z0 + d * 0.5;
@@ -763,8 +763,10 @@ function studyHall(out, R) {
   // まんなかの背中合わせのかたまり（東西にのびる、2列）
   for (const f of [0.34, 0.56]) {
     const zc = z0 + d * f;
-    for (let x = x0 + 2.0; x < x1 - 1.6; x += 0.95) { unit(x, zc - 0.31, Math.PI / 2); unit(x, zc + 0.31, -Math.PI / 2); }
-    out.push({ t: "woodCase", x: x1 - 1.0, z: zc, rot: Math.PI / 2 });
+    let xe = x0;
+    for (let x = x0 + 2.0; x < x1 - 1.6; x += 0.95) { unit(x, zc - 0.31, Math.PI / 2); unit(x, zc + 0.31, -Math.PI / 2); xe = x; }
+    // 木の本棚：かたまりの東のはしの机にくっつけて、廊下（東）のほうを向く。幅はかたまりの幅いっぱい
+    out.push({ t: "woodCase", x: xe + 0.45 + 0.2, z: zc, rot: 0, sz: 1.22 });
   }
   // 南：壁ぎわの長いベンチと、その前の長い大きな机2つ
   alongX(out, "wallBench", z1 - 0.3, x0 + 0.6, x1 - 0.6, 1.6, Math.PI / 2);

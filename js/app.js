@@ -2810,6 +2810,45 @@ function cameraChanged(cam) {
   if (camKey[17] !== (cam === ortho ? 1 : 0)) { camKey[17] = cam === ortho ? 1 : 0; ch = true; }
   return ch;
 }
+// ---------- 平行移動のスティック（スマホ向け。ゲームの移動スティックのような ◎）：少し動かすと画面の左下に出る。
+// まん中の丸に指を置いて上下左右・ななめにずらすと、画面で見ている向きのまま、その方向へ平行に動く ----------
+const NAV = { until: 0, hold: null, shown: false, grab: null, lastT: 0 };
+{
+  const pad = document.getElementById("stick"), knob = pad.querySelector(".knob");
+  const R = () => pad.clientWidth / 2;
+  const setFrom = (e) => {
+    const r = pad.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    let x = (e.clientX - cx) / R(), y = (e.clientY - cy) / R(); const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; }
+    NAV.hold = Math.hypot(x, y) < 0.12 ? [0, 0] : [x, y];
+    knob.style.transform = `translate(${x * R() * 0.6}px, ${y * R() * 0.6}px)`;
+  };
+  pad.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); NAV.grab = e.pointerId; pad.setPointerCapture(e.pointerId); pad.classList.add("on"); setFrom(e); poke(); });
+  pad.addEventListener("pointermove", (e) => { if (NAV.grab === e.pointerId) setFrom(e); });
+  const stop = (e) => { if (NAV.grab !== e.pointerId) return; NAV.grab = null; NAV.hold = null; knob.style.transform = ""; pad.classList.remove("on"); NAV.until = performance.now() + 3000; };
+  pad.addEventListener("pointerup", stop); pad.addEventListener("pointercancel", stop);
+  pad.addEventListener("contextmenu", (e) => e.preventDefault());
+  for (const c of [controls3d, controls2d]) c.addEventListener("start", () => { NAV.until = performance.now() + 4000; });
+  app.addEventListener("wheel", () => { NAV.until = performance.now() + 4000; }, { passive: true });
+  NAV.pad = pad;
+}
+const navV = new THREE.Vector3();
+function updateNav(now, cam) {
+  const dt = Math.min(0.1, (now - (NAV.lastT || now)) / 1000); NAV.lastT = now;
+  const show = !ex.on && (now < NAV.until || NAV.grab !== null);
+  if (show !== NAV.shown) { NAV.shown = show; NAV.pad.classList.toggle("show", show); }
+  if (!NAV.hold || ex.on || (!NAV.hold[0] && !NAV.hold[1])) return;
+  const [hx, hy] = NAV.hold;
+  if (cam === ortho) {
+    // 2D：画面の上が北（-z）。見えている広さに合わせた速さ
+    const span = (ortho.top - ortho.bottom) / ortho.zoom, sp = span * 0.6 * dt;
+    navV.set(hx * sp, 0, hy * sp); ortho.position.add(navV); controls2d.target.add(navV);
+  } else {
+    const az = controls3d.getAzimuthalAngle(), fx = -Math.sin(az), fz = -Math.cos(az);
+    const d = persp.position.distanceTo(controls3d.target), sp = Math.min(60, Math.max(4, d * 0.9)) * dt;
+    navV.set((-fz * hx - fx * hy) * sp, 0, (fx * hx - fz * hy) * sp); persp.position.add(navV); controls3d.target.add(navV); anim = null;
+  }
+  activeUntil = now + 200;
+}
 function tick(now) {
   if (anim) {
     const k = Math.min(1, (now - anim.t0) / anim.ms);
@@ -2827,6 +2866,7 @@ function tick(now) {
   if (ex.on) { updateExplore(Math.min(0.1, (now - (lastExT || now)) / 1000)); activeUntil = now + 100; }
   lastExT = now;
   const cam = useCamera();
+  updateNav(now, cam);
   // 方位磁針（画面の上がどの方角か）
   const az = cam === ortho ? 0 : controls3d.getAzimuthalAngle();
   if (Math.abs(az - lastAz) > 0.002) { lastAz = az; compassEl.style.transform = `rotate(${THREE.MathUtils.radToDeg(az)}deg)`; }

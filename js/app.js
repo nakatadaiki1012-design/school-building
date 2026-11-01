@@ -3174,7 +3174,6 @@ function bestYaw(f, pref) {
 function setExplore(on) {
   if (on === ex.on) return;
   ex.on = on;
-  document.getElementById("walk-btn").classList.toggle("active", on);
   document.body.classList.toggle("exploring", on);
   if (on) {
     ex.saved = [persp.position.clone(), controls3d.target.clone()];
@@ -3233,7 +3232,6 @@ function updateExplore(dt) {
   controls3d.target.copy(eye).add(look);
   persp.lookAt(controls3d.target);
 }
-document.getElementById("walk-btn").addEventListener("click", () => setExplore(!ex.on));
 // キーボード（探検中は、カメラの操作のかわりに歩く）
 window.addEventListener("keydown", (e) => {
   if (!ex.on || e.target.closest?.("input, textarea")) return;

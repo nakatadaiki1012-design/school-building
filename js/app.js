@@ -44,6 +44,20 @@ function toDrawing(x, z) {
 // parent の中に、その棟の変換をかけたグループを作る（同じ棟なら使い回す）
 // 体育館は、2階・3階の床が校舎の床より高い（1階の武道場の天井が高い）。その差（m）
 const GYM_LIFT = 1.05;
+// 体育館の南の外廊下の腰壁：茶色の小さなタイル（写真）。1枚ずつ色が少しちがう
+const matGymTile = (() => {
+  const cv = document.createElement("canvas"); cv.width = cv.height = 128;
+  const c = cv.getContext("2d");
+  c.fillStyle = "#cfc2b8"; c.fillRect(0, 0, 128, 128); // 目地
+  const tw = 128 / 12, th = 128 / 20; // 0.6m に 12×20 枚（細長いタイル）
+  for (let j = 0; j < 20; j++) for (let i = 0; i < 12; i++) {
+    const v = Math.random() * 30 - 15;
+    c.fillStyle = `rgb(${104 + v},${58 + v * 0.7},${58 + v * 0.6})`;
+    c.fillRect(i * tw + 0.6, j * th + 0.6, tw - 1.2, th - 1.2);
+  }
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  return new THREE.MeshStandardMaterial({ map: t, roughness: 0.7 });
+})();
 // 体育館の外廊下と渡り廊下の床の、緑の人工芝
 const matTurf = new THREE.MeshStandardMaterial({ color: 0x2f9a3a, roughness: 1 });
 function inBlock(parent, b) {
@@ -1371,6 +1385,13 @@ function rustTex() {
     if (!noTurf && x1 > gx + 0.01 && w > 0.3 && d > 0.3) turf.push(new THREE.BoxGeometry(w, 0.03, d).translate((x0 + x1) / 2, ty + 0.015, (z0 + z1) / 2));
   };
   // 外廊下の腰壁（写真では高め、約1.6m）
+  // 南（正面側）の腰壁は、柱のあいだが茶色の小さなタイル（写真）。タイルの模様は 0.6m 四方でくり返す
+  const tileGeos = [];
+  const railTile = (x0, x1, z) => {
+    const L = x1 - x0, g = new THREE.BoxGeometry(L, 1.6, 0.2).translate((x0 + x1) / 2, ty + 0.65, z), uv = g.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * L / 0.6, uv.getY(i) * 1.6 / 0.6);
+    tileGeos.push(g);
+  };
   const rail = (x0, x1, z0, z1) => box(geos2, Math.max(0.18, x1 - x0), 1.6, Math.max(0.18, z1 - z0), (x0 + x1) / 2, ty + 0.65, (z0 + z1) / 2);
   // 西側は、北の端の踊り場だけ2階の高さ。そこから南に向かって1階へ下りる外階段がある（写真）
   const landL = 3, stairL = 9.4, sw = 2.4;
@@ -1391,8 +1412,8 @@ function rustTex() {
   // 南：保健体育科準備室（西の端）の前が踊り場。そこから東へ下りる外階段
   const pl = 2.6, sl = 9.4, SW = 2.6; // SW：体育準備室の前の外階段の幅（図書室の棟とあくように少しせまく）
   deck(gx, gx + pl, zBot, zBot + SW);
-  rail(gx + pl, gx + pl + sl, zBot, zBot);
-  rail(gx + pl + sl + 2.4, gxe + dw, zBot, zBot); // 上の階段の踊り場のところはあけておく
+  railTile(gx + pl, gx + pl + sl, zBot);
+  railTile(gx + pl + sl + 2.4, gxe + dw, zBot); // 上の階段の踊り場のところはあけておく
   rail(gx, gx, zBot, zBot + SW);
   rail(gx, gx + pl, zBot + SW, zBot + SW);
   // 中央棟からの渡り廊下がつながるところは手すりなし（渡り廊下の実際の位置を、体育館の図面の座標に直す）
@@ -1477,6 +1498,7 @@ function rustTex() {
     gymHolder.add(m);
   }
   gymHolder.add(gymExtras);
+  if (tileGeos.length) { const tm = new THREE.Mesh(mergeGeometries(tileGeos), matGymTile); tm.castShadow = tm.receiveShadow = true; gymHolder.add(tm); }
   if (turf.length) { const tm = new THREE.Mesh(mergeGeometries(turf), matTurf); tm.receiveShadow = true; gymHolder.add(tm); }
 }
 

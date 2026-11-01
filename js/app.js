@@ -319,6 +319,24 @@ const texLibGlass = canvasTex(W, H, (g) => {
   g.fillStyle = "#56677a"; g.fillRect(0, yFromFloor(0.5), W, 0.5 * PX); // 床の位置の帯
 });
 const texArtWing = makeSchoolTex({ base: "#e9dfcf", band: "#ddd2c0", line: "#cfc3ae", tile: false });
+// 美術室・図書室の中庭側（東）の面（写真）：うすいベージュの壁に、柱のあいだいっぱいの大きな窓。
+// 白いアルミの枠で、たての桟が3本、上に欄間。内側にクリーム色のカーテン。床の位置に横の帯
+const texArtCourt = canvasTex(W, H, (g) => {
+  wallBase(g, { base: "#e9dfcf", band: "#ddd2c0", line: "#cfc3ae", tile: false });
+  g.fillStyle = "#ddd2c0"; g.fillRect(0, yFromFloor(0.55), W, 0.55 * PX);
+  g.fillStyle = "#cfc3ae"; g.fillRect(0, yFromFloor(0.55), W, 3);
+  const x = 0.22 * PX, w = BAY * PX - 0.44 * PX, y = yFromFloor(3.0), h = 2.25 * PX, yt = yFromFloor(2.4);
+  glass(g, x, y, w, h);
+  // カーテン（両はしと、まんなかに少し）
+  for (const [cx0, cw] of [[x + 4, 0.3 * PX], [x + w * 0.5 - 0.12 * PX, 0.24 * PX], [x + w - 4 - 0.3 * PX, 0.3 * PX]]) {
+    for (let i = 0; i < cw; i++) { const v = 205 + Math.sin(i / 2.2) * 20; g.fillStyle = `rgba(${v},${v - 4},${v - 24},0.8)`; g.fillRect(cx0 + i, yt + 4, 1, y + h - yt - 8); }
+  }
+  g.fillStyle = "#f4f4f2";
+  for (let k = 1; k < 4; k++) g.fillRect(x + (w * k) / 4 - 2.5, y, 5, h); // たての桟
+  g.fillRect(x, yt - 3, w, 6);                                              // 欄間
+  g.strokeStyle = "#f4f4f2"; g.lineWidth = 7; g.strokeRect(x, y, w, h);
+  g.fillStyle = "rgba(0,0,0,0.16)"; g.fillRect(x, y + h + 3, w, 4); // 窓台の影
+});
 
 // 茶色いレンガタイルの壁（端の壁。窓はほとんどない）
 const texBrick = canvasTex(W, H, (g) => {
@@ -585,11 +603,12 @@ function wallRelief(segs, f) {
       const dep = 0.45;
       const cx = (sg.ax + sg.bx) / 2 + nx * dep / 2, cz = (sg.az + sg.bz) / 2 + nz * dep / 2;
       if (f < 3) { if (alongX) box(len + 0.2, 0.12, dep, cx, y0 + FH - 0.55, cz); else box(dep, 0.12, len + 0.2, cx, y0 + FH - 0.55, cz); }
-    } else if (sg.style === "artwing") {
+    } else if (sg.style === "artwing" || sg.style === "artcourt") {
       // 美術・図書館棟（写真）：窓の上下に細い横の帯だけ（出っ張りは小さい）
       const dep = 0.12;
       const cx = (sg.ax + sg.bx) / 2 + nx * dep / 2, cz = (sg.az + sg.bz) / 2 + nz * dep / 2;
-      for (const yy of [0.25, 1.15]) { if (alongX) box(len + 0.2, 0.12, dep, cx, y0 + yy, cz); else box(dep, 0.12, len + 0.2, cx, y0 + yy, cz); }
+      // 中庭側は窓が大きいので、帯は窓の下だけ
+      for (const yy of sg.style === "artcourt" ? [0.2, 0.68] : [0.25, 1.15]) { if (alongX) box(len + 0.2, 0.12, dep, cx, y0 + yy, cz); else box(dep, 0.12, len + 0.2, cx, y0 + yy, cz); }
     } else if (sg.style === "glassblock") {
       // 床の位置の白い梁だけ（腰はガラスブロックなので出っ張らない）
       const dep = 0.25, bh = 0.5;
@@ -608,7 +627,7 @@ function wallRelief(segs, f) {
       if (alongX) box(len, 0.5, 0.2, bx, 0.05, bz); else box(0.2, 0.5, len, bx, 0.05, bz);
     }
   }
-  const beige = segs.length && segs.every((sg) => sg.style === "artwing");
+  const beige = segs.length && segs.every((sg) => sg.style === "artwing" || sg.style === "artcourt");
   const m = new THREE.Mesh(geos.length ? mergeGeometries(geos) : new THREE.BufferGeometry(), beige ? matReliefBeige : matRelief);
   m.castShadow = m.receiveShadow = true;
   return m;
@@ -730,6 +749,7 @@ const texGlassBlock = canvasTex(W, H, (g) => {
 
 const MAT_WALL = {
   artwing: wallMat(texArtWing),
+  artcourt: wallMat(texArtCourt),
   office: wallMat(texOffice),
   glassblock: wallMat(texGlassBlock),
   school: wallMat(texSchool),
@@ -778,7 +798,7 @@ for (const f of [1, 2, 3]) {
     if (style === "high") return "high|" + b;
     if (OPEN_COURTS.some((rc) => inCells(c + d.dc, r + d.dr, rc))) return "school|" + b; // 光庭のまわりは白
     // 写真に合わせた面ごとの壁（[c0, r0, c1, r1, 向き]）
-    for (const [st, list] of [["office", FACADE.office], ["glassblock", FACADE.glassblock], ["libglass", FACADE.libglass]]) {
+    for (const [st, list] of [["office", FACADE.office], ["glassblock", FACADE.glassblock], ["libglass", FACADE.libglass], ["artcourt", FACADE.artcourt]]) {
       if ((list || []).some(([c0, r0, c1, r1, dir]) => side === dir && inCells(c, r, [c0, r0, c1, r1]) && (f >= 2 || st !== "glassblock"))) return st + "|" + b;
     }
     if (b === "art" && style !== "gym") return "artwing|" + b; // 美術・図書館棟

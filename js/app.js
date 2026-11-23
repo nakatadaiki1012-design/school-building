@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { CSS2DRenderer, CSS2DObject } from "three/addons/renderers/CSS2DRenderer.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { speckle, hsl } from "./tex.js";
+import { speckle, hsl, TEX_IMG, tileImg } from "./tex.js";
 import { ROOMS_RAW } from "./data.js";
 import { FOOTPRINTS, OPEN_COURTS, STAIRS, WINGS, CATEGORIES, describe, SCHOOL, SITE, SITE_INFO, SITE_NOTE, AERIAL_ALIGN, FACADE, BLOCKS, PILOTIS, ROOM_PARTS, COLUMN_AREAS, GYM_GALLERY, ROOM_EDITS, EXTRA_ROOMS, ROOM_SPLITS, ROOM_STYLE, WALL_OPENINGS, PHOTOS, GEO_ALIGN, SEARCH_ALIASES, VENDING_NOTE } from "./info.js";
 import { buildFurniture, floorStyle, FLOOR_TEX } from "./furniture.js";
@@ -44,8 +44,10 @@ function toDrawing(x, z) {
 // parent の中に、その棟の変換をかけたグループを作る（同じ棟なら使い回す）
 // 体育館は、2階・3階の床が校舎の床より高い（1階の武道場の天井が高い）。その差（m）
 const GYM_LIFT = 1.05;
+// 写真風の画像（images/tex）からくり返しのテクスチャを作る。画像がないときは null
+const imgTex = (img) => { if (!img) return null; const t = new THREE.Texture(img); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; t.needsUpdate = true; return t; };
 // 体育館の南の外廊下の腰壁：茶色の小さなタイル（写真）。1枚ずつ色が少しちがう
-const matGymTile = (() => {
+const matGymTile = TEX_IMG["gym-tile"] ? new THREE.MeshStandardMaterial({ map: imgTex(TEX_IMG["gym-tile"]), roughness: 0.6 }) : (() => {
   const cv = document.createElement("canvas"); cv.width = cv.height = 128;
   const c = cv.getContext("2d");
   c.fillStyle = "#cfc2b8"; c.fillRect(0, 0, 128, 128); // 目地
@@ -59,7 +61,9 @@ const matGymTile = (() => {
   return new THREE.MeshStandardMaterial({ map: t, roughness: 0.7 });
 })();
 // 体育館の外廊下と渡り廊下の床の、緑の人工芝
-const matTurf = new THREE.MeshStandardMaterial({ color: 0x2f9a3a, roughness: 1 });
+const matTurf = new THREE.MeshStandardMaterial({ color: TEX_IMG.turf ? 0xffffff : 0x2f9a3a, map: imgTex(TEX_IMG.turf), roughness: 1 });
+// 人工芝の板：模様が 1m ごとにくり返すように、上の面の uv を大きさに合わせる
+const turfGeo = (w, d) => { const g = new THREE.BoxGeometry(w, 0.03, d), uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * w, uv.getY(i) * d); return g; };
 function inBlock(parent, b) {
   const map = (parent.userData.blocks ||= {});
   if (!map[b.id]) {
@@ -353,7 +357,13 @@ const texArtCourt = canvasTex(W, H, (g) => {
 });
 
 // 茶色いレンガタイルの壁（端の壁。窓はほとんどない）
-const texBrick = canvasTex(W, H, (g) => {
+const texBrick = canvasTex(W * 2, H * 2, (g) => {
+  if (TEX_IMG.brick) { // 写真風の画像（1枚で 1.2m 四方）。床の位置に少し濃い目地
+    tileImg(g, TEX_IMG.brick, 1.2 * PX * 2, W * 2, H * 2, 0, (H * 2) % (1.2 * PX * 2));
+    g.fillStyle = "rgba(60,25,15,0.35)"; g.fillRect(0, yFromFloor(0.05) * 2, W * 2, 6);
+    return;
+  }
+  g.scale(2, 2);
   // 写真のレンガ：明るめの赤茶色で、1枚ずつ色が少しちがう。目地はうすい灰色
   g.fillStyle = "#b39a8c"; g.fillRect(0, 0, W, H);
   const bh = 0.12 * PX, bw = 0.3 * PX;
@@ -434,7 +444,9 @@ texGrass.repeat.set(60, 60);
 
 // 外のレンガ敷き（昇降口のあいだ・体育館のまわりの広場で同じものを使う）
 function makeBrickFloorTex() {
-  return canvasTex(256, 256, (g, W2, H2) => {
+  return canvasTex(512, 512, (g, W2, H2) => {
+    if (TEX_IMG.paving) { g.drawImage(TEX_IMG.paving, 0, 0, W2, H2); return; } // 写真風の画像
+    g.scale(2, 2); W2 /= 2; H2 /= 2;
     g.fillStyle = "#a7685a"; g.fillRect(0, 0, W2, H2);
     const bh = 16, bw = 32;
     for (let row = 0, y = 0; y < H2; y += bh, row++) {
@@ -878,7 +890,7 @@ for (const f of [1, 2, 3]) {
       fl.castShadow = fl.receiveShadow = true;
       holder.add(fl);
       // 2階の渡り廊下（体育館へ）の床は、緑の人工芝（写真）
-      if (f === 2) { const tg = new THREE.BoxGeometry(rc.x1 - rc.x0, 0.03, rc.z1 - rc.z0 - 0.5); tg.translate((rc.x0 + rc.x1) / 2, base(f) + GYM_LIFT + 0.015, (rc.z0 + rc.z1) / 2); const tm = new THREE.Mesh(tg, matTurf); tm.receiveShadow = true; holder.add(tm); }
+      if (f === 2) { const tg = turfGeo(rc.x1 - rc.x0, rc.z1 - rc.z0 - 0.5); tg.translate((rc.x0 + rc.x1) / 2, base(f) + GYM_LIFT + 0.015, (rc.z0 + rc.z1) / 2); const tm = new THREE.Mesh(tg, matTurf); tm.receiveShadow = true; holder.add(tm); }
       for (const sg of list) {
         const len = Math.hypot(sg.bx - sg.ax, sg.bz - sg.az), alongX = sg.n[1] !== 0;
         const wg = new THREE.BoxGeometry(alongX ? len : 0.2, 1.7, alongX ? 0.2 : len, alongX ? 4 : 1, 1, 1); // 腰壁は少し高め（1.7m）
@@ -1382,7 +1394,7 @@ function rustTex() {
     box(geos2, x1 - x0, 0.3, z1 - z0, (x0 + x1) / 2, ty - 0.15, (z0 + z1) / 2);
     const m = 0.25, w = x1 - x0 - 2 * m, d = z1 - z0 - 2 * m;
     // 人工芝は、体育準備室の前から東だけ。プール側（西）の外廊下と踊り場はふつうのコンクリート
-    if (!noTurf && x1 > gx + 0.01 && w > 0.3 && d > 0.3) turf.push(new THREE.BoxGeometry(w, 0.03, d).translate((x0 + x1) / 2, ty + 0.015, (z0 + z1) / 2));
+    if (!noTurf && x1 > gx + 0.01 && w > 0.3 && d > 0.3) turf.push(turfGeo(w, d).translate((x0 + x1) / 2, ty + 0.015, (z0 + z1) / 2));
   };
   // 外廊下の腰壁（写真では高め、約1.6m）
   // 南（正面側）の腰壁は、柱のあいだが茶色の小さなタイル（写真）。タイルの模様は 0.6m 四方でくり返す
@@ -1981,7 +1993,7 @@ for (const f of [1, 2, 3]) {
       map.needsUpdate = true;
       if (st === "gym") { map.center.set(0.5, 0.5); map.rotation = Math.PI / 2; tint = new THREE.Color(0xffffff); r.glossy = true; } // 体育館の床はつやがある
       else if (st === "tatami") { map.repeat.set(r.w / 3.6, r.d / 3.6); tint = new THREE.Color(0xffffff); }
-      else if (st === "flooring") { map.repeat.set(r.w / 3, r.d / 3); tint = new THREE.Color(0xd9b07a); } // 武道場の木の床
+      else if (st === "flooring") { if (FLOOR_TEX.board) { map = FLOOR_TEX.board.clone(); map.needsUpdate = true; map.repeat.set(r.w / 2, r.d / 2); tint = new THREE.Color(0xc4ae96); } else { map.repeat.set(r.w / 3, r.d / 3); tint = new THREE.Color(0xd9b07a); } } // 武道場の木の床
       else if (st === "tile") map.repeat.set(r.w / 1.2, r.d / 1.2);
       else map.repeat.set(r.w / 4, r.d / 4);
       if (/ステージ/.test(r.name)) tint = new THREE.Color(0xc99560); // ステージの木の床

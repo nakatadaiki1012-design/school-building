@@ -25,3 +25,11 @@ export function hsl(h, s, l) {
   const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
   return [Math.round(f(0) * 255), Math.round(f(8) * 255), Math.round(f(4) * 255)];
 }
+
+// 写真風のテクスチャ画像（images/tex）。読みこめなかったときは null（そのときは、いままでどおり絵で描いた模様を使う）
+const loadImg = (src) => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
+export const TEX_IMG = Object.fromEntries(await Promise.all(["gym-tile", "paving", "turf", "wood", "brick"].map(async (n) => [n, await loadImg(`images/tex/${n}.jpg`)])));
+// 画像を、size × size ピクセルを1枚として、canvas にしきつめる
+export function tileImg(g, img, size, w, h, ox = 0, oy = 0) {
+  for (let y = oy - size; y < h; y += size) for (let x = ox - size; x < w; x += size) g.drawImage(img, x, y, size, size);
+}

@@ -2,7 +2,7 @@
 // 家具の種類ごとに InstancedMesh をまとめて作るので、数が多くても軽く動く
 import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { speckle, hsl } from "./tex.js";
+import { speckle, hsl, TEX_IMG, tileImg } from "./tex.js";
 
 // ---------- 材質 ----------
 function canvasTex(w, h, draw, rx = 1, ry = 1) {
@@ -133,10 +133,13 @@ export const FLOOR_TEX = {
     }
   }, 1, 1),
   // 体育館の床（写真）：つやのある赤茶色の板の床に、白・青・赤・緑のライン
-  gym: canvasTex(1024, 512, (g, w, h) => {
+  // 武道場の木の床（写真風の画像。1枚で 2m 四方）
+  board: TEX_IMG.wood ? (() => { const t = new THREE.Texture(TEX_IMG.wood); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; t.needsUpdate = true; return t; })() : null,
+  gym: canvasTex(2048, 1024, (g, w, h) => {
     g.fillStyle = "#b8743e"; g.fillRect(0, 0, w, h);
-    // 細長い板（少しずつ色がちがう）
-    for (let y = 0; y < h; y += 6) for (let x = -Math.random() * 60; x < w; x += 40 + Math.random() * 50) {
+    // 木の板：写真風の画像（1枚で 2m 四方）をしきつめる。画像がないときは絵で描く
+    if (TEX_IMG.wood) { tileImg(g, TEX_IMG.wood, (w / 35) * 2, w, h); g.fillStyle = "rgba(150,95,55,0.3)"; g.fillRect(0, 0, w, h); } // 少し落ち着いた色に
+    else for (let y = 0; y < h; y += 6) for (let x = -Math.random() * 60; x < w; x += 40 + Math.random() * 50) {
       const v = Math.random() * 26 - 13;
       g.fillStyle = `rgb(${186 + v},${118 + v * 0.8},${64 + v * 0.5})`;
       g.fillRect(x, y, 60, 5.4);

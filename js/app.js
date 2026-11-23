@@ -444,9 +444,7 @@ texGrass.repeat.set(60, 60);
 
 // 外のレンガ敷き（昇降口のあいだ・体育館のまわりの広場で同じものを使う）
 function makeBrickFloorTex() {
-  return canvasTex(512, 512, (g, W2, H2) => {
-    if (TEX_IMG.paving) { g.drawImage(TEX_IMG.paving, 0, 0, W2, H2); return; } // 写真風の画像
-    g.scale(2, 2); W2 /= 2; H2 /= 2;
+  return canvasTex(256, 256, (g, W2, H2) => {
     g.fillStyle = "#a7685a"; g.fillRect(0, 0, W2, H2);
     const bh = 16, bw = 32;
     for (let row = 0, y = 0; y < H2; y += bh, row++) {

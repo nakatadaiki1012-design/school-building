@@ -28,7 +28,7 @@ export function hsl(h, s, l) {
 
 // 写真風のテクスチャ画像（images/tex）。読みこめなかったときは null（そのときは、いままでどおり絵で描いた模様を使う）
 const loadImg = (src) => new Promise((res) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => res(null); i.src = src; });
-export const TEX_IMG = Object.fromEntries(await Promise.all(["gym-tile", "paving", "turf", "wood", "brick"].map(async (n) => [n, await loadImg(`images/tex/${n}.jpg`)])));
+export const TEX_IMG = Object.fromEntries(await Promise.all(["gym-tile", "turf", "wood", "brick"].map(async (n) => [n, await loadImg(`images/tex/${n}.jpg`)])));
 // 画像を、size × size ピクセルを1枚として、canvas にしきつめる
 export function tileImg(g, img, size, w, h, ox = 0, oy = 0) {
   for (let y = oy - size; y < h; y += size) for (let x = ox - size; x < w; x += size) g.drawImage(img, x, y, size, size);

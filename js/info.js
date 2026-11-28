@@ -22,7 +22,7 @@ export const FOOTPRINTS = {
     // 3号館西のトイレ：図書室の棟の部分（62行まで）と3号館の部分（63行から）に分ける。2つの棟は位置合わせがちがうので、
     // まとめて書くと、3号館の側で1列ぶん西へずれた出っぱりができてしまう
     [12, 59, 15, 62, "school"],
-    [13, 63, 15, 64, "school"],
+    [12, 63, 14, 64, "school"],
   ],
   2: [
     [7, 1, 26, 37, "gym"],      // 体育館（南の玄関・体育準備室のところは、3階の卓球場より1列引っこむ）
@@ -38,7 +38,7 @@ export const FOOTPRINTS = {
     [42, 47, 65, 58, "school"],
     [15, 63, 44, 69, "school"],
     [12, 59, 15, 62, "school"],
-    [13, 63, 15, 64, "school"],
+    [12, 63, 14, 64, "school"],
   ],
   3: [
     [7, 1, 26, 38, "gym"],      // 体育館の上部（吹き抜け）と卓球場
@@ -51,7 +51,7 @@ export const FOOTPRINTS = {
     [42, 47, 65, 58, "school"],
     [15, 63, 44, 69, "school"],
     [12, 59, 15, 62, "school"],
-    [13, 63, 15, 64, "school"],
+    [12, 63, 14, 64, "school"],
   ],
 };
 
@@ -451,6 +451,8 @@ export const FACADE = {
 // world: [西の端 x, 北の端 z, 東の端 x, 南の端 z]。プールの水面 25m を物差しにして測った
 // 上から順に、そのセルを含む最初の棟が使われる
 export const BLOCKS = [
+  // 3号館の西のトイレの南の部分：東西は図書室の棟、南北は3号館の位置合わせに合わせる（西の壁に段ができないように）。3号館より先に書く
+  { id: "wcw", name: "3号館西のトイレ", cells: [12, 63, 14, 64], world: [-33.0, 33.0, -30.46, 37.49] },
   { id: "w3", name: "3号館", cells: [13, 63, 44, 69], world: [-33.8, 33.0, 19.6, 48.7] },
   { id: "gym", name: "体育館", cells: [7, 1, 26, 38], world: [-43.5, -42.5, -13.4, 2.7] },
   // 渡り廊下は体育館の東側の外廊下（幅3m）の外から始まる
@@ -537,9 +539,9 @@ export const ROOM_EDITS = [
   { name: "化学実験室", floor: 1, set: { c0: 52 } },
   // 3号館の西のはしの男子トイレ（美術・図書館棟と3号館にまたがる）は、東西の幅を美術・図書館棟に合わせる（細くなりすぎないように）。
   // 女子トイレの入口をふさがないよう、少し西に寄せる
-  { name: "男子トイレ", floor: 1, at: 13, set: { xBlock: "art", c0: 12, c1: 13.7 } },
-  { name: "男子トイレ", floor: 2, at: 13, set: { xBlock: "art", c0: 12, c1: 13.7 } },
-  { name: "男子トイレ", floor: 3, at: 13, set: { xBlock: "art", c0: 12, c1: 13.7 } },
+  { name: "男子トイレ", floor: 1, at: 13, set: { xBlock: "art", c0: 12, c1: 13.7, layout: "wcSouth" } },
+  { name: "男子トイレ", floor: 2, at: 13, set: { xBlock: "art", c0: 12, c1: 13.7, layout: "wcSouth" } },
+  { name: "男子トイレ", floor: 3, at: 13, set: { xBlock: "art", c0: 12, c1: 13.7, layout: "wcSouth" } },
   // 2階の美術・図書館棟：図書室と選択第２教室を南北に広げ、選択第２教室は男子トイレにくっつける
   { name: "図書室", floor: 2, set: { r1: 52, desc: "図書室です。木の大きな閲覧テーブルや、窓ぎわのカウンター席（緑の高いいす）で、本を読んだり調べ物をしたりできます。本は日本十進分類（NDC）の順に、壁ぞいの木の本棚と、まんなかの黒い本棚にならんでいます。新着本・話題の本のコーナー、図書委員がPOPでおすすめした本、雑誌のコーナー、ライトノベルのコーナーもあります。マンガは、借りたいマンガのタグをカウンターへ持っていって借ります。窓ぎわの文房具やおりがみは自由に使えます。", photos: ["images/tosho-4.jpg", "images/tosho-5.jpg", "images/tosho-6.jpg", "images/tosho-7.jpg", "images/tosho-8.jpg", "images/tosho-9.jpg", "images/tosho-10.jpg", "images/tosho-11.jpg", "images/tosho-12.jpg", "images/tosho-13.jpg", "images/tosho-14.jpg", "images/tosho-15.jpg", "images/tosho-1.jpg", "images/tosho-2.jpg", "images/tosho-3.jpg"] } },
   { name: "選択第２教室", floor: 2, set: { r0: 53, r1: 58 } },
@@ -632,6 +634,10 @@ export const ROOM_STYLE = [
   { name: "放送室（録音室）", floor: 2, doors: ["n:studioWindow"] },
   // 第２職員室の引き戸は南側
   { name: "第２職員室", floor: 2, doors: ["s"] },
+  // 3号館の西の男子トイレ：入口は廊下側（東）の壁の北のはし。個室は南側にならぶ（北の壁の向こうは別の部屋や屋外なので、北の壁には付けない）
+  { name: "男子トイレ", floor: 1, r0: 59, doors: ["e@-0.3"] },
+  { name: "男子トイレ", floor: 2, r0: 59, doors: ["e@-0.3"] },
+  { name: "男子トイレ", floor: 3, r0: 59, doors: ["e@-0.3"] },
   // 美術準備室：入口は東（廊下側）と、北の工芸室とのあいだの2か所。南のトイレとはつながっていない
   { name: "美術準備室", floor: 1, doors: ["e", "n"] },
   // 生徒会室：北のオーラル教室とは壁がなく、パーティションで分けている（家具で置く）。入口は東の廊下側

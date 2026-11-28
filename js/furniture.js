@@ -995,6 +995,15 @@ function toilet(out, R) {
   }
 }
 
+// 入口が北寄りで、個室が南の壁ぎわにならぶトイレ（3号館の西の男子トイレ）。西の壁に、北から手洗い・小便器
+function toiletSouth(out, R) {
+  const { x0, x1, z0, z1 } = R;
+  for (let x = x0 + 0.6; x < x1 - 0.4; x += 1.0) out.push({ t: "stall", x, z: z1 - 0.75, rot: -Math.PI / 2, y: 0.1 });
+  for (let z = z0 + 2.6; z < z1 - 2.4 && z < z0 + 6; z += 0.8) out.push({ t: "urinal", x: x0 + 0.25, z, rot: 0 });
+  out.push({ t: "sink", x: x0 + 0.35, z: z0 + 1.1, rot: 0 }, { t: "mirror", x: x0 + 0.02, z: z0 + 1.1, rot: 0 });
+}
+const LAYOUT_BY_KEY = { wcSouth: toiletSouth };
+
 // 小便器（男子トイレ。手洗いと反対側の壁に、ならべる）
 function urinals(out, R) {
   const { x0, x1, z0, z1 } = R;
@@ -1460,7 +1469,7 @@ export function buildFurniture(rooms, y) {
       const out = t === "clubDoor" ? 0.22 : 0, ox = { e: out, w: -out }[d] || 0, oz = { n: -out, s: out }[d] || 0;
       for (const o of two ? [-half, half] : [at * (along ? r.w : r.d)]) items.push({ t, x: p[0] + (along ? o : 0) + ox, z: p[1] + (along ? 0 : o) + oz, rot: p[2] });
     }
-    const fn = LAYOUTS.find(([re]) => re.test(r.name));
+    const fn = LAYOUT_BY_KEY[r.layout] ? [null, LAYOUT_BY_KEY[r.layout]] : LAYOUTS.find(([re]) => re.test(r.name)); // layout：部屋ごとに置き方を指定（info.js）
     if (!fn) continue;
     const list = [];
     if (EAST_FRONT.test(r.name)) {
